@@ -31,6 +31,7 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest
     {
         private TestServer _server;
         private string _environmentUrl;
+        private FhirClient _fhirClient;
 
         public HttpIntegrationTestFixture()
             : this(Path.Combine("src"))
@@ -61,7 +62,6 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest
 
             HttpClient = new HttpClient(new SessionMessageHandler(messageHandler)) { BaseAddress = new Uri(_environmentUrl) };
 
-            FhirClient = new FhirClient(HttpClient, ResourceFormat.Json);
             FhirXmlClient = new Lazy<FhirClient>(() => new FhirClient(HttpClient, ResourceFormat.Xml));
         }
 
@@ -69,7 +69,13 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest
 
         public HttpClient HttpClient { get; }
 
-        public FhirClient FhirClient { get; }
+        public virtual FhirClient FhirClient
+        {
+            get
+            {
+                return _fhirClient ?? (_fhirClient = new FhirClient(HttpClient, ResourceFormat.Json));
+            }
+        }
 
         public Lazy<FhirClient> FhirXmlClient { get; set; }
 

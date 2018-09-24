@@ -23,8 +23,6 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Common
 {
     public class FhirClient
     {
-        private readonly ResourceFormat _format;
-
         private readonly string _contentType;
 
         private readonly BaseFhirSerializer _serializer;
@@ -37,7 +35,7 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Common
         public FhirClient(HttpClient httpClient, ResourceFormat format)
         {
             HttpClient = httpClient;
-            _format = format;
+            Format = format;
 
             if (format == ResourceFormat.Json)
             {
@@ -76,7 +74,7 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Common
             SetupAuthenticationAsync().GetAwaiter().GetResult();
         }
 
-        public ResourceFormat Format => _format;
+        public ResourceFormat Format { get; }
 
         public (bool SecurityEnabled, string AuthorizeUrl, string TokenUrl) SecuritySettings { get; private set; }
 
@@ -88,7 +86,7 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Common
             return CreateAsync(resource.ResourceType.ToString(), resource);
         }
 
-        public async Task<FhirResponse<T>> CreateAsync<T>(string uri, T resource)
+        public virtual async Task<FhirResponse<T>> CreateAsync<T>(string uri, T resource)
             where T : Resource
         {
             var message = new HttpRequestMessage(HttpMethod.Post, uri);
@@ -180,7 +178,7 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Common
             return DeleteAsync($"{resource.ResourceType}/{resource.Id}?hardDelete=true");
         }
 
-        public Task<FhirResponse<Bundle>> SearchAsync(ResourceType resourceType, string query = null, int? count = null)
+        public virtual Task<FhirResponse<Bundle>> SearchAsync(ResourceType resourceType, string query = null, int? count = null)
         {
             StringBuilder sb = new StringBuilder();
 
@@ -204,7 +202,7 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Common
             return SearchAsync(sb.ToString());
         }
 
-        public async Task<FhirResponse<Bundle>> SearchAsync(string url)
+        public virtual async Task<FhirResponse<Bundle>> SearchAsync(string url)
         {
             var message = new HttpRequestMessage(HttpMethod.Get, url);
             message.Headers.Accept.Add(_mediaType);

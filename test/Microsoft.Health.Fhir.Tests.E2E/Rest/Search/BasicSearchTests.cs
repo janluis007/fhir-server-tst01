@@ -3,6 +3,7 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
+using System;
 using System.Collections.Generic;
 using Hl7.Fhir.Model;
 using Microsoft.Health.Fhir.Tests.Common;
@@ -16,10 +17,8 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest.Search
     public class BasicSearchTests : SearchTestsBase<HttpIntegrationTestFixture<Startup>>
     {
         public BasicSearchTests(HttpIntegrationTestFixture<Startup> fixture)
-            : base(fixture)
+            : base(fixture, new SearchFhirClient(fixture.HttpClient, Hl7.Fhir.Rest.ResourceFormat.Json, Guid.NewGuid().ToString()))
         {
-            // Delete all patients before starting the test.
-            Client.DeleteAllResources(ResourceType.Patient).Wait();
         }
 
         [Fact]
@@ -32,7 +31,7 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest.Search
                 p => SetPatientInfo(p, "Portland", "Williamas"),
                 p => SetPatientInfo(p, "Seattle", "Jones"));
 
-            Bundle bundle = await Client.SearchAsync("Patient?address-city=seattle&family=Jones");
+            Bundle bundle = await Client.SearchAsync(ResourceType.Patient, "Patient?address-city=seattle&family=Jones");
 
             ValidateBundle(bundle, patients[2]);
 
@@ -56,6 +55,7 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest.Search
         {
             // Create various resources.
             Patient[] patients = await Client.CreateResourcesAsync<Patient>(3);
+
             await Client.CreateAsync(Samples.GetDefaultObservation());
             await Client.CreateAsync(Samples.GetDefaultOrganization());
 
