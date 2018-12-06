@@ -5,6 +5,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Threading;
@@ -16,17 +17,21 @@ using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.Documents.Linq;
 using Microsoft.Extensions.Logging;
 using Microsoft.Health.Extensions.DependencyInjection;
+using Microsoft.Health.Fhir.Core;
 using Microsoft.Health.Fhir.Core.Exceptions;
 using Microsoft.Health.Fhir.Core.Features.Conformance;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
+using Microsoft.Health.Fhir.Core.Features.Search;
+using Microsoft.Health.Fhir.Core.Features.Security;
 using Microsoft.Health.Fhir.CosmosDb.Configs;
+using Microsoft.Health.Fhir.CosmosDb.Features.Storage.ControlPlane;
 using Microsoft.Health.Fhir.CosmosDb.Features.Storage.StoredProcedures.HardDelete;
 using Microsoft.Health.Fhir.CosmosDb.Features.Storage.StoredProcedures.Upsert;
 using Task = System.Threading.Tasks.Task;
 
 namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
 {
-    public sealed class CosmosDataStore : IDataStore, IProvideCapability
+    public sealed class CosmosDataStore : IDataStore, IProvideCapability, IControlPlaneRepository
     {
         private readonly IScoped<IDocumentClient> _documentClient;
         private readonly CosmosDataStoreConfiguration _cosmosDataStoreConfiguration;
@@ -229,6 +234,226 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
                     builder.ReadHistory = true;
                     builder.UpdateCreate = true;
                 });
+            }
+        }
+
+        public async Task<IEnumerable<IdentityProvider>> GetAllIdentityProvidersAsync(CancellationToken cancellationToken)
+        {
+            var roleQuery = new SqlQuerySpec(
+                "SELECT * FROM root r");
+
+            var feedOptions = new FeedOptions
+            {
+                PartitionKey = new PartitionKey(CosmosIdentityProvider.IdentityProviderPartition),
+            };
+
+            IDocumentQuery<CosmosIdentityProvider> cosmosDocumentQuery = CreateDocumentQuery<CosmosIdentityProvider>(roleQuery, feedOptions);
+
+            var identityProviders = new List<IdentityProvider>();
+
+            using (cosmosDocumentQuery)
+            {
+                while (cosmosDocumentQuery.HasMoreResults)
+                {
+                    var response = await cosmosDocumentQuery.ExecuteNextAsync<CosmosIdentityProvider>(cancellationToken);
+                    identityProviders.AddRange(response.Select(x => x.ToIdentityProvider()));
+                }
+            }
+
+            return identityProviders;
+        }
+
+        public async Task<IdentityProvider> GetIdentityProviderAsync(string name, CancellationToken cancellationToken)
+        {
+            EnsureArg.IsNotNull(name, nameof(name));
+
+            var identityProvider = await GetSystemDocumentByIdAsync<CosmosIdentityProvider>(name, CosmosIdentityProvider.IdentityProviderPartition, cancellationToken);
+
+            if (identityProvider == null)
+            {
+                throw new InvalidSearchOperationException(Core.Resources.InvalidRoleName);
+            }
+
+            return identityProvider.ToIdentityProvider();
+        }
+
+        public async Task<IdentityProvider> UpsertIdentityProviderAsync(IdentityProvider identityProvider, WeakETag weakETag, CancellationToken cancellationToken)
+        {
+            EnsureArg.IsNotNull(identityProvider, nameof(identityProvider));
+
+            var cosmosIdentityProvider = new CosmosIdentityProvider(identityProvider);
+
+            var resultIdentityProvider = await UpsertSystemObjectAsync(cosmosIdentityProvider, CosmosIdentityProvider.IdentityProviderPartition, weakETag);
+
+            return resultIdentityProvider.ToIdentityProvider();
+        }
+
+        public async Task DeleteIdentityProviderAsync(string name, CancellationToken cancellationToken)
+        {
+            EnsureArg.IsNotNull(name, nameof(name));
+
+            _logger.LogDebug($"Obliterating {name}");
+
+            var documentUri = UriFactory.CreateDocumentUri(
+                _cosmosDataStoreConfiguration.DatabaseId,
+                _cosmosDataStoreConfiguration.CollectionId,
+                name);
+
+            await _documentClient.Value.DeleteDocumentAsync(
+                documentUri,
+                new RequestOptions
+                {
+                    PartitionKey = new PartitionKey(CosmosIdentityProvider.IdentityProviderPartition),
+                });
+        }
+
+        public async Task<Role> GetRoleAsync(string name, CancellationToken cancellationToken)
+        {
+            EnsureArg.IsNotNull(name, nameof(name));
+
+            var role = await GetSystemDocumentByIdAsync<CosmosRole>(name, CosmosRole.RolePartition, cancellationToken);
+
+            if (role == null)
+            {
+                throw new InvalidSearchOperationException(Core.Resources.InvalidRoleName);
+            }
+
+            return role.ToRole();
+        }
+
+        public async Task<IEnumerable<Role>> GetAllRolesAsync(CancellationToken cancellationToken)
+        {
+            var roleQuery = new SqlQuerySpec(
+                "SELECT * FROM root r");
+
+            var feedOptions = new FeedOptions
+            {
+                PartitionKey = new PartitionKey(CosmosRole.RolePartition),
+            };
+
+            IDocumentQuery<CosmosRole> cosmosDocumentQuery = CreateDocumentQuery<CosmosRole>(roleQuery, feedOptions);
+
+            var roles = new List<Role>();
+
+            using (cosmosDocumentQuery)
+            {
+                while (cosmosDocumentQuery.HasMoreResults)
+                {
+                    var response = await cosmosDocumentQuery.ExecuteNextAsync<CosmosRole>(cancellationToken);
+                    roles.AddRange(response.Select(x => x.ToRole()));
+                }
+            }
+
+            return roles;
+        }
+
+        public async Task<Role> UpsertRoleAsync(Role role, WeakETag weakETag, CancellationToken cancellationToken)
+        {
+            EnsureArg.IsNotNull(role, nameof(role));
+
+            var cosmosRole = new CosmosRole(role);
+
+            var resultRole = await UpsertSystemObjectAsync(cosmosRole, CosmosRole.RolePartition, weakETag);
+
+            return resultRole.ToRole();
+        }
+
+        public async Task DeleteRoleAsync(string name, CancellationToken cancellationToken)
+        {
+            EnsureArg.IsNotNull(name, nameof(name));
+
+            _logger.LogDebug($"Obliterating {name}");
+
+            var documentUri = UriFactory.CreateDocumentUri(
+                _cosmosDataStoreConfiguration.DatabaseId,
+                _cosmosDataStoreConfiguration.CollectionId,
+                name);
+
+            await _documentClient.Value.DeleteDocumentAsync(
+                documentUri,
+                new RequestOptions
+                {
+                    PartitionKey = new PartitionKey(CosmosRole.RolePartition),
+                });
+        }
+
+        private async Task<T> GetSystemDocumentByIdAsync<T>(string id, string partitionKey, CancellationToken cancellationToken)
+        {
+            EnsureArg.IsNotNull(id, nameof(id));
+            EnsureArg.IsNotNull(partitionKey, nameof(partitionKey));
+
+            var documentQuery = new SqlQuerySpec(
+                "SELECT * FROM root r WHERE r.id = @id",
+                new SqlParameterCollection(new[] { new SqlParameter("@id", id) }));
+
+            var feedOptions = new FeedOptions
+            {
+                PartitionKey = new PartitionKey(partitionKey),
+            };
+
+            IDocumentQuery<T> cosmosDocumentQuery =
+                CreateDocumentQuery<T>(documentQuery, feedOptions);
+
+            using (cosmosDocumentQuery)
+            {
+                var response = await cosmosDocumentQuery.ExecuteNextAsync(cancellationToken);
+                var result = response.SingleOrDefault();
+
+                if (result == null)
+                {
+                    _logger.LogError($"{typeof(T)} with id {id} was not found in Cosmos DB.");
+                }
+
+                return result;
+            }
+        }
+
+        private async Task<T> UpsertSystemObjectAsync<T>(T systemObject, string partitionKey, WeakETag weakETag = null)
+            where T : class
+        {
+            EnsureArg.IsNotNull(systemObject, nameof(systemObject));
+
+            var eTagAccessCondition = new AccessCondition();
+            if (weakETag != null)
+            {
+                eTagAccessCondition.Condition = weakETag.VersionId;
+                eTagAccessCondition.Type = AccessConditionType.IfMatch;
+            }
+
+            using (_logger.BeginTimedScope($"{nameof(CosmosDataStore)}.{nameof(UpsertSystemObjectAsync)}"))
+            {
+                var systemStopwatch = new Stopwatch();
+                systemStopwatch.Start();
+
+                var requestOptions = new RequestOptions
+                {
+                    PartitionKey = new PartitionKey(partitionKey),
+                    AccessCondition = eTagAccessCondition,
+                };
+
+                try
+                {
+                    var response = await _documentClient.Value.UpsertDocumentAsync(
+                        _collectionUri,
+                        systemObject,
+                        requestOptions,
+                        true);
+
+                    _logger.LogInformation("Request charge: {RequestCharge}, latency: {RequestLatency}", response.RequestCharge, response.RequestLatency);
+
+                    return (dynamic)response.Resource;
+                }
+                catch (DocumentClientException dce)
+                {
+                    if (string.Equals(dce.Error.Code, HttpStatusCode.PreconditionFailed.ToString(), StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        throw new ResourceConflictException(weakETag);
+                    }
+
+                    _logger.LogError(dce, "Unhandled Document Client Exception");
+
+                    throw;
+                }
             }
         }
     }

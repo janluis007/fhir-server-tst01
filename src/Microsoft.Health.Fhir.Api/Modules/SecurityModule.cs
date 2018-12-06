@@ -3,10 +3,12 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
+using System;
 using System.IdentityModel.Tokens.Jwt;
 using EnsureThat;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Health.Extensions.DependencyInjection;
 using Microsoft.Health.Fhir.Api.Configs;
@@ -24,6 +26,7 @@ namespace Microsoft.Health.Fhir.Api.Modules
         public SecurityModule(FhirServerConfiguration fhirServerConfiguration)
         {
             EnsureArg.IsNotNull(fhirServerConfiguration, nameof(fhirServerConfiguration));
+
             _securityConfiguration = fhirServerConfiguration.Security;
         }
 
@@ -32,6 +35,10 @@ namespace Microsoft.Health.Fhir.Api.Modules
         {
             EnsureArg.IsNotNull(services, nameof(services));
 
+            var issuerSchemeMapper = new IssuerSchemeMapper();
+            services.AddSingleton(issuerSchemeMapper);
+            services.AddTransient<SchemeManager>();
+            services.AddTransient<IStartupFilter, SecurityModuleStartupFilter>();
             services.AddSingleton<IAuthorizationPolicyProvider, AuthorizationPolicyProvider>();
 
             // Set the token handler to not do auto inbound mapping. (e.g. "roles" -> "http://schemas.microsoft.com/ws/2008/06/identity/claims/role")
@@ -41,16 +48,38 @@ namespace Microsoft.Health.Fhir.Api.Modules
             {
                 services.AddAuthentication(options =>
                     {
-                        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-                        options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+                        options.DefaultAuthenticateScheme = "custom";
+                        options.DefaultChallengeScheme = "custom";
+                        options.DefaultScheme = "custom";
                     })
-                    .AddJwtBearer(options =>
+                    .AddPolicyScheme("custom", "Bearer or Secret Header", options =>
                     {
-                        options.Authority = _securityConfiguration.Authentication.Authority;
-                        options.Audience = _securityConfiguration.Authentication.Audience;
-                        options.RequireHttpsMetadata = true;
-                    });
+                        options.ForwardDefaultSelector = context =>
+                        {
+                            var authorization = context.Request.Headers["Authorization"].ToString();
+
+                            var handler = new JwtSecurityTokenHandler();
+
+                            // If no authorization header found, nothing to process further
+                            if (string.IsNullOrEmpty(authorization))
+                            {
+                                return "defaultJwt";
+                            }
+
+                            if (authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                            {
+                                var token = authorization.Substring("Bearer ".Length).Trim();
+                                var jwtToken = handler.ReadJwtToken(token);
+                                if (issuerSchemeMapper.AuthorityToSchemeMap.TryGetValue(jwtToken.Issuer, out string scheme))
+                                {
+                                    return scheme;
+                                }
+                            }
+
+                            return "defaultJwt";
+                        };
+                    })
+                    .AddJwtBearer("defaultJwt", options => { });
 
                 services.AddAuthorization(options => options.AddPolicy(PolicyNames.FhirPolicy, builder =>
                 {
@@ -62,10 +91,10 @@ namespace Microsoft.Health.Fhir.Api.Modules
 
                 if (_securityConfiguration.Authorization.Enabled)
                 {
-                    _securityConfiguration.Authorization.ValidateRoles();
+                    ////_securityConfiguration.Authorization.ValidateRoles();
                     services.AddSingleton(_securityConfiguration.Authorization);
-                    services.AddSingleton<IAuthorizationPolicy, RoleBasedAuthorizationPolicy>();
-                    services.AddSingleton<IAuthorizationHandler, ResourceActionHandler>();
+                    services.AddScoped<IAuthorizationPolicy, RoleBasedAuthorizationPolicy>();
+                    services.AddScoped<IAuthorizationHandler, ResourceActionHandler>();
                 }
                 else
                 {
@@ -83,6 +112,26 @@ namespace Microsoft.Health.Fhir.Api.Modules
             foreach (var policyName in policyNames)
             {
                 options.AddPolicy(policyName, builder => builder.RequireAssertion(x => true));
+            }
+        }
+
+        private class SecurityModuleStartupFilter : IStartupFilter
+        {
+            public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next)
+            {
+                return app =>
+                {
+                    var scopeFactory = app.ApplicationServices.GetService<IServiceScopeFactory>();
+
+                    using (var scope = scopeFactory.CreateScope())
+                    {
+                        var schemeManager = scope.ServiceProvider.GetRequiredService<SchemeManager>();
+
+                        schemeManager.SetupSchemes();
+                    }
+
+                    next(app);
+                };
             }
         }
     }

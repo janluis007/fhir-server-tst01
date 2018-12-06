@@ -11,6 +11,16 @@ namespace Microsoft.Health.Fhir.Core.Features.Security
 {
     public class Role : IValidatableObject
     {
+        public Role()
+        {
+        }
+
+        public Role(string name, IList<ResourcePermission> resourcePermissions)
+        {
+            Name = name;
+            ResourcePermissions = resourcePermissions;
+        }
+
         public string Name { get; set; }
 
         public virtual string Version { get; set; }

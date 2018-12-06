@@ -7,8 +7,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using System.Threading;
 using EnsureThat;
 using Microsoft.Health.Fhir.Core.Configs;
+using Microsoft.Health.Fhir.Core.Features.Persistence;
 
 namespace Microsoft.Health.Fhir.Core.Features.Security.Authorization
 {
@@ -18,12 +20,14 @@ namespace Microsoft.Health.Fhir.Core.Features.Security.Authorization
         private readonly Dictionary<string, IEnumerable<ResourceAction>> _roleNameToResourceActions;
         private readonly AuthorizationConfiguration _authorizationConfiguration;
 
-        public RoleBasedAuthorizationPolicy(AuthorizationConfiguration authorizationConfiguration)
+        public RoleBasedAuthorizationPolicy(AuthorizationConfiguration authorizationConfiguration, IControlPlaneRepository controlPlaneRepository)
         {
             EnsureArg.IsNotNull(authorizationConfiguration, nameof(authorizationConfiguration));
+            EnsureArg.IsNotNull(controlPlaneRepository, nameof(controlPlaneRepository));
 
             _authorizationConfiguration = authorizationConfiguration;
-            _roles = authorizationConfiguration.Roles.ToDictionary(r => r.Name, StringComparer.InvariantCultureIgnoreCase);
+
+            _roles = controlPlaneRepository.GetAllRolesAsync(CancellationToken.None).Result.ToDictionary(r => r.Name, StringComparer.InvariantCultureIgnoreCase);
             _roleNameToResourceActions = _roles.Select(kvp => KeyValuePair.Create(kvp.Key, kvp.Value.ResourcePermissions.Select(rp => rp.Actions).SelectMany(x => x))).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
