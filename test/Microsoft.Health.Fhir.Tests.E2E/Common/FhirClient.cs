@@ -31,9 +31,9 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Common
         private readonly BaseFhirSerializer _serializer;
         private readonly BaseFhirParser _parser;
 
-        private Func<Base, SummaryType, string> _serialize;
-        private Func<string, Resource> _deserialize;
-        private MediaTypeWithQualityHeaderValue _mediaType;
+        private readonly Func<Base, SummaryType, string> _serialize;
+        private readonly Func<string, Resource> _deserialize;
+        private readonly MediaTypeWithQualityHeaderValue _mediaType;
 
         public FhirClient(HttpClient httpClient, ResourceFormat format)
         {
@@ -45,7 +45,7 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Common
                 var jsonSerializer = new FhirJsonSerializer();
 
                 _serializer = jsonSerializer;
-                _serialize = jsonSerializer.SerializeToString;
+                _serialize = (resource, summary) => jsonSerializer.SerializeToString(resource, summary);
 
                 var jsonParser = new FhirJsonParser();
 
@@ -275,6 +275,7 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Common
             if (SecuritySettings.SecurityEnabled)
             {
                 var tokenKey = $"{clientApplication.ClientId}:{(user == null ? string.Empty : user.UserId)}";
+
                 if (!_bearerTokens.TryGetValue(tokenKey, out string bearerToken))
                 {
                     bearerToken = await GetBearerToken(clientApplication, user);
@@ -287,6 +288,11 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Common
 
         private async Task<string> GetBearerToken(TestApplication clientApplication, TestUser user)
         {
+            if (clientApplication.Equals(TestApplications.InvalidClient))
+            {
+                return null;
+            }
+
             var formContent = new FormUrlEncodedContent(user == null ? GetAppSecuritySettings(clientApplication) : GetUserSecuritySettings(clientApplication, user));
 
             HttpResponseMessage tokenResponse = await HttpClient.PostAsync(SecuritySettings.TokenUrl, formContent);
@@ -294,18 +300,22 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Common
             var tokenJson = JObject.Parse(await tokenResponse.Content.ReadAsStringAsync());
 
             var bearerToken = tokenJson["access_token"].Value<string>();
+
             return bearerToken;
         }
 
         private List<KeyValuePair<string, string>> GetAppSecuritySettings(TestApplication clientApplication)
         {
+            string scope = clientApplication == TestApplications.WrongAudienceClient ? clientApplication.ClientId : AuthenticationSettings.Scope;
+            string resource = clientApplication == TestApplications.WrongAudienceClient ? clientApplication.ClientId : AuthenticationSettings.Resource;
+
             return new List<KeyValuePair<string, string>>
             {
                 new KeyValuePair<string, string>("client_id", clientApplication.ClientId),
                 new KeyValuePair<string, string>("client_secret", clientApplication.ClientSecret),
                 new KeyValuePair<string, string>("grant_type", clientApplication.GrantType),
-                new KeyValuePair<string, string>("scope", AuthenticationSettings.Scope),
-                new KeyValuePair<string, string>("resource", AuthenticationSettings.Resource),
+                new KeyValuePair<string, string>("scope", scope),
+                new KeyValuePair<string, string>("resource", resource),
             };
         }
 

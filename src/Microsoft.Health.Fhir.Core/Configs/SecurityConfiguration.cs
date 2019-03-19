@@ -11,9 +11,11 @@ namespace Microsoft.Health.Fhir.Core.Configs
     {
         public bool Enabled { get; set; }
 
+        public bool EnableAadSmartOnFhirProxy { get; set; }
+
         public AuthenticationConfiguration Authentication { get; set; } = new AuthenticationConfiguration();
 
-        public virtual HashSet<string> LastModifiedClaims { get; set; } = new HashSet<string>();
+        public virtual HashSet<string> LastModifiedClaims { get; } = new HashSet<string>();
 
         public AuthorizationConfiguration Authorization { get; set; } = new AuthorizationConfiguration();
     }

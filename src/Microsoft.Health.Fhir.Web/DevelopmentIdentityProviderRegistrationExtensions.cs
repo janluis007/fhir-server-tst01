@@ -23,6 +23,8 @@ namespace Microsoft.Health.Fhir.Web
 {
     public static class DevelopmentIdentityProviderRegistrationExtensions
     {
+        private const string WrongAudienceClient = "wrongaudienceclient";
+
         /// <summary>
         /// Adds an in-process identity provider if enabled in configuration.
         /// </summary>
@@ -33,6 +35,9 @@ namespace Microsoft.Health.Fhir.Web
         {
             EnsureArg.IsNotNull(services, nameof(services));
             EnsureArg.IsNotNull(configuration, nameof(configuration));
+
+            var authorizationConfiguration = new AuthorizationConfiguration();
+            configuration.GetSection("FhirServer:Security:Authorization").Bind(authorizationConfiguration);
 
             var developmentIdentityProviderConfiguration = new DevelopmentIdentityProviderConfiguration();
             configuration.GetSection("DevelopmentIdentityProvider").Bind(developmentIdentityProviderConfiguration);
@@ -46,9 +51,15 @@ namespace Microsoft.Health.Fhir.Web
                     {
                         new ApiResource(
                         DevelopmentIdentityProviderConfiguration.Audience,
-                        claimTypes: new List<string>() { ClaimTypes.Role, ClaimTypes.Name, ClaimTypes.NameIdentifier })
+                        claimTypes: new List<string>() { authorizationConfiguration.RolesClaim, ClaimTypes.Name, ClaimTypes.NameIdentifier })
                         {
-                            UserClaims = { AuthorizationConfiguration.RolesClaim },
+                            UserClaims = { authorizationConfiguration.RolesClaim },
+                        },
+                        new ApiResource(
+                        WrongAudienceClient,
+                        claimTypes: new List<string>() { authorizationConfiguration.RolesClaim, ClaimTypes.Name, ClaimTypes.NameIdentifier })
+                        {
+                            UserClaims = { authorizationConfiguration.RolesClaim },
                         },
                     })
                     .AddTestUsers(developmentIdentityProviderConfiguration.Users?.Select(user =>
@@ -58,7 +69,7 @@ namespace Microsoft.Health.Fhir.Web
                             Password = user.Id,
                             IsActive = true,
                             SubjectId = user.Id,
-                            Claims = user.Roles.Select(r => new Claim(AuthorizationConfiguration.RolesClaim, r)).ToList(),
+                            Claims = user.Roles.Select(r => new Claim(authorizationConfiguration.RolesClaim, r)).ToList(),
                         }).ToList())
                     .AddInMemoryClients(
                         developmentIdentityProviderConfiguration.ClientApplications.Select(
@@ -74,10 +85,10 @@ namespace Microsoft.Health.Fhir.Web
                                     ClientSecrets = { new Secret(applicationConfiguration.Id.Sha256()) },
 
                                     // scopes that client has access to
-                                    AllowedScopes = { DevelopmentIdentityProviderConfiguration.Audience },
+                                    AllowedScopes = { DevelopmentIdentityProviderConfiguration.Audience, WrongAudienceClient },
 
                                     // app roles that the client app may have
-                                    Claims = applicationConfiguration.Roles.Select(r => new Claim(AuthorizationConfiguration.RolesClaim, r)).Concat(new[] { new Claim("appid", applicationConfiguration.Id) }).ToList(),
+                                    Claims = applicationConfiguration.Roles.Select(r => new Claim(authorizationConfiguration.RolesClaim, r)).Concat(new[] { new Claim("appid", applicationConfiguration.Id) }).ToList(),
 
                                     ClientClaimsPrefix = string.Empty,
                                 }));
@@ -104,7 +115,7 @@ namespace Microsoft.Health.Fhir.Web
 
         /// <summary>
         /// If <paramref name="testEnvironmentFilePath"/> exists, adds an <see cref="IConfigurationBuilder"/> that
-        /// reads a testauthenvironment.json file and reshapes it to fit into the expected schema of the fhir server
+        /// reads a testauthenvironment.json file and reshapes it to fit into the expected schema of the FHIR server
         /// configuration. Also sets the security audience and sets the development identity server as enabled.
         /// This is an optional configuration source and is only intended to be used for local development.
         /// </summary>
@@ -176,6 +187,7 @@ namespace Microsoft.Health.Fhir.Web
                     // add properties related to the development identity provider.
                     Data["DevelopmentIdentityProvider:Enabled"] = bool.TrueString;
                     Data["FhirServer:Security:Authentication:Audience"] = DevelopmentIdentityProviderConfiguration.Audience;
+                    Data["FhirServer:Security:LastModifiedClaims:0"] = DevelopmentIdentityProviderConfiguration.LastModifiedClaim;
                 }
             }
         }

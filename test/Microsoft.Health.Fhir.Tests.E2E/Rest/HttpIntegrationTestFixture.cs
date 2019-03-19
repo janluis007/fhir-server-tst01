@@ -15,6 +15,7 @@ using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Health.Fhir.Web;
@@ -31,7 +32,6 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest
     /// <typeparam name="TStartup">The target web project startup</typeparam>
     public class HttpIntegrationTestFixture<TStartup> : IDisposable
     {
-        private TestServer _server;
         private string _environmentUrl;
         private HttpMessageHandler _messageHandler;
 
@@ -44,23 +44,30 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest
         {
             SetUpEnvironmentVariables();
 
-            _environmentUrl = Environment.GetEnvironmentVariable("TestEnvironmentUrl");
+            string environmentUrl = Environment.GetEnvironmentVariable("TestEnvironmentUrl");
 
-            if (string.IsNullOrWhiteSpace(_environmentUrl))
+            if (string.IsNullOrWhiteSpace(environmentUrl))
             {
-                _environmentUrl = "http://localhost/";
+                environmentUrl = "http://localhost/";
 
                 StartInMemoryServer(targetProjectParentDirectory);
 
-                _messageHandler = _server.CreateHandler();
+                _messageHandler = Server.CreateHandler();
                 IsUsingInProcTestServer = true;
             }
             else
             {
+                if (environmentUrl.Last() != '/')
+                {
+                    environmentUrl = $"{environmentUrl}/";
+                }
+
                 _messageHandler = new HttpClientHandler();
             }
 
-            HttpClient = new HttpClient(new SessionMessageHandler(_messageHandler)) { BaseAddress = new Uri(_environmentUrl) };
+            _environmentUrl = environmentUrl;
+
+            HttpClient = CreateHttpClient();
 
             FhirClient = new FhirClient(HttpClient, ResourceFormat.Json);
             FhirXmlClient = new Lazy<FhirClient>(() => new FhirClient(HttpClient, ResourceFormat.Xml));
@@ -74,13 +81,28 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest
 
         public Lazy<FhirClient> FhirXmlClient { get; set; }
 
+        protected TestServer Server { get; private set; }
+
+        public string GenerateFullUrl(string relativeUrl)
+        {
+            return $"{_environmentUrl}{relativeUrl}";
+        }
+
+        public HttpClient CreateHttpClient()
+            => new HttpClient(new SessionMessageHandler(_messageHandler)) { BaseAddress = new Uri(_environmentUrl) };
+
         private void StartInMemoryServer(string targetProjectParentDirectory)
         {
             var contentRoot = GetProjectPath(targetProjectParentDirectory, typeof(TStartup));
+            var corsPath = Path.GetFullPath("corstestconfiguration.json");
 
             var builder = WebHost.CreateDefaultBuilder()
                 .UseContentRoot(contentRoot)
-                .ConfigureAppConfiguration(configurationBuilder => configurationBuilder.AddDevelopmentAuthEnvironment("testauthenvironment.json"))
+                .ConfigureAppConfiguration(configurationBuilder =>
+                {
+                    configurationBuilder.AddDevelopmentAuthEnvironment("testauthenvironment.json");
+                    configurationBuilder.AddJsonFile(corsPath);
+                })
                 .UseStartup(typeof(TStartup))
                 .ConfigureServices(serviceCollection =>
                 {
@@ -95,7 +117,7 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest
                         options => options.BackchannelHttpHandler = _messageHandler);
                 });
 
-            _server = new TestServer(builder);
+            Server = new TestServer(builder);
         }
 
         /// <summary>
@@ -130,7 +152,7 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest
         public void Dispose()
         {
             HttpClient.Dispose();
-            _server?.Dispose();
+            Server?.Dispose();
         }
 
         /// <summary>

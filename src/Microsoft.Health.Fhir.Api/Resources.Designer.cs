@@ -61,15 +61,6 @@ namespace Microsoft.Health.Fhir.Api {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Audit Event Sub Type is not set for method {0}.
-        /// </summary>
-        public static string AuditEventSubTypeNotSet {
-            get {
-                return ResourceManager.GetString("AuditEventSubTypeNotSet", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Back to top.
         /// </summary>
         public static string BackToTop {
@@ -79,7 +70,7 @@ namespace Microsoft.Health.Fhir.Api {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The &quot;content-type&quot; header is required by the server.
+        ///   Looks up a localized string similar to The &quot;content-type&quot; header is required..
         /// </summary>
         public static string ContentTypeHeaderRequired {
             get {
@@ -88,7 +79,7 @@ namespace Microsoft.Health.Fhir.Api {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Authorization failed.
+        ///   Looks up a localized string similar to Authorization failed..
         /// </summary>
         public static string Forbidden {
             get {
@@ -124,6 +115,15 @@ namespace Microsoft.Health.Fhir.Api {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The audit information is missing for Controller: {0} and Action: {1}. This usually means the action is not marked with appropriate attribute..
+        /// </summary>
+        public static string MissingAuditInformation {
+            get {
+                return ResourceManager.GetString("MissingAuditInformation", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The requested route was not found..
         /// </summary>
         public static string NotFoundException {
@@ -151,7 +151,7 @@ namespace Microsoft.Health.Fhir.Api {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Both id and the resource are required.
+        ///   Looks up a localized string similar to Both id and the resource are required..
         /// </summary>
         public static string ResourceAndIdRequired {
             get {
@@ -160,7 +160,7 @@ namespace Microsoft.Health.Fhir.Api {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to There must be an id specified in the resource.
+        ///   Looks up a localized string similar to Id must be specified in the resource..
         /// </summary>
         public static string ResourceIdRequired {
             get {
@@ -169,7 +169,7 @@ namespace Microsoft.Health.Fhir.Api {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Resource type mismatch.
+        ///   Looks up a localized string similar to Resource type in the URL must match resourceType in the resource..
         /// </summary>
         public static string ResourceTypeMismatch {
             get {
@@ -196,7 +196,7 @@ namespace Microsoft.Health.Fhir.Api {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Authentication failed.
+        ///   Looks up a localized string similar to Authentication failed..
         /// </summary>
         public static string Unauthorized {
             get {
@@ -205,7 +205,7 @@ namespace Microsoft.Health.Fhir.Api {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The requested &quot;accept&quot; header is not supported by the server.
+        ///   Looks up a localized string similar to The requested &quot;accept&quot; header is not supported..
         /// </summary>
         public static string UnsupportedAcceptHeader {
             get {
@@ -214,7 +214,7 @@ namespace Microsoft.Health.Fhir.Api {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The requested &quot;content-type&quot; header is not supported by the server.
+        ///   Looks up a localized string similar to The requested &quot;content-type&quot; header is not supported..
         /// </summary>
         public static string UnsupportedContentTypeHeader {
             get {
@@ -223,7 +223,7 @@ namespace Microsoft.Health.Fhir.Api {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The requested &quot;_format&quot; is not supported by the server.
+        ///   Looks up a localized string similar to The requested &quot;_format&quot; parameter is not supported..
         /// </summary>
         public static string UnsupportedFormatParameter {
             get {
@@ -232,7 +232,7 @@ namespace Microsoft.Health.Fhir.Api {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The id in the URL must match the id in the resource.
+        ///   Looks up a localized string similar to Id in the URL must match id in the resource..
         /// </summary>
         public static string UrlResourceIdMismatch {
             get {

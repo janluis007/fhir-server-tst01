@@ -427,6 +427,11 @@ AND ").Append(uriAlias).Append(".Uri = ").AppendLine(_sqlQueryParameterManager.C
             }
         }
 
+        public void Visit(CompartmentSearchExpression expression)
+        {
+            throw new NotImplementedException();
+        }
+
         private string ColumnName(FieldName fieldName)
         {
             switch (_currentSearchParameter.Type)

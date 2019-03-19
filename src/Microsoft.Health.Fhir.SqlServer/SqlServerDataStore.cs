@@ -205,6 +205,8 @@ ORDER BY [Version] DESC";
                             new ResourceRequest("https://exmaple", HttpMethod.Get),
                             new DateTimeOffset(lastModified, TimeSpan.Zero),
                             false,
+                            ArraySegment<SearchIndexEntry>.Empty,
+                            new CompartmentIndices(ImmutableDictionary<CompartmentType, IReadOnlyCollection<string>>.Empty),
                             ImmutableArray<KeyValuePair<string, string>>.Empty);
                     }
                 }
@@ -216,13 +218,13 @@ ORDER BY [Version] DESC";
             throw new NotImplementedException();
         }
 
-        public async Task<UpsertOutcome> UpsertAsync(ResourceWrapper resource, WeakETag weakETag, bool isCreate, bool allowCreate, bool keepHistory, CancellationToken cancellationToken = default)
+        public async Task<UpsertOutcome> UpsertAsync(ResourceWrapper resource, WeakETag weakETag, bool allowCreate, bool keepHistory, CancellationToken cancellationToken = default)
         {
             using (var connection = new SqlConnection(_configuration.ConnectionString))
             {
                 await connection.OpenAsync(cancellationToken);
 
-                IReadOnlyCollection<SearchIndexEntry> searchIndexEntries = ((ISupportSearchIndices)resource).SearchIndices;
+                IReadOnlyCollection<SearchIndexEntry> searchIndexEntries = resource.SearchIndices;
                 ILookup<Type, (SearchParameter searchParameter, byte? componentIndex, byte? compositeCorrelationId, ISearchValue value)> lookupByType = GroupSearchIndexEntriesByType(searchIndexEntries);
 
                 using (var command = connection.CreateCommand())
@@ -233,7 +235,7 @@ SET XACT_ABORT ON
 BEGIN TRANSACTION
 
 DECLARE @resourcePk bigint
-DECLARE @version int = {(isCreate ? "1" : "(SELECT MAX(Version) FROM dbo.Resource WHERE ResourceTypePK = @resourceTypePK AND Id = @id) + 1")}
+DECLARE @version int = SELECT MAX(Version) FROM dbo.Resource WHERE ResourceTypePK = @resourceTypePK AND Id = @id) + 1
 
 IF @version IS NULL 
     SET @version = 1
@@ -689,6 +691,8 @@ select @version";
                                 new ResourceRequest("https://exmaple", HttpMethod.Get),
                                 new DateTimeOffset(lastModified, TimeSpan.Zero),
                                 false,
+                                ImmutableArray<SearchIndexEntry>.Empty,
+                                new CompartmentIndices(ImmutableDictionary<CompartmentType, IReadOnlyCollection<string>>.Empty),
                                 ImmutableArray<KeyValuePair<string, string>>.Empty));
                         }
 

@@ -85,6 +85,33 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
             return statement;
         }
 
+        public static ListedCapabilityStatement AddProxyOAuthSecurityService(this ListedCapabilityStatement statement, System.Uri metadataUri)
+        {
+            EnsureArg.IsNotNull(statement, nameof(statement));
+
+            var restComponent = statement.GetListedRestComponent();
+            var security = restComponent.Security ?? new CapabilityStatement.SecurityComponent();
+
+            security.Service.Add(Constants.RestfulSecurityServiceOAuth);
+            var baseurl = metadataUri.Scheme + "://" + metadataUri.Authority;
+            var tokenEndpoint = $"{baseurl}/AadSmartOnFhirProxy/token";
+            var authorizationEndpoint = $"{baseurl}/AadSmartOnFhirProxy/authorize";
+
+            var smartExtension = new Extension()
+            {
+                Url = Constants.SmartOAuthUriExtension,
+                Extension = new List<Extension>
+                {
+                    new Extension(Constants.SmartOAuthUriExtensionToken, new FhirUri(tokenEndpoint)),
+                    new Extension(Constants.SmartOAuthUriExtensionAuthorize, new FhirUri(authorizationEndpoint)),
+                },
+            };
+
+            security.Extension.Add(smartExtension);
+            restComponent.Security = security;
+            return statement;
+        }
+
         public static ListedCapabilityStatement AddOAuthSecurityService(this ListedCapabilityStatement statement, string authority, IHttpClientFactory httpClientFactory, ILogger logger)
         {
             EnsureArg.IsNotNull(statement, nameof(statement));
@@ -323,6 +350,11 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
             if (config.Count() != configured.Count())
             {
                 issues.Add(string.Format(CultureInfo.InvariantCulture, Core.Resources.InvalidListConfigSetting, fieldName));
+            }
+
+            if (config.Select(selector).GroupBy(x => x).Any(x => x.Count() > 1))
+            {
+                issues.Add(string.Format(CultureInfo.InvariantCulture, Core.Resources.InvalidListConfigDuplicateItem, fieldName));
             }
 
             return config.ToList();

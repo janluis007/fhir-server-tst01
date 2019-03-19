@@ -4,11 +4,13 @@
 // -------------------------------------------------------------------------------------------------
 
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Security.Claims;
+using Microsoft.Health.ControlPlane.Core.Features.Rbac;
 using Microsoft.Health.Fhir.Core.Configs;
-using Microsoft.Health.Fhir.Core.Features.Security;
 using Microsoft.Health.Fhir.Core.Features.Security.Authorization;
+using NSubstitute;
 using Xunit;
 
 namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Security
@@ -81,7 +83,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Security
 
         private static ClaimsPrincipal GetClaimsPrincipalForRoles(params string[] roles)
         {
-            var claimsId = new ClaimsIdentity(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+            var claimsId = new ClaimsIdentity(roles.Select(r => new Claim("roles", r)));
             return new ClaimsPrincipal(new List<ClaimsIdentity> { claimsId });
         }
 
@@ -92,12 +94,25 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Security
                 new ResourcePermission(resourceActions),
             };
 
-            var roles = roleNames.Select(ra => new Role() { Name = ra, ResourcePermissions = permissions }).ToList();
+            var authConfiguration = new AuthorizationConfiguration();
 
-            return new AuthorizationConfiguration
+            foreach (var name in roleNames)
             {
-                Roles = roles,
-            };
+                authConfiguration.Roles.Add(GetRole(name, permissions));
+            }
+
+            return authConfiguration;
+        }
+
+        private static Role GetRole(string name, IList<ResourcePermission> resourcePermissions)
+        {
+            var role = Substitute.For<Role>();
+            role.Name.Returns(name);
+            role.ResourcePermissions.Returns(resourcePermissions);
+
+            role.Validate(Arg.Any<ValidationContext>()).Returns(Enumerable.Empty<ValidationResult>());
+
+            return role;
         }
     }
 }

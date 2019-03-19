@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using EnsureThat;
+using Microsoft.Health.ControlPlane.Core.Features.Rbac;
 using Microsoft.Health.Fhir.Core.Configs;
 
 namespace Microsoft.Health.Fhir.Core.Features.Security.Authorization
@@ -16,11 +17,13 @@ namespace Microsoft.Health.Fhir.Core.Features.Security.Authorization
     {
         private readonly Dictionary<string, Role> _roles;
         private readonly Dictionary<string, IEnumerable<ResourceAction>> _roleNameToResourceActions;
+        private readonly AuthorizationConfiguration _authorizationConfiguration;
 
         public RoleBasedAuthorizationPolicy(AuthorizationConfiguration authorizationConfiguration)
         {
             EnsureArg.IsNotNull(authorizationConfiguration, nameof(authorizationConfiguration));
 
+            _authorizationConfiguration = authorizationConfiguration;
             _roles = authorizationConfiguration.Roles.ToDictionary(r => r.Name, StringComparer.InvariantCultureIgnoreCase);
             _roleNameToResourceActions = _roles.Select(kvp => KeyValuePair.Create(kvp.Key, kvp.Value.ResourcePermissions.Select(rp => rp.Actions).SelectMany(x => x))).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
@@ -41,7 +44,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Security.Authorization
         private IEnumerable<ResourceAction> GetRolesAndActions(ClaimsPrincipal user)
         {
             var roles = user.Claims
-                .Where(claim => (claim.Type == ClaimTypes.Role || claim.Type == AuthorizationConfiguration.RolesClaim) && _roles.ContainsKey(claim.Value))
+                .Where(claim => claim.Type == _authorizationConfiguration.RolesClaim && _roles.ContainsKey(claim.Value))
                 .Select(claim => _roles[claim.Value]);
 
             var actions = roles.Select(r => _roleNameToResourceActions[r.Name]).SelectMany(x => x).Distinct();

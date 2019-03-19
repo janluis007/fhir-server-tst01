@@ -28,19 +28,19 @@ namespace Microsoft.Health.Fhir.CosmosDb.UnitTests.Features.Storage
         [Fact]
         public void GivenAResourceWrapper_WhenGettingVersion_TheETagShouldBeUsedWhenVersionIsEmpty()
         {
-            var wrapper = Samples.GetJsonSample<CosmosResourceWrapper>("ResourceWrapperNoVersion");
+            var wrapper = Samples.GetJsonSample<FhirCosmosResourceWrapper>("ResourceWrapperNoVersion");
             Assert.Equal("00002804-0000-0000-0000-59f272c60000", wrapper.Version);
         }
 
         [Fact]
         public void GivenAResourceWrapper_WhenConvertingToAHistoryObject_ThenTheCorrectPropertiesAreUpdated()
         {
-            var wrapper = Samples.GetJsonSample<CosmosResourceWrapper>("ResourceWrapperNoVersion");
+            var wrapper = Samples.GetJsonSample<FhirCosmosResourceWrapper>("ResourceWrapperNoVersion");
 
             var id = wrapper.Id;
             var lastModified = new DateTimeOffset(2017, 1, 1, 1, 1, 1, TimeSpan.Zero);
 
-            var historyRecord = new CosmosResourceWrapper(
+            var historyRecord = new FhirCosmosResourceWrapper(
                 id,
                 "version1",
                 wrapper.ResourceTypeName,
@@ -49,6 +49,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.UnitTests.Features.Storage
                 lastModified,
                 wrapper.IsDeleted,
                 true,
+                null,
                 null,
                 null);
 
@@ -69,8 +70,8 @@ namespace Microsoft.Health.Fhir.CosmosDb.UnitTests.Features.Storage
             var lastModified = new DateTimeOffset(2017, 1, 1, 1, 1, 1, TimeSpan.Zero);
             using (Mock.Property(() => Clock.UtcNowFunc, () => lastModified))
             {
-                var wrapper = new ResourceWrapper(observation, _rawResourceFactory.Create(observation), new ResourceRequest("http://fhir", HttpMethod.Post), false, null);
-                var resource = ResourceDeserializer.Deserialize(wrapper);
+                var wrapper = new ResourceWrapper(observation, _rawResourceFactory.Create(observation), new ResourceRequest("http://fhir", HttpMethod.Post), false, null, null, null);
+                var resource = Deserializers.ResourceDeserializer.Deserialize(wrapper);
 
                 Assert.Equal(observation.VersionId, resource.Meta.VersionId);
                 Assert.Equal(lastModified, resource.Meta.LastUpdated);

@@ -21,14 +21,22 @@ namespace Microsoft.Health.Fhir.Core.Features.Persistence
 
         public const string Request = "request";
 
-        public const string PartitionKey = "partitionKey";
-
         public const string Version = "version";
 
         public const string SearchIndices = "searchIndices";
 
-        public const string IsSystem = "isSystem";
-
         public const string LastModifiedClaims = "lastModifiedClaims";
+
+        public const string CompartmentIndices = "compartmentIndices";
+
+        public const string Device = "device";
+
+        public const string Encounter = "encounter";
+
+        public const string Patient = "patient";
+
+        public const string Practitioner = "practitioner";
+
+        public const string RelatedPerson = "relatedPerson";
     }
 }

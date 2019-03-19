@@ -8,6 +8,7 @@ using System.Linq;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
 using Microsoft.Health.Fhir.Core.Exceptions;
+using Microsoft.Health.Fhir.Core.Features;
 using Microsoft.Health.Fhir.Core.Features.Definition;
 using Microsoft.Health.Fhir.Tests.Common;
 using Xunit;
@@ -17,7 +18,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Definition
 {
     public class SearchParameterDefinitionBuilderTests
     {
-        private readonly FhirJsonParser _jsonParser = new FhirJsonParser();
+        private readonly FhirJsonParser _jsonParser = new FhirJsonParser(DefaultParserSettings.Settings);
 
         private readonly SearchParameterDefinitionBuilder _builderWithInvalidEntries;
         private readonly SearchParameterDefinitionBuilder _builderWithInvalidDefinitions;
@@ -31,9 +32,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Definition
         }
 
         [Theory]
-        [InlineData("SearchParametersWithNullEntry", "FHIR Serialization requires an element to have non-null data (at path 'entry[0]')")]
-        [InlineData("SearchParametersWithInvalidType", "Literal '' is not a valid value for enumeration 'SearchParamType'")]
-        [InlineData("SearchParametersWithInvalidBase", "Literal '' is not a valid value for enumeration 'ResourceType'")]
+        [InlineData("SearchParametersWithInvalidBase", "bundle.entry[http://hl7.org/fhir/SearchParameter/DomainResource-text].resource.base is not defined.")]
         public void GivenAnInvalidSearchParameterDefinitionFile_WhenBuilt_ThenInvalidDefinitionExceptionShouldBeThrown(string fileName, string expectedIssue)
         {
             var builder = CreateBuilder(fileName);
@@ -52,8 +51,8 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Definition
 
         [Theory]
         [InlineData("bundle.entry[http://hl7.org/fhir/SearchParameter/DocumentReference-relationship].component is null or empty.")]
-        [InlineData("bundle.entry[http://hl7.org/fhir/SearchParameter/Group-characteristic-value].component[1].definition.reference is null or empty, or is not pointing to a valid SearchParameter resource.")]
-        [InlineData("bundle.entry[http://hl7.org/fhir/SearchParameter/Observation-code-value-quantity].component[0] cannot be pointing to a composite SearchParameter.")]
+        [InlineData("bundle.entry[http://hl7.org/fhir/SearchParameter/Group-characteristic-value].component[1].definition.reference is null or empty or does not refer to a valid SearchParameter resource.")]
+        [InlineData("bundle.entry[http://hl7.org/fhir/SearchParameter/Observation-code-value-quantity].component[0] cannot refer to a composite SearchParameter.")]
         [InlineData("bundle.entry[http://hl7.org/fhir/SearchParameter/Observation-code-value-string].component[1].expression is null or empty.")]
         [InlineData("bundle.entry[http://hl7.org/fhir/SearchParameter/Observation-device].resource.base is not defined.")]
         [InlineData("bundle.entry[http://hl7.org/fhir/SearchParameter/Observation-related].resource.expression is null or empty.")]

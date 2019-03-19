@@ -16,6 +16,7 @@ using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Features.Routing;
 using Microsoft.Health.Fhir.Core.Features.Search;
 using Microsoft.Health.Fhir.Core.Models;
+using Microsoft.Health.Fhir.Tests.Common;
 using NSubstitute;
 using Xunit;
 using Task = System.Threading.Tasks.Task;
@@ -40,7 +41,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Search
 
         public SearchServiceTests()
         {
-            _bundleFactory = new BundleFactory(_urlResolver, _fhirRequestContextAccessor);
+            _bundleFactory = new BundleFactory(_urlResolver, _fhirRequestContextAccessor, Deserializers.ResourceDeserializer);
             _dataStore = Substitute.For<IDataStore>();
 
             _searchOptionsFactory.Create(Arg.Any<string>(), Arg.Any<IReadOnlyList<Tuple<string, string>>>())
@@ -49,7 +50,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Search
             _searchService = new TestSearchService(_searchOptionsFactory, _bundleFactory, _dataStore);
             _rawResourceFactory = new RawResourceFactory(new FhirJsonSerializer());
 
-            _urlResolver.ResolveSearchUrl(Arg.Any<string>(), Arg.Any<IEnumerable<Tuple<string, string>>>()).Returns(SearchUrl);
+            _urlResolver.ResolveRouteUrl(Arg.Any<IEnumerable<Tuple<string, string>>>()).Returns(SearchUrl);
 
             _correlationId = Guid.NewGuid().ToString();
             _fhirRequestContextAccessor.FhirRequestContext.CorrelationId.Returns(_correlationId);
@@ -68,7 +69,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Search
 
             _searchService.SearchImplementation = options => new SearchResult(new ResourceWrapper[0], null);
 
-            _urlResolver.ResolveSearchUrl(resourceType: null, unsupportedSearchParams: null, continuationToken: null).Returns(SearchUrl);
+            _urlResolver.ResolveRouteUrl(unsupportedSearchParams: null, continuationToken: null).Returns(SearchUrl);
 
             Bundle actual = await _searchService.SearchAsync(resourceType, null);
 
@@ -101,8 +102,8 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Search
 
             ResourceWrapper[] resourceWrappers = new ResourceWrapper[]
             {
-                new ResourceWrapper(observation1, _rawResourceFactory.Create(observation1), _resourceRequest, false, null),
-                new ResourceWrapper(observation2, _rawResourceFactory.Create(observation2), _resourceRequest, false, null),
+                new ResourceWrapper(observation1, _rawResourceFactory.Create(observation1), _resourceRequest, false, null, null, null),
+                new ResourceWrapper(observation2, _rawResourceFactory.Create(observation2), _resourceRequest, false, null, null, null),
             };
 
             _searchService.SearchImplementation = options => new SearchResult(resourceWrappers, null);
@@ -139,7 +140,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Search
 
             _searchService.SearchImplementation = options => new SearchResult(new ResourceWrapper[0], searchToken);
 
-            _urlResolver.ResolveSearchUrl(resourceType, unsupportedSearchParams: null, continuationToken: searchToken).Returns(continuationLink);
+            _urlResolver.ResolveRouteUrl(unsupportedSearchParams: null, continuationToken: searchToken).Returns(continuationLink);
 
             Bundle actual = await _searchService.SearchAsync(resourceType, null);
 
@@ -168,9 +169,9 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Search
             var observation = new Observation { Id = resourceId };
 
             var resourceWrapper =
-                new ResourceWrapper(observation, _rawResourceFactory.Create(observation), _resourceRequest, false, null);
+                new ResourceWrapper(observation, _rawResourceFactory.Create(observation), _resourceRequest, false, null, null, null);
             _searchService.SearchImplementation = options => new SearchResult(new ResourceWrapper[0], null);
-            _urlResolver.ResolveRouteUrl(Arg.Any<string>(), Arg.Any<IEnumerable<Tuple<string, string>>>()).Returns(new Uri("http://narwhal"));
+            _urlResolver.ResolveRouteUrl(Arg.Any<IEnumerable<Tuple<string, string>>>()).Returns(new Uri("http://narwhal"));
 
             _dataStore.GetAsync(Arg.Any<ResourceKey>(), Arg.Any<CancellationToken>()).Returns(resourceWrapper);
 

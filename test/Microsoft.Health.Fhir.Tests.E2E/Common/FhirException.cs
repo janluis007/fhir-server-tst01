@@ -25,11 +25,13 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Common
 
         public HttpResponseHeaders Headers => _response.Headers;
 
+        public FhirResponse<OperationOutcome> Response => _response;
+
         public HttpContent Content => _response.Content;
 
         public OperationOutcome OperationOutcome => _response.Resource;
 
         public override string Message
-            => $"{StatusCode}: {OperationOutcome?.Issue?.FirstOrDefault().Diagnostics}.";
+            => $"{StatusCode}: {OperationOutcome?.Issue?.FirstOrDefault().Diagnostics}";
     }
 }

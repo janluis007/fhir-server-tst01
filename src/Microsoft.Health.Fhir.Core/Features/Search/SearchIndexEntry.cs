@@ -29,6 +29,11 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
         public SearchParameter SearchParameter { get; }
 
         /// <summary>
+        /// Gets the parameter name.
+        /// </summary>
+        public string ParamName => SearchParameter.Name;
+
+        /// <summary>
         /// Gets the searchable value.
         /// </summary>
         public ISearchValue Value { get; }

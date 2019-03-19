@@ -13,7 +13,6 @@ namespace Microsoft.Health.Fhir.Core.Features.Persistence
         Task<UpsertOutcome> UpsertAsync(
             ResourceWrapper resource,
             WeakETag weakETag,
-            bool isCreate,
             bool allowCreate,
             bool keepHistory,
             CancellationToken cancellationToken = default(CancellationToken));
