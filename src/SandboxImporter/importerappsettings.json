@@ -1,0 +1,65 @@
+﻿{
+    "FhirServer": {
+        "Conformance": {
+            "UseStrictConformance": false
+        },
+        "Security": {
+            "Enabled": false,
+            "EnableAadSmartOnFhirProxy": false,
+            "Authentication": {
+                "Audience": null,
+                "Authority": "https://localhost:44348"
+            },
+            "LastModifiedClaims": [
+                "oid"
+            ],
+            "Authorization": {
+                "Enabled": true
+            }
+        },
+        "Features": {
+            "SupportsUI": false,
+            "SupportsXml": false
+        },
+        "CosmosDb": {
+            "CollectionId": "fhir",
+            "InitialCollectionThroughput": null
+        },
+        "Cors": {
+            "Origins": [],
+            "Methods": [],
+            "Headers": [],
+            "MaxAge": null,
+            "AllowCredentials": false
+        }
+    },
+    "ControlPlane": {
+        "CosmosDb": {
+            "CollectionId": "controlPlane",
+            "InitialCollectionThroughPut": null
+        }
+    },
+    "SqlServer": {
+        "ConnectionString": "Data Source=.;Initial Catalog=fhirsample;Pooling=true;Integrated Security=True"
+    },
+    "KeyVault": {
+        "Endpoint": null
+    },
+    "Logging": {
+        "IncludeScopes": false,
+        "LogLevel": {
+            "Default": "Warning"
+        },
+        "ApplicationInsights": {
+            "LogLevel": {
+                "Default": "Information",
+                "Microsoft.Health": "Information",
+                "Microsoft": "Warning",
+                "System": "Warning"
+            }
+        }
+    },
+    "ApplicationInsights": {
+        "InstrumentationKey": ""
+    }
+}
