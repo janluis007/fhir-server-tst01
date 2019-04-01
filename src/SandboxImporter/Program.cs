@@ -112,7 +112,7 @@ namespace SandboxImporter
 
                 parseNdJson.LinkTo(upsertBlock, new DataflowLinkOptions() { PropagateCompletion = true });
 
-                foreach (var ndJson in Directory.EnumerateFiles(@"E:\repos\synthea\output\fhir\ndjson").Take(100))
+                foreach (var ndJson in Directory.EnumerateFiles(@"E:\repos\synthea\output\fhir\ndjson"))
                 {
                     patientCount++;
                     await parseNdJson.SendAsync(ndJson);
