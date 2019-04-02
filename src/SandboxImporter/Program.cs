@@ -90,17 +90,24 @@ namespace SandboxImporter
                 var overallSw = Stopwatch.StartNew();
 
                 int patientCount = 0;
-                int resourceCount = 0;
-                var parseNdJson = new TransformManyBlock<string, Resource>(
-                    async ndJsonPath => (await File.ReadAllLinesAsync(ndJsonPath)).Select(fhirJsonParser.Parse<Resource>),
-                    new ExecutionDataflowBlockOptions { BoundedCapacity = 10, MaxDegreeOfParallelism = Environment.ProcessorCount });
-                var upsertBlock = new ActionBlock<Resource>(
-                    async resource =>
+
+                var batchTracker = new BatchTracker();
+
+                var parseNdJson = new TransformManyBlock<string, (Resource, BundleTracker)>(
+                    async ndJsonPath =>
                     {
-                        Interlocked.Increment(ref resourceCount);
+                        string[] resourceLines = await File.ReadAllLinesAsync(ndJsonPath);
+                        var bundleTracker = new BundleTracker(batchTracker, resourceLines.Length);
+                        return resourceLines.Select(s => (fhirJsonParser.Parse<Resource>(s), bundleTracker));
+                    },
+                    new ExecutionDataflowBlockOptions { BoundedCapacity = 10, MaxDegreeOfParallelism = Environment.ProcessorCount });
+                var upsertBlock = new ActionBlock<(Resource, BundleTracker)>(
+                    async pair =>
+                    {
                         try
                         {
-                            await mediator.UpsertResourceAsync(resource);
+                            await mediator.UpsertResourceAsync(pair.Item1);
+                            pair.Item2.CompleteOne();
                         }
                         catch (Exception e)
                         {
@@ -121,8 +128,45 @@ namespace SandboxImporter
                 parseNdJson.Complete();
                 await upsertBlock.Completion;
 
-                Console.WriteLine($"All done. {patientCount} patients ({resourceCount} resources) uploaded in {overallSw.Elapsed}. {patientCount / overallSw.Elapsed.TotalHours} patients per hour");
+                Console.WriteLine($"All done. {patientCount} patients uploaded in {overallSw.Elapsed}. {(int)(patientCount / overallSw.Elapsed.TotalHours)} patients per hour");
                 Console.ReadKey();
+            }
+        }
+
+        private class BatchTracker
+        {
+            private const int BatchSize = 50;
+            private int count;
+            private Stopwatch sw = Stopwatch.StartNew();
+
+            public void CompleteBundle()
+            {
+                int countSnapshot = Interlocked.Increment(ref count);
+                if (countSnapshot % BatchSize == 0)
+                {
+                    Console.WriteLine($"{count} bundles uploaded. Current rate is {(int)(BatchSize / sw.Elapsed.TotalHours)} bundles/hour.");
+                    sw.Restart();
+                }
+            }
+        }
+
+        private class BundleTracker
+        {
+            private BatchTracker _batchTracker;
+            private int _countRemaining;
+
+            public BundleTracker(BatchTracker batchTracker, int count)
+            {
+                _batchTracker = batchTracker;
+                _countRemaining = count;
+            }
+
+            public void CompleteOne()
+            {
+                if (Interlocked.Decrement(ref _countRemaining) == 0)
+                {
+                    _batchTracker.CompleteBundle();
+                }
             }
         }
     }
