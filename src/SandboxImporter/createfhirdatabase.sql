@@ -260,8 +260,6 @@ CREATE TABLE [dbo].[TokenSearchParam](
 ) ON [PRIMARY]
 WITH (DATA_COMPRESSION = PAGE)
 GO
-CREATE CLUSTERED COLUMNSTORE INDEX IXC_TokenSearchParam ON [dbo].[TokenSearchParam]
-GO 
 
 CREATE CLUSTERED INDEX IXC_TokenSearchParam ON [dbo].[TokenSearchParam]
 (

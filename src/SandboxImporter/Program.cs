@@ -100,7 +100,7 @@ namespace SandboxImporter
                         var bundleTracker = new BundleTracker(batchTracker, resourceLines.Length);
                         return resourceLines.Select(s => (fhirJsonParser.Parse<Resource>(s), bundleTracker));
                     },
-                    new ExecutionDataflowBlockOptions { BoundedCapacity = 10, MaxDegreeOfParallelism = Environment.ProcessorCount });
+                    new ExecutionDataflowBlockOptions { BoundedCapacity = 100, MaxDegreeOfParallelism = Environment.ProcessorCount });
                 var upsertBlock = new ActionBlock<(Resource, BundleTracker)>(
                     async pair =>
                     {
@@ -115,7 +115,7 @@ namespace SandboxImporter
                             throw;
                         }
                     },
-                    new ExecutionDataflowBlockOptions { BoundedCapacity = 1000, MaxDegreeOfParallelism = Environment.ProcessorCount });
+                    new ExecutionDataflowBlockOptions { BoundedCapacity = 4000, MaxDegreeOfParallelism = Environment.ProcessorCount * 4 });
 
                 parseNdJson.LinkTo(upsertBlock, new DataflowLinkOptions() { PropagateCompletion = true });
 
