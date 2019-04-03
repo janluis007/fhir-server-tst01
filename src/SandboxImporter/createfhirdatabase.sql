@@ -163,8 +163,18 @@ CREATE CLUSTERED INDEX IXC_QuantitySearchParam ON [dbo].[QuantitySearchParam]
 	Code,
 	System
 )
-
+WITH (DATA_COMPRESSION = PAGE)
 GO
+
+CREATE NONCLUSTERED INDEX IXC_TokenSearchParam_SearchParamId_Code_System ON [dbo].[QuantitySearchParam]
+(
+	SearchParamId,
+	Quantity,
+	Code,
+	System
+)
+INCLUDE (ResourceId)
+WITH (DATA_COMPRESSION = PAGE)
 
 /****** Object:  Table [dbo].[ReferenceSearchParam]    Script Date: 3/25/2019 2:29:56 PM ******/
 SET ANSI_NULLS ON
@@ -193,6 +203,10 @@ CREATE CLUSTERED INDEX IXC_ReferenceSearchParam ON [dbo].[ReferenceSearchParam]
 	ResourceTypeId
 )
 
+CREATE NONCLUSTERED INDEX IX_ReferenceSearchParam_SearchParamId_BaseUri_ResourceId
+ON [dbo].[ReferenceSearchParam] ([SearchParamId],[ResourceId])
+INCLUDE (BaseUri, ReferenceResourceTypeId, ReferenceResourceId)
+with (DATA_COMPRESSION=PAGE)
 
 GO
 SET QUOTED_IDENTIFIER ON
@@ -261,14 +275,24 @@ CREATE TABLE [dbo].[TokenSearchParam](
 WITH (DATA_COMPRESSION = PAGE)
 GO
 
+DROP INDEX IXC_TokenSearchParam ON [dbo].[TokenSearchParam]
 CREATE CLUSTERED INDEX IXC_TokenSearchParam ON [dbo].[TokenSearchParam]
 (
 	SearchParamId,
 	ResourceId,
-	CompositeInstanceId,
+	Code,
+	System,
+	CompositeInstanceId
+)
+
+CREATE NONCLUSTERED INDEX IX_TokenSearchParam_SearchParamId_Code_System ON [dbo].[TokenSearchParam]
+(
+	SearchParamId,
 	Code,
 	System
 )
+INCLUDE (ResourceId)
+WITH (DATA_COMPRESSION = PAGE)
 
 /****** Object:  Table [dbo].[TokenText]    Script Date: 3/25/2019 2:29:57 PM ******/
 SET ANSI_NULLS ON
