@@ -46,6 +46,8 @@ CREATE TYPE [dbo].[ReferenceSearchParamTableType] AS TABLE(
 	[ReferenceResourceId] [varchar](64) NOT NULL
 )
 GO
+
+
 /****** Object:  UserDefinedTableType [dbo].[StringSearchParamTableType]    Script Date: 3/25/2019 2:29:56 PM ******/
 CREATE TYPE [dbo].[StringSearchParamTableType] AS TABLE(
 	[SearchParamId] [smallint] NOT NULL,
@@ -76,22 +78,20 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 CREATE TABLE [dbo].[Resource](
-	[ResourceId] [bigint] IDENTITY(1,1) NOT NULL,
 	[ResourceTypeId] [smallint] NOT NULL,
-	[ExternalId] [varchar](64) NOT NULL,
+	[ResourceId] [varchar](64) NOT NULL,
 	[Version] [int] NOT NULL,
 	[LastUpdated] [datetime] NULL,
-	[RawResource] [nvarchar](max) NOT NULL)
+	[RawResource] [varbinary](max) NOT NULL)
 GO
 
 /****** Object:  Index [IX_Resource_Clustered]    Script Date: 3/25/2019 2:29:56 PM ******/
-CREATE CLUSTERED INDEX [IX_Resource_Clustered] ON [dbo].[Resource]
+CREATE CLUSTERED INDEX [IXC_Resource] ON [dbo].[Resource]
 (
-	[ResourceId] ASC
+	ResourceTypeId, 
+	ResourceId, 
+	Version
 )
-
-CREATE UNIQUE NONCLUSTERED INDEX IX_ResourceTypeId_ExternalId_Version   
-    ON dbo.Resource (ResourceTypeId, ExternalId, Version);  
 
 /****** Object:  Table [dbo].[DateSearchParam]    Script Date: 3/25/2019 2:29:56 PM ******/
 SET ANSI_NULLS ON
@@ -100,7 +100,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 CREATE TABLE [dbo].[DateSearchParam](
 	[ResourceTypeId] [smallint] NOT NULL,
-	[ResourceId] [bigint] NOT NULL,
+	[ResourceId] [varchar](64) NOT NULL,
 	[SearchParamId] [smallint] NOT NULL,
 	[CompositeInstanceId] [tinyint] NULL,
 	[StartTime] [datetime2](7) NOT NULL,
@@ -111,6 +111,7 @@ GO
 CREATE CLUSTERED INDEX IXC_DateSearchParam ON [dbo].[DateSearchParam]
 (
 	SearchParamId,
+	ResourceTypeId,
 	ResourceId,
 	CompositeInstanceId,
 	StartTime,
@@ -124,7 +125,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 CREATE TABLE [dbo].[NumberSearchParam](
 	[ResourceTypeId] [smallint] NOT NULL,
-	[ResourceId] [bigint] NOT NULL,
+	[ResourceId] [varchar](64) NOT NULL,
 	[SearchParamId] [smallint] NOT NULL,
 	[CompositeInstanceId] [tinyint] NULL,
 	[Number] [decimal](18, 6) NOT NULL
@@ -133,6 +134,7 @@ GO
 CREATE CLUSTERED INDEX IXC_NumberSearchParam ON [dbo].[NumberSearchParam]
 (
 	SearchParamId,
+	ResourceTypeId,
 	ResourceId,
 	CompositeInstanceId,
 	Number
@@ -145,7 +147,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 CREATE TABLE [dbo].[QuantitySearchParam](
 	[ResourceTypeId] [smallint] NOT NULL,
-	[ResourceId] [bigint] NOT NULL,
+	[ResourceId] [varchar](64) NOT NULL,
 	[SearchParamId] [smallint] NOT NULL,
 	[CompositeInstanceId] [tinyint] NULL,
 	[System] [varchar](128) NULL,
@@ -157,6 +159,7 @@ WITH (DATA_COMPRESSION = PAGE)
 CREATE CLUSTERED INDEX IXC_QuantitySearchParam ON [dbo].[QuantitySearchParam]
 (
 	SearchParamId,
+	ResourceTypeId,
 	ResourceId,
 	CompositeInstanceId,
 	Quantity,
@@ -173,7 +176,7 @@ CREATE NONCLUSTERED INDEX IXC_TokenSearchParam_SearchParamId_Code_System ON [dbo
 	Code,
 	System
 )
-INCLUDE (ResourceId)
+INCLUDE (ResourceTypeId, ResourceId, CompositeInstanceId)
 WITH (DATA_COMPRESSION = PAGE)
 
 /****** Object:  Table [dbo].[ReferenceSearchParam]    Script Date: 3/25/2019 2:29:56 PM ******/
@@ -183,7 +186,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 CREATE TABLE [dbo].[ReferenceSearchParam](
 	[ResourceTypeId] [smallint] NOT NULL,
-	[ResourceId] [bigint] NOT NULL,
+	[ResourceId] [varchar](64) NOT NULL,
 	[SearchParamId] [smallint] NOT NULL,
 	[CompositeInstanceId] [tinyint] NULL,
 	[BaseUri] [varchar](128) NULL,
@@ -239,10 +242,9 @@ SET QUOTED_IDENTIFIER ON
 GO
 CREATE TABLE [dbo].[StringSearchParam](
 	[ResourceTypeId] [smallint] NOT NULL,
-	[ResourceId] [bigint] NOT NULL,
+	[ResourceId] [varchar](64) NOT NULL,
 	[SearchParamId] [smallint] NOT NULL,
 	[CompositeInstanceId] [tinyint] NULL,
-	[Value] [nvarchar](512) NOT NULL
 ) ON [PRIMARY]
 WITH (DATA_COMPRESSION = PAGE)
 GO
@@ -250,6 +252,7 @@ GO
 CREATE CLUSTERED INDEX IXC_StringSearchParam ON [dbo].[StringSearchParam]
 (
 	SearchParamId,
+	ResourceTypeId,
 	ResourceId,
 	CompositeInstanceId,
 	Value
@@ -265,7 +268,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 CREATE TABLE [dbo].[TokenSearchParam](
 	[ResourceTypeId] [smallint] NOT NULL,
-	[ResourceId] [bigint] NOT NULL,
+	[ResourceId] [varchar](64) NOT NULL,
 	[SearchParamId] [smallint] NOT NULL,
 	[CompositeInstanceId] [tinyint] NULL,
 	[System] [varchar](256) NULL,
@@ -275,10 +278,10 @@ CREATE TABLE [dbo].[TokenSearchParam](
 WITH (DATA_COMPRESSION = PAGE)
 GO
 
-DROP INDEX IXC_TokenSearchParam ON [dbo].[TokenSearchParam]
 CREATE CLUSTERED INDEX IXC_TokenSearchParam ON [dbo].[TokenSearchParam]
 (
 	SearchParamId,
+	ResourceTypeId,
 	ResourceId,
 	Code,
 	System,
@@ -291,7 +294,7 @@ CREATE NONCLUSTERED INDEX IX_TokenSearchParam_SearchParamId_Code_System ON [dbo]
 	Code,
 	System
 )
-INCLUDE (ResourceId)
+INCLUDE (ResourceTypeId, ResourceId, CompositeInstanceId)
 WITH (DATA_COMPRESSION = PAGE)
 
 /****** Object:  Table [dbo].[TokenText]    Script Date: 3/25/2019 2:29:57 PM ******/
@@ -307,7 +310,7 @@ GO
 
 CREATE TABLE [dbo].[UriSearchParam](
 	[ResourceTypeId] [smallint] NOT NULL,
-	[ResourceId] [bigint] NOT NULL,
+	[ResourceId] [varchar](64) NOT NULL,
 	[SearchParamId] [smallint] NOT NULL,
 	[CompositeInstanceId] [tinyint] NULL,
 	[Uri] [varchar](256) NOT NULL
@@ -318,6 +321,7 @@ WITH (DATA_COMPRESSION = PAGE)
 CREATE CLUSTERED INDEX IXC_UriSearchParam ON [dbo].[UriSearchParam]
 (
 	SearchParamId,
+	ResourceTypeId,
 	ResourceId,
 	CompositeInstanceId,
 	Uri
@@ -326,10 +330,20 @@ CREATE CLUSTERED INDEX IXC_UriSearchParam ON [dbo].[UriSearchParam]
 
 GO
 
+CREATE NONCLUSTERED INDEX IX_StringSearchParam_ResourceTypeId_ResourceId ON StringSearchParam (ResourceTypeId, ResourceId) WITH (DATA_COMPRESSION = PAGE)
+CREATE NONCLUSTERED INDEX IX_TokenSearchParam_ResourceTypeId_ResourceId ON TokenSearchParam (ResourceTypeId, ResourceId) WITH (DATA_COMPRESSION = PAGE)
+CREATE NONCLUSTERED INDEX IX_DateSearchParam_ResourceTypeId_ResourceId ON DateSearchParam (ResourceTypeId, ResourceId) WITH (DATA_COMPRESSION = PAGE)
+CREATE NONCLUSTERED INDEX IX_ReferenceSearchParam_ResourceTypeId_ResourceId ON ReferenceSearchParam (ResourceTypeId, ResourceId) WITH (DATA_COMPRESSION = PAGE)
+CREATE NONCLUSTERED INDEX IX_QuantitySearchParam_ResourceTypeId_ResourceId ON QuantitySearchParam (ResourceTypeId, ResourceId) WITH (DATA_COMPRESSION = PAGE)
+CREATE NONCLUSTERED INDEX IX_NumberSearchParam_ResourceTypeId_ResourceId ON NumberSearchParam (ResourceTypeId, ResourceId) WITH (DATA_COMPRESSION = PAGE)
+CREATE NONCLUSTERED INDEX IX_UriSearchParam_ResourceTypeId_ResourceId ON UriSearchParam (ResourceTypeId, ResourceId) WITH (DATA_COMPRESSION = PAGE)
+
+GO
+
 CREATE PROCEDURE dbo.UpsertResource
 	@resourceTypeId smallint,
-	@id varchar(64),
-	@rawResource nvarchar(max),
+	@resourceId varchar(64),
+	@rawResource [varbinary](max),
 	@tvpStringSearchParam [dbo].[StringSearchParamTableType] READONLY,
 	@tvpTokenSearchParam [dbo].[TokenSearchParamTableType] READONLY,
 	@tvpDateSearchParam [dbo].[DateSearchParamTableType] READONLY,
@@ -341,16 +355,27 @@ CREATE PROCEDURE dbo.UpsertResource
 		SET XACT_ABORT ON
 		BEGIN TRANSACTION
 
-		DECLARE @resourceId bigint
-		DECLARE @version int = (SELECT (MAX(Version) + 1)  FROM dbo.Resource WHERE ResourceTypeId = @resourceTypeId AND ExternalId = @id)
+		DECLARE @version int = (SELECT (Version + 1) FROM dbo.Resource WHERE ResourceTypeId = @resourceTypeId AND ResourceId = @resourceId)
 
-		IF @version IS NULL 
+		IF @version IS NULL BEGIN
 			SET @version = 1
+			INSERT INTO dbo.Resource 
+			(ResourceTypeId, ResourceId, Version, LastUpdated, RawResource)
+			VALUES (@resourceTypeId, @resourceId, @version, SYSUTCDATETIME(), @rawResource)
+		END
+		ELSE BEGIN 				 
+			UPDATE dbo.Resource
+			SET Version = @version, LastUpdated = SYSUTCDATETIME(), RawResource = @rawResource
+			WHERE ResourceTypeId = @resourceTypeId AND ResourceId = @resourceId
 
-		INSERT INTO dbo.Resource 
-		(ResourceTypeId, ExternalId, Version, LastUpdated, RawResource)
-		VALUES (@resourceTypeId, @id, @version, SYSUTCDATETIME(), @rawResource)
-		SET @resourceId = SCOPE_IDENTITY();
+			DELETE FROM StringSearchParam WHERE ResourceTypeId = @resourceTypeId AND ResourceId = @resourceId
+			DELETE FROM TokenSearchParam WHERE ResourceTypeId = @resourceTypeId AND ResourceId = @resourceId
+			DELETE FROM DateSearchParam WHERE ResourceTypeId = @resourceTypeId AND ResourceId = @resourceId
+			DELETE FROM ReferenceSearchParam WHERE ResourceTypeId = @resourceTypeId AND ResourceId = @resourceId
+			DELETE FROM QuantitySearchParam WHERE ResourceTypeId = @resourceTypeId AND ResourceId = @resourceId
+			DELETE FROM NumberSearchParam WHERE ResourceTypeId = @resourceTypeId AND ResourceId = @resourceId
+			DELETE FROM UriSearchParam WHERE ResourceTypeId = @resourceTypeId AND ResourceId = @resourceId
+		END
 
 		INSERT INTO dbo.StringSearchParam
 		(ResourceTypeId, ResourceId, SearchParamId, CompositeInstanceId, Value)
@@ -387,6 +412,5 @@ CREATE PROCEDURE dbo.UpsertResource
 		select @version
 	GO
 
-	
-	dbcc shrinkfile(fhirsample,1)
-	dbcc shrinkfile(fhirsample_log,1)
+	dbcc shrinkfile(fhirsamplenk,1)
+	dbcc shrinkfile(fhirsamplenk_log,1)

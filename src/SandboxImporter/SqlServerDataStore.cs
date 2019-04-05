@@ -4,10 +4,13 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.IO.Compression;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
@@ -17,6 +20,7 @@ using Microsoft.Health.Fhir.Core.Features.Definition;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Features.Search;
 using Microsoft.Health.Fhir.Core.Features.Search.SearchValues;
+using Microsoft.IO;
 using Microsoft.SqlServer.Server;
 using Newtonsoft.Json;
 using Task = System.Threading.Tasks.Task;
@@ -35,6 +39,7 @@ namespace SandboxImporter
 
         private readonly SqlServerDataStoreConfiguration _configuration;
         private readonly ISearchParameterDefinitionManager _searchParameterDefinitionManager;
+        private readonly RecyclableMemoryStreamManager _memoryStreamManager;
         private Dictionary<string, short> _resourceTypeToId;
         private Dictionary<short, string> _resourceTypeIdToTypeName;
         private Dictionary<(string, byte?), short> _searchParamUrlToId;
@@ -46,6 +51,7 @@ namespace SandboxImporter
 
             _configuration = configuration;
             _searchParameterDefinitionManager = searchParameterDefinitionManager;
+            _memoryStreamManager = new RecyclableMemoryStreamManager();
 
             InitializeStore().GetAwaiter().GetResult();
         }
@@ -66,9 +72,27 @@ namespace SandboxImporter
 
                     short resourceTypeId = _resourceTypeToId[resource.ResourceTypeName];
                     command.Parameters.AddWithValue("@resourceTypeId", resourceTypeId);
-                    command.Parameters.Add(new SqlParameter("@id", SqlDbType.VarChar, 64) { Value = resource.ResourceId });
+                    command.Parameters.Add(new SqlParameter("@resourceId", SqlDbType.VarChar, 64) { Value = resource.ResourceId });
 
-                    command.Parameters.AddWithValue("@rawResource", resource.RawResource.Data);
+                    byte[] bytes = ArrayPool<byte>.Shared.Rent(resource.RawResource.Data.Length * 4);
+                    try
+                    {
+                        using (var ms = new RecyclableMemoryStream(_memoryStreamManager))
+                        {
+                            using (var gzipStream = new GZipStream(ms, CompressionMode.Compress, true))
+                            {
+                                gzipStream.Write(bytes.AsSpan().Slice(0, Encoding.UTF8.GetBytes(resource.RawResource.Data.AsSpan(), bytes.AsSpan())));
+                            }
+
+                            ms.Seek(0, 0);
+
+                            command.Parameters.AddWithValue("@rawResource", ms.GetBuffer()).Size = (int)ms.Length;
+                        }
+                    }
+                    finally
+                    {
+                        ArrayPool<byte>.Shared.Return(bytes);
+                    }
 
                     AddStringSearchParams(lookupByType, command);
                     AddTokenSearchParams(lookupByType, command);
