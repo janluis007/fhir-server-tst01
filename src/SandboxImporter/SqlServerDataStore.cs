@@ -32,7 +32,8 @@ namespace SandboxImporter
         private static readonly SqlMetaData[] StringSearchParamTableValuedParameterColumns = { new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("Value", SqlDbType.NVarChar, 512) };
         private static readonly SqlMetaData[] DateSearchParamTableValuedParameterColumns = { new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("StartTime", SqlDbType.DateTime2), new SqlMetaData("EndTime", SqlDbType.DateTime2) };
         private static readonly SqlMetaData[] ReferenceSearchParamTableValuedParameterColumns = { new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("BaseUri", SqlDbType.VarChar, 512), new SqlMetaData("ReferenceResourceTypeId", SqlDbType.SmallInt), new SqlMetaData("ReferenceResourceId", SqlDbType.VarChar, 64) };
-        private static readonly SqlMetaData[] TokenSearchParamTableValuedParameterColumns = { new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("System", SqlDbType.NVarChar, 256), new SqlMetaData("Code", SqlDbType.NVarChar, 256), new SqlMetaData("Text", SqlDbType.NVarChar, 512) };
+        private static readonly SqlMetaData[] TokenSearchParamTableValuedParameterColumns = { new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("System", SqlDbType.NVarChar, 256), new SqlMetaData("Code", SqlDbType.NVarChar, 256) };
+        private static readonly SqlMetaData[] TokenTextSearchParamTableValuedParameterColumns = { new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("Text", SqlDbType.NVarChar, 512) };
         private static readonly SqlMetaData[] QuantitySearchParamTableValuedParameterColumns = { new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("System", SqlDbType.NVarChar, 256), new SqlMetaData("Code", SqlDbType.NVarChar, 256), new SqlMetaData("Quantity", SqlDbType.Decimal, 18, 6) };
         private static readonly SqlMetaData[] NumberSearchParamTableValuedParameterColumns = { new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("Number", SqlDbType.Decimal, 18, 6) };
         private static readonly SqlMetaData[] UriSearchParamTableValuedParameterColumns = { new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("Uri", SqlDbType.VarChar, 256) };
@@ -203,54 +204,59 @@ namespace SandboxImporter
         {
             var tokenEntries = lookupByType[typeof(TokenSearchValue)]
                 .Where(e => !string.Equals(e.searchParameter.Name, SearchParameterNames.ResourceType, StringComparison.Ordinal) &&
-                            !string.Equals(e.searchParameter.Name, SearchParameterNames.Id, StringComparison.Ordinal))
+                            !string.Equals(e.searchParameter.Name, SearchParameterNames.Id, StringComparison.Ordinal)).ToList();
+
+            SqlDataRecord[] tokenTextRecords = tokenEntries
+                .Where(e => e.componentIndex == null)
+                .Select(t => (t.searchParameter, ((TokenSearchValue)t.value).Text))
+                .Where(t => !string.IsNullOrEmpty(t.Text))
+                .Distinct()
                 .Select(e =>
                 {
-                    string text;
+                    var r = new SqlDataRecord(TokenTextSearchParamTableValuedParameterColumns);
+                    r.SetInt16(0, _searchParamUrlToId[(e.searchParameter.Url, null)]);
+                    r.SetString(1, e.Text);
+
+                    return r;
+                })
+                .ToArray();
+
+            SqlParameter param = command.Parameters.AddWithValue("@tvpTokenTextSearchParam", tokenTextRecords.Length == 0 ? null : tokenTextRecords);
+            param.SqlDbType = SqlDbType.Structured;
+            param.TypeName = "dbo.TokenTextSearchParamTableType";
+
+            SqlDataRecord[] tokenRecords = tokenEntries
+                .Where(e =>
+                {
+                    var tokenSearchValue = (TokenSearchValue)e.value;
+                    return !string.IsNullOrEmpty(tokenSearchValue.System) || !string.IsNullOrEmpty(tokenSearchValue.Code);
+                })
+                .Select(e =>
+                {
+                    var r = new SqlDataRecord(TokenSearchParamTableValuedParameterColumns);
+                    r.SetInt16(0, _searchParamUrlToId[(e.searchParameter.Url, e.componentIndex)]);
+                    if (e.CompositeInstanceId != null)
+                    {
+                        r.SetByte(1, e.CompositeInstanceId.Value);
+                    }
+
                     var tokenSearchValue = (TokenSearchValue)e.value;
 
-                    if (string.IsNullOrWhiteSpace(tokenSearchValue.Text) || e.componentIndex != null)
+                    if (!string.IsNullOrWhiteSpace(tokenSearchValue.System))
                     {
-                        // cannot perform text searches on composite params
-                        text = null;
-                    }
-                    else
-                    {
-                        text = tokenSearchValue.Text; ////.ToUpperInvariant();
+                        r.SetString(2, tokenSearchValue.System);
                     }
 
-                    return (e.searchParameter, e.componentIndex, e.CompositeInstanceId, tokenSearchValue.System, tokenSearchValue.Code, text);
+                    if (!string.IsNullOrWhiteSpace(tokenSearchValue.Code))
+                    {
+                        r.SetString(3, tokenSearchValue.Code);
+                    }
+
+                    return r;
                 })
-                .ToList();
+                .ToArray();
 
-            SqlDataRecord[] tokenRecords = tokenEntries.Select(e =>
-            {
-                var r = new SqlDataRecord(TokenSearchParamTableValuedParameterColumns);
-                r.SetInt16(0, _searchParamUrlToId[(e.searchParameter.Url, e.componentIndex)]);
-                if (e.CompositeInstanceId != null)
-                {
-                    r.SetByte(1, e.CompositeInstanceId.Value);
-                }
-
-                if (!string.IsNullOrWhiteSpace(e.System))
-                {
-                    r.SetString(2, e.System);
-                }
-
-                if (!string.IsNullOrWhiteSpace(e.Code))
-                {
-                    r.SetString(3, e.Code);
-                }
-
-                if (!string.IsNullOrWhiteSpace(e.text))
-                {
-                    r.SetString(4, e.text);
-                }
-
-                return r;
-            }).ToArray();
-
-            SqlParameter param = command.Parameters.AddWithValue("@tvpTokenSearchParam", tokenRecords.Length == 0 ? null : tokenRecords);
+            param = command.Parameters.AddWithValue("@tvpTokenSearchParam", tokenRecords.Length == 0 ? null : tokenRecords);
             param.SqlDbType = SqlDbType.Structured;
             param.TypeName = "dbo.TokenSearchParamTableType";
         }

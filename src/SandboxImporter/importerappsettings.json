@@ -40,7 +40,7 @@
         }
     },
     "SqlServer": {
-        "ConnectionString": "Data Source=.;Initial Catalog=fhirsamplenk;Pooling=true;Integrated Security=True"
+        "ConnectionString": "Data Source=.;Initial Catalog=fhirsamplesk;Pooling=true;Integrated Security=True"
     },
     "ndJsonPath": "E:\\repos\\synthea\\output\\fhir\\ndjson",
     "KeyVault": {

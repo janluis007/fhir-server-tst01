@@ -115,7 +115,7 @@ namespace SandboxImporter
                             throw;
                         }
                     },
-                    new ExecutionDataflowBlockOptions { BoundedCapacity = 4000, MaxDegreeOfParallelism = Environment.ProcessorCount * 4 });
+                    new ExecutionDataflowBlockOptions { BoundedCapacity = 4000, MaxDegreeOfParallelism = Environment.ProcessorCount * 8 });
 
                 parseNdJson.LinkTo(upsertBlock, new DataflowLinkOptions() { PropagateCompletion = true });
 
