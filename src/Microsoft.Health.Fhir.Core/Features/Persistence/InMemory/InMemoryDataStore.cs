@@ -72,6 +72,11 @@ namespace Microsoft.Health.Fhir.Core.Features.Persistence.InMemory
             return Task.FromResult(new UpsertOutcome(upsertedVersion, outcome));
         }
 
+        public Task UpsertManyAsync(IEnumerable<ResourceWrapper> resources, bool allowCreate, bool keepHistory, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<ResourceWrapper> GetAsync(ResourceKey key, CancellationToken cancellationToken = default(CancellationToken))
         {
             EnsureArg.IsNotNull(key, nameof(key));

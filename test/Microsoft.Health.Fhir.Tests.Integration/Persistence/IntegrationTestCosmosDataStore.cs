@@ -102,6 +102,11 @@ namespace Microsoft.Health.Fhir.Tests.Integration.Persistence
             return await _dataStore.UpsertAsync(resource, weakETag, allowCreate, keepHistory, cancellationToken);
         }
 
+        public Task UpsertManyAsync(IEnumerable<ResourceWrapper> resources, bool allowCreate, bool keepHistory, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            throw new NotImplementedException();
+        }
+
         public async Task<ResourceWrapper> GetAsync(ResourceKey key, CancellationToken cancellationToken = default(CancellationToken))
         {
             return await _dataStore.GetAsync(key, cancellationToken);

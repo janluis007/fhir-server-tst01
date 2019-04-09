@@ -15,8 +15,19 @@ from sys.sequences
 
 exec(@sql) 
 
+CREATE TYPE [dbo].[ResourceTableType] AS TABLE(
+	[ResourceTypeId] [smallint] NOT NULL,
+	[ResourceBatchOffset] [int] NOT NULL,
+	[ResourceId] [varchar](64) NOT NULL,
+	[RawResource] [varbinary](max)
+)
+GO
+
+
 /****** Object:  UserDefinedTableType [dbo].[DateSearchParamTableType]    Script Date: 3/25/2019 2:29:56 PM ******/
-CREATE TYPE [dbo].[DateSearchParamTableType] AS TABLE(
+CREATE TYPE [dbo].[DateSearchParamTableType] AS TABLE(	
+	[ResourceTypeId] [smallint] NOT NULL,
+	[ResourceBatchOffset] [int] NOT NULL,
 	[SearchParamId] [smallint] NOT NULL,
 	[CompositeInstanceId] [tinyint] NULL,
 	[StartTime] [datetime2](7) NOT NULL,
@@ -25,6 +36,8 @@ CREATE TYPE [dbo].[DateSearchParamTableType] AS TABLE(
 GO
 /****** Object:  UserDefinedTableType [dbo].[NumberSearchParamTableType]    Script Date: 3/25/2019 2:29:56 PM ******/
 CREATE TYPE [dbo].[NumberSearchParamTableType] AS TABLE(
+	[ResourceTypeId] [smallint] NOT NULL,
+	[ResourceBatchOffset] [int] NOT NULL,
 	[SearchParamId] [smallint] NOT NULL,
 	[CompositeInstanceId] [tinyint] NULL,
 	[Number] [decimal](18, 6) NULL
@@ -32,6 +45,8 @@ CREATE TYPE [dbo].[NumberSearchParamTableType] AS TABLE(
 GO
 /****** Object:  UserDefinedTableType [dbo].[QuantitySearchParamTableType]    Script Date: 3/25/2019 2:29:56 PM ******/
 CREATE TYPE [dbo].[QuantitySearchParamTableType] AS TABLE(
+	[ResourceTypeId] [smallint] NOT NULL,
+	[ResourceBatchOffset] [int] NOT NULL,
 	[SearchParamId] [smallint] NOT NULL,
 	[CompositeInstanceId] [tinyint] NULL,
 	[System] [nvarchar](256) NULL,
@@ -41,6 +56,8 @@ CREATE TYPE [dbo].[QuantitySearchParamTableType] AS TABLE(
 GO
 /****** Object:  UserDefinedTableType [dbo].[ReferenceSearchParamTableType]    Script Date: 3/25/2019 2:29:56 PM ******/
 CREATE TYPE [dbo].[ReferenceSearchParamTableType] AS TABLE(
+	[ResourceTypeId] [smallint] NOT NULL,
+	[ResourceBatchOffset] [int] NOT NULL,
 	[SearchParamId] [smallint] NOT NULL,
 	[CompositeInstanceId] [tinyint] NULL,
 	[BaseUri] [varchar](512) NULL,
@@ -52,6 +69,8 @@ GO
 
 /****** Object:  UserDefinedTableType [dbo].[StringSearchParamTableType]    Script Date: 3/25/2019 2:29:56 PM ******/
 CREATE TYPE [dbo].[StringSearchParamTableType] AS TABLE(
+	[ResourceTypeId] [smallint] NOT NULL,
+	[ResourceBatchOffset] [int] NOT NULL,
 	[SearchParamId] [smallint] NOT NULL,
 	[CompositeInstanceId] [tinyint] NULL,
 	[Value] [nvarchar](512) NOT NULL
@@ -59,6 +78,8 @@ CREATE TYPE [dbo].[StringSearchParamTableType] AS TABLE(
 GO
 /****** Object:  UserDefinedTableType [dbo].[TokenSearchParamTableType]    Script Date: 3/25/2019 2:29:56 PM ******/
 CREATE TYPE [dbo].[TokenSearchParamTableType] AS TABLE(
+	[ResourceTypeId] [smallint] NOT NULL,
+	[ResourceBatchOffset] [int] NOT NULL,
 	[SearchParamId] [smallint] NOT NULL,
 	[CompositeInstanceId] [tinyint] NULL,
 	[System] [nvarchar](256) NULL,
@@ -67,6 +88,8 @@ CREATE TYPE [dbo].[TokenSearchParamTableType] AS TABLE(
 GO
 
 CREATE TYPE [dbo].[TokenTextSearchParamTableType] AS TABLE(
+	[ResourceTypeId] [smallint] NOT NULL,
+	[ResourceBatchOffset] [int] NOT NULL,
 	[SearchParamId] [smallint] NOT NULL,
 	[Text] [nvarchar](512) NULL
 )
@@ -74,6 +97,8 @@ GO
 
 /****** Object:  UserDefinedTableType [dbo].[UriSearchParamTableType]    Script Date: 3/25/2019 2:29:56 PM ******/
 CREATE TYPE [dbo].[UriSearchParamTableType] AS TABLE(
+	[ResourceTypeId] [smallint] NOT NULL,
+	[ResourceBatchOffset] [int] NOT NULL,
 	[SearchParamId] [smallint] NOT NULL,
 	[CompositeInstanceId] [tinyint] NULL,
 	[Uri] [varchar](256) NOT NULL
@@ -99,6 +124,7 @@ CREATE UNIQUE CLUSTERED INDEX [IXC_Resource] ON [dbo].[Resource]
 	ResourceTypeId, 
 	ResourceId
 )
+WITH IGNORE_DUP_KEY
 
 CREATE NONCLUSTERED INDEX [IX_Resource_ResourceSurrogateId] on [dbo].[Resource]
 (
@@ -389,9 +415,7 @@ GO
 --EXEC UpsertResource 1, '123', 0x0
 
 CREATE PROCEDURE dbo.UpsertResource
-	@resourceTypeId smallint,
-	@resourceId varchar(64),
-	@rawResource [varbinary](max),
+	@tvpResource [dbo].[ResourceTableType] READONLY,
 	@tvpStringSearchParam [dbo].[StringSearchParamTableType] READONLY,
 	@tvpTokenSearchParam [dbo].[TokenSearchParamTableType] READONLY,
 	@tvpTokenTextSearchParam [dbo].[TokenTextSearchParamTableType] READONLY,
@@ -404,73 +428,90 @@ CREATE PROCEDURE dbo.UpsertResource
 		SET XACT_ABORT ON
 		BEGIN TRANSACTION
 
-		DECLARE @version int = 1
-		DECLARE @resourceSurrogateId bigint
+		DECLARE @resourceSurrogateIdOffsetVariant sql_variant;  
+		DECLARE @resourceCount int = (select count(*) from @tvpResource)
+		DECLARE @sequenceName varchar(10) = 'MySeq_' +  CONVERT(varchar(10), (SELECT CAST(CRYPT_GEN_RANDOM(1) AS int) % 32))
+  
+		EXEC sp_sequence_get_range  
+			@sequence_name = @sequenceName, 
+			@range_size = @resourceCount, 
+			@range_first_value = @resourceSurrogateIdOffsetVariant OUTPUT;  
 
-		SELECT @version = (Version + 1), @resourceSurrogateId = ResourceSurrogateId
-		FROM dbo.Resource WITH (UPDLOCK)
-		WHERE ResourceTypeId = @resourceTypeId AND ResourceId = @resourceId
+		DECLARE @resourceSurrogateIdOffset bigint = CONVERT(bigint, @resourceSurrogateIdOffsetVariant)
+		DECLARE @currentTime datetime2 = SYSUTCDATETIME()
+		
+		DECLARE @insertedResourceSurrogateId TABLE
+		(
+			ResourceSurrogateId bigint
+		)
 
-		IF @version = 1 BEGIN
-			DECLARE @sqlText nvarchar(100) = 'SELECT @val = NEXT VALUE FOR MySeq_' +  CONVERT(varchar(10), (SELECT CAST(CRYPT_GEN_RANDOM(1) AS int) % 128))
-			DECLARE @paramSpec nvarchar(100) = '@val bigint OUTPUT'
-			EXECUTE sp_executesql @sqlText, @paramSpec, @val = @resourceSurrogateId OUTPUT
+		DECLARE @skippedResourceSurrogateOffsetIds TABLE
+		(
+			ResourceSurrogateIdOffset int
+		)
 
-			INSERT INTO dbo.Resource
-			(ResourceTypeId, ResourceId, Version, ResourceSurrogateId, LastUpdated, RawResource)
-			VALUES (@resourceTypeId, @resourceId, @version, @resourceSurrogateId, SYSUTCDATETIME(), @rawResource)
-		END
-		ELSE BEGIN 				 
-			UPDATE dbo.Resource
-			SET Version = @version, LastUpdated = SYSUTCDATETIME(), RawResource = @rawResource
-			WHERE ResourceTypeId = @resourceTypeId AND ResourceId = @resourceId
-
-			DELETE FROM StringSearchParam WHERE ResourceTypeId = @resourceTypeId AND ResourceSurrogateId = @resourceSurrogateId
-			DELETE FROM TokenSearchParam WHERE ResourceTypeId = @resourceTypeId AND ResourceSurrogateId = @resourceSurrogateId
-			DELETE FROM TokenTextSearchParam WHERE ResourceTypeId = @resourceTypeId AND ResourceSurrogateId = @resourceSurrogateId
-			DELETE FROM DateSearchParam WHERE ResourceTypeId = @resourceTypeId AND ResourceSurrogateId = @resourceSurrogateId
-			DELETE FROM ReferenceSearchParam WHERE ResourceTypeId = @resourceTypeId AND ResourceSurrogateId = @resourceSurrogateId
-			DELETE FROM QuantitySearchParam WHERE ResourceTypeId = @resourceTypeId AND ResourceSurrogateId = @resourceSurrogateId
-			DELETE FROM NumberSearchParam WHERE ResourceTypeId = @resourceTypeId AND ResourceSurrogateId = @resourceSurrogateId
-			DELETE FROM UriSearchParam WHERE ResourceTypeId = @resourceTypeId AND ResourceSurrogateId = @resourceSurrogateId
-		END
+		INSERT INTO dbo.Resource
+		(ResourceTypeId, ResourceId, Version, ResourceSurrogateId, LastUpdated, RawResource)
+		OUTPUT inserted.ResourceSurrogateId
+		INTO @insertedResourceSurrogateId
+		SELECT new.ResourceTypeId, new.ResourceId, 1, (@resourceSurrogateIdOffset + ResourceBatchOffset), @currentTime, new.RawResource
+		FROM @tvpResource new
+		--WHERE NOT EXISTS (select * from Resource existing where existing.ResourceTypeId = new.ResourceTypeId AND existing.ResourceId = new.ResourceId)
+		
+		INSERT INTO @skippedResourceSurrogateOffsetIds
+		SELECT ResourceBatchOffset
+		FROM @tvpResource
+		EXCEPT
+		SELECT (ResourceSurrogateId - @resourceSurrogateIdOffset) 
+		FROM @insertedResourceSurrogateId
 
 		INSERT INTO dbo.StringSearchParam
 		(ResourceTypeId, ResourceSurrogateId, SearchParamId, CompositeInstanceId, Value)
-		SELECT @resourceTypeId, @resourceSurrogateId, SearchParamId, CompositeInstanceId, Value FROM @tvpStringSearchParam
+		SELECT p.ResourceTypeId, @resourceSurrogateIdOffset + p.ResourceBatchOffset, p.SearchParamId, p.CompositeInstanceId, Value 
+		FROM @tvpStringSearchParam p
+		--WHERE NOT EXISTS (SELECT * FROM @skippedResourceSurrogateOffsetIds s WHERE p.ResourceBatchOffset = s.ResourceSurrogateIdOffset)
 
 		INSERT INTO dbo.TokenSearchParam
 		(ResourceTypeId, ResourceSurrogateId, SearchParamId, CompositeInstanceId, System, Code)
-		SELECT @resourceTypeId, @resourceSurrogateId, SearchParamId, CompositeInstanceId, System, Code	 
-		FROM @tvpTokenSearchParam
+		SELECT p.ResourceTypeId, @resourceSurrogateIdOffset + p.ResourceBatchOffset, p.SearchParamId, p.CompositeInstanceId, p.System, p.Code
+		FROM @tvpTokenSearchParam p
+		--WHERE NOT EXISTS (SELECT * FROM @skippedResourceSurrogateOffsetIds s WHERE p.ResourceBatchOffset = s.ResourceSurrogateIdOffset)
 
 		INSERT INTO dbo.TokenTextSearchParam
 		(ResourceTypeId, ResourceSurrogateId, SearchParamId, Text)
-		SELECT @resourceTypeId, @resourceSurrogateId, SearchParamId, Text	 
-		FROM @tvpTokenTextSearchParam
+		SELECT p.ResourceTypeId, @resourceSurrogateIdOffset + p.ResourceBatchOffset, p.SearchParamId, p.Text p
+		FROM @tvpTokenTextSearchParam p
+		--WHERE NOT EXISTS (SELECT * FROM @skippedResourceSurrogateOffsetIds s WHERE p.ResourceBatchOffset = s.ResourceSurrogateIdOffset)
 
 		INSERT INTO dbo.DateSearchParam
 		(ResourceTypeId, ResourceSurrogateId, SearchParamId, CompositeInstanceId, StartTime, EndTime)
-		SELECT @resourceTypeId, @resourceSurrogateId, SearchParamId, CompositeInstanceId, StartTime, EndTime FROM @tvpDateSearchParam
+		SELECT p.ResourceTypeId, @resourceSurrogateIdOffset + p.ResourceBatchOffset, p.SearchParamId, p.CompositeInstanceId, p.StartTime, p.EndTime 
+		FROM @tvpDateSearchParam p
+		--WHERE NOT EXISTS (SELECT * FROM @skippedResourceSurrogateOffsetIds s WHERE p.ResourceBatchOffset = s.ResourceSurrogateIdOffset)
 
 		INSERT INTO dbo.ReferenceSearchParam
 		(ResourceTypeId, ResourceSurrogateId, SearchParamId, CompositeInstanceId, BaseUri, ReferenceResourceTypeId, ReferenceResourceId)
-		SELECT @resourceTypeId, @resourceSurrogateId, p.SearchParamId, p.CompositeInstanceId, p.BaseUri, p.ReferenceResourceTypeId, p.ReferenceResourceId 
+		SELECT p.ResourceTypeId, @resourceSurrogateIdOffset + p.ResourceBatchOffset, p.SearchParamId, p.CompositeInstanceId, p.BaseUri, p.ReferenceResourceTypeId, p.ReferenceResourceId 
 		FROM @tvpReferenceSearchParam p
+		--WHERE NOT EXISTS (SELECT * FROM @skippedResourceSurrogateOffsetIds s WHERE p.ResourceBatchOffset = s.ResourceSurrogateIdOffset)
 
 		INSERT INTO dbo.QuantitySearchParam
 		(ResourceTypeId, ResourceSurrogateId, SearchParamId, CompositeInstanceId, System, Code, Quantity)
-		SELECT @resourceTypeId, @resourceSurrogateId, SearchParamId, CompositeInstanceId, System, Code, Quantity FROM @tvpQuantitySearchParam
+		SELECT p.ResourceTypeId, @resourceSurrogateIdOffset + p.ResourceBatchOffset, p.SearchParamId, p.CompositeInstanceId, p.System, p.Code, p.Quantity 
+		FROM @tvpQuantitySearchParam p
+		--WHERE NOT EXISTS (SELECT * FROM @skippedResourceSurrogateOffsetIds s WHERE p.ResourceBatchOffset = s.ResourceSurrogateIdOffset)
 
 		INSERT INTO dbo.NumberSearchParam
 		(ResourceTypeId, ResourceSurrogateId, SearchParamId, CompositeInstanceId, Number)
-		SELECT @resourceTypeId, @resourceSurrogateId, SearchParamId, CompositeInstanceId, Number FROM @tvpNumberSearchParam
+		SELECT p.ResourceTypeId, @resourceSurrogateIdOffset + p.ResourceBatchOffset, p.SearchParamId, p.CompositeInstanceId, p.Number 
+		FROM @tvpNumberSearchParam p
+		--WHERE NOT EXISTS (SELECT * FROM @skippedResourceSurrogateOffsetIds s WHERE p.ResourceBatchOffset = s.ResourceSurrogateIdOffset)
 
 		INSERT INTO dbo.UriSearchParam
 		(ResourceTypeId, ResourceSurrogateId, SearchParamId, CompositeInstanceId, Uri)
-		SELECT @resourceTypeId, @resourceSurrogateId, SearchParamId, CompositeInstanceId, Uri FROM @tvpUriSearchParam
+		SELECT p.ResourceTypeId, @resourceSurrogateIdOffset + p.ResourceBatchOffset, p.SearchParamId, p.CompositeInstanceId, p.Uri 
+		FROM @tvpUriSearchParam p
+		--WHERE NOT EXISTS (SELECT * FROM @skippedResourceSurrogateOffsetIds s WHERE p.ResourceBatchOffset = s.ResourceSurrogateIdOffset)
 
 		COMMIT TRANSACTION
-
-		select @version, @resourceSurrogateId
 	GO

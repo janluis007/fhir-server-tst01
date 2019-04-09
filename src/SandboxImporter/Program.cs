@@ -23,8 +23,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Health.Extensions.DependencyInjection;
-using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features.Context;
+using Microsoft.Health.Fhir.Core.Features.Persistence;
+using Microsoft.Health.Fhir.Core.Messages.Upsert;
 using Microsoft.Health.Fhir.Core.Registration;
 using Task = System.Threading.Tasks.Task;
 
@@ -83,6 +84,7 @@ namespace SandboxImporter
             {
                 serviceScope.ServiceProvider.GetRequiredService<IHttpContextAccessor>().HttpContext = new DefaultHttpContext();
                 serviceScope.ServiceProvider.GetRequiredService<IFhirRequestContextAccessor>().FhirRequestContext = new FhirRequestContext("PUT", "https://x", "https://y", new Coding("a", "b"), "w", ImmutableDictionary<string, StringValues>.Empty, ImmutableDictionary<string, StringValues>.Empty);
+                var resourceWrapperFactory = serviceScope.ServiceProvider.GetRequiredService<IResourceWrapperFactory>();
 
                 var mediator = serviceScope.ServiceProvider.GetRequiredService<IMediator>();
 
@@ -93,21 +95,22 @@ namespace SandboxImporter
 
                 var batchTracker = new BatchTracker();
 
-                var parseNdJson = new TransformManyBlock<string, (Resource, BundleTracker)>(
+                var parseNdJson = new TransformBlock<string, UpsertManyResourcesRequest>(
                     async ndJsonPath =>
                     {
                         string[] resourceLines = await File.ReadAllLinesAsync(ndJsonPath);
                         var bundleTracker = new BundleTracker(batchTracker, resourceLines.Length);
-                        return resourceLines.Select(s => (fhirJsonParser.Parse<Resource>(s), bundleTracker));
+                        return new UpsertManyResourcesRequest(resourceLines.Select(l => resourceWrapperFactory.Create(fhirJsonParser.Parse<Resource>(l), false)).ToList());
                     },
                     new ExecutionDataflowBlockOptions { BoundedCapacity = 100, MaxDegreeOfParallelism = Environment.ProcessorCount });
-                var upsertBlock = new ActionBlock<(Resource, BundleTracker)>(
-                    async pair =>
+
+                var upsertBundle = new ActionBlock<UpsertManyResourcesRequest[]>(
+                    async r =>
                     {
                         try
                         {
-                            await mediator.UpsertResourceAsync(pair.Item1);
-                            pair.Item2.CompleteOne();
+                            await mediator.Send<UpsertManyResourcesResponse>(new UpsertManyResourcesRequest(r.SelectMany(r2 => r2.Resources).ToList()));
+                            batchTracker.CompleteBundles(r.Length);
                         }
                         catch (Exception e)
                         {
@@ -115,11 +118,15 @@ namespace SandboxImporter
                             throw;
                         }
                     },
-                    new ExecutionDataflowBlockOptions { BoundedCapacity = 4000, MaxDegreeOfParallelism = Environment.ProcessorCount * 8 });
+                    new ExecutionDataflowBlockOptions { BoundedCapacity = 100, MaxDegreeOfParallelism = Environment.ProcessorCount * 2 });
 
-                parseNdJson.LinkTo(upsertBlock, new DataflowLinkOptions() { PropagateCompletion = true });
+                var batchBlock = new BatchBlock<UpsertManyResourcesRequest>(1);
+                parseNdJson.LinkTo(batchBlock, new DataflowLinkOptions() { PropagateCompletion = true });
+                batchBlock.LinkTo(upsertBundle, new DataflowLinkOptions() { PropagateCompletion = true });
 
                 string ndJsonDir = serviceScope.ServiceProvider.GetRequiredService<IConfiguration>().GetValue<string>("ndJsonPath");
+
+                batchTracker.Start();
 
                 foreach (var ndJson in Directory.EnumerateFiles(ndJsonDir))
                 {
@@ -128,27 +135,48 @@ namespace SandboxImporter
                 }
 
                 parseNdJson.Complete();
-                await upsertBlock.Completion;
+                await upsertBundle.Completion;
 
                 Console.WriteLine($"All done. {patientCount} patients uploaded in {overallSw.Elapsed}. {(int)(patientCount / overallSw.Elapsed.TotalHours)} patients per hour");
                 Console.ReadKey();
             }
         }
 
-        private class BatchTracker
+        private class BatchTracker : IDisposable
         {
-            private const int BatchSize = 50;
-            private int count;
-            private Stopwatch sw = Stopwatch.StartNew();
+            private volatile int _count;
+            private Stopwatch _sw;
+            private TimeSpan _lastTime;
+            private int _lastCount;
+            private Timer _timer;
+            private TimeSpan _period;
 
-            public void CompleteBundle()
+            public void CompleteBundles(int batchSize)
             {
-                int countSnapshot = Interlocked.Increment(ref count);
-                if (countSnapshot % BatchSize == 0)
-                {
-                    Console.WriteLine($"{count} bundles uploaded. Current rate is {(int)(BatchSize / sw.Elapsed.TotalHours)} bundles/hour.");
-                    sw.Restart();
-                }
+                int countSnapshot = Interlocked.Add(ref _count, batchSize);
+            }
+
+            public void Start()
+            {
+                _sw = Stopwatch.StartNew();
+                _period = TimeSpan.FromSeconds(20);
+                _timer = new Timer(
+                    state =>
+                    {
+                        var currentTime = _sw.Elapsed;
+                        var currentCount = _count;
+                        Console.WriteLine($"{currentCount} bundles uploaded. Current rate is {(int)((currentCount - _lastCount) / (currentTime - _lastTime).TotalHours)} bundles/hour. Elapsed time: {currentTime.ToString(@"hh\:mm\:ss")}. Overall average: {(int)(currentCount / currentTime.TotalHours)} bundles/hour.");
+                        _lastCount = _count;
+                        _lastTime = currentTime;
+                    },
+                    null,
+                    _period,
+                    _period);
+            }
+
+            public void Dispose()
+            {
+                _timer?.Dispose();
             }
         }
 
@@ -167,7 +195,7 @@ namespace SandboxImporter
             {
                 if (Interlocked.Decrement(ref _countRemaining) == 0)
                 {
-                    _batchTracker.CompleteBundle();
+                    _batchTracker.CompleteBundles(1);
                 }
             }
         }

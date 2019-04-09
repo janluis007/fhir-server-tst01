@@ -141,6 +141,11 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
             }
         }
 
+        public Task UpsertManyAsync(IEnumerable<ResourceWrapper> resources, bool allowCreate, bool keepHistory, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            throw new NotImplementedException();
+        }
+
         public async Task<ResourceWrapper> GetAsync(ResourceKey key, CancellationToken cancellationToken = default(CancellationToken))
         {
             EnsureArg.IsNotNull(key, nameof(key));

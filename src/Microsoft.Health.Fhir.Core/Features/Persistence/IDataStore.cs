@@ -3,6 +3,7 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,6 +14,12 @@ namespace Microsoft.Health.Fhir.Core.Features.Persistence
         Task<UpsertOutcome> UpsertAsync(
             ResourceWrapper resource,
             WeakETag weakETag,
+            bool allowCreate,
+            bool keepHistory,
+            CancellationToken cancellationToken = default(CancellationToken));
+
+        Task UpsertManyAsync(
+            IEnumerable<ResourceWrapper> resources,
             bool allowCreate,
             bool keepHistory,
             CancellationToken cancellationToken = default(CancellationToken));

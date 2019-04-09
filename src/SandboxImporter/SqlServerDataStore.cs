@@ -5,6 +5,7 @@
 
 using System;
 using System.Buffers;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
@@ -29,14 +30,15 @@ namespace SandboxImporter
 {
     public class SqlServerDataStore : IDataStore, IProvideCapability
     {
-        private static readonly SqlMetaData[] StringSearchParamTableValuedParameterColumns = { new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("Value", SqlDbType.NVarChar, 512) };
-        private static readonly SqlMetaData[] DateSearchParamTableValuedParameterColumns = { new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("StartTime", SqlDbType.DateTime2), new SqlMetaData("EndTime", SqlDbType.DateTime2) };
-        private static readonly SqlMetaData[] ReferenceSearchParamTableValuedParameterColumns = { new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("BaseUri", SqlDbType.VarChar, 512), new SqlMetaData("ReferenceResourceTypeId", SqlDbType.SmallInt), new SqlMetaData("ReferenceResourceId", SqlDbType.VarChar, 64) };
-        private static readonly SqlMetaData[] TokenSearchParamTableValuedParameterColumns = { new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("System", SqlDbType.NVarChar, 256), new SqlMetaData("Code", SqlDbType.NVarChar, 256) };
-        private static readonly SqlMetaData[] TokenTextSearchParamTableValuedParameterColumns = { new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("Text", SqlDbType.NVarChar, 512) };
-        private static readonly SqlMetaData[] QuantitySearchParamTableValuedParameterColumns = { new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("System", SqlDbType.NVarChar, 256), new SqlMetaData("Code", SqlDbType.NVarChar, 256), new SqlMetaData("Quantity", SqlDbType.Decimal, 18, 6) };
-        private static readonly SqlMetaData[] NumberSearchParamTableValuedParameterColumns = { new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("Number", SqlDbType.Decimal, 18, 6) };
-        private static readonly SqlMetaData[] UriSearchParamTableValuedParameterColumns = { new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("Uri", SqlDbType.VarChar, 256) };
+        private static readonly SqlMetaData[] ResourceTableValuedParameterColumns = { new SqlMetaData("ResourceTypeId", SqlDbType.SmallInt), new SqlMetaData("ResourceBatchOffset", SqlDbType.Int), new SqlMetaData("ResourceId`", SqlDbType.VarChar, 64), new SqlMetaData("RawResource", SqlDbType.VarBinary, SqlMetaData.Max) };
+        private static readonly SqlMetaData[] StringSearchParamTableValuedParameterColumns = { new SqlMetaData("ResourceTypeId", SqlDbType.SmallInt), new SqlMetaData("ResourceBatchOffset", SqlDbType.Int), new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("Value", SqlDbType.NVarChar, 512) };
+        private static readonly SqlMetaData[] DateSearchParamTableValuedParameterColumns = { new SqlMetaData("ResourceTypeId", SqlDbType.SmallInt), new SqlMetaData("ResourceBatchOffset", SqlDbType.Int), new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("StartTime", SqlDbType.DateTime2), new SqlMetaData("EndTime", SqlDbType.DateTime2) };
+        private static readonly SqlMetaData[] ReferenceSearchParamTableValuedParameterColumns = { new SqlMetaData("ResourceTypeId", SqlDbType.SmallInt), new SqlMetaData("ResourceBatchOffset", SqlDbType.Int), new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("BaseUri", SqlDbType.VarChar, 512), new SqlMetaData("ReferenceResourceTypeId", SqlDbType.SmallInt), new SqlMetaData("ReferenceResourceId", SqlDbType.VarChar, 64) };
+        private static readonly SqlMetaData[] TokenSearchParamTableValuedParameterColumns = { new SqlMetaData("ResourceTypeId", SqlDbType.SmallInt), new SqlMetaData("ResourceBatchOffset", SqlDbType.Int), new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("System", SqlDbType.NVarChar, 256), new SqlMetaData("Code", SqlDbType.NVarChar, 256) };
+        private static readonly SqlMetaData[] TokenTextSearchParamTableValuedParameterColumns = { new SqlMetaData("ResourceTypeId", SqlDbType.SmallInt), new SqlMetaData("ResourceBatchOffset", SqlDbType.Int), new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("Text", SqlDbType.NVarChar, 512) };
+        private static readonly SqlMetaData[] QuantitySearchParamTableValuedParameterColumns = { new SqlMetaData("ResourceTypeId", SqlDbType.SmallInt), new SqlMetaData("ResourceBatchOffset", SqlDbType.Int), new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("System", SqlDbType.NVarChar, 256), new SqlMetaData("Code", SqlDbType.NVarChar, 256), new SqlMetaData("Quantity", SqlDbType.Decimal, 18, 6) };
+        private static readonly SqlMetaData[] NumberSearchParamTableValuedParameterColumns = { new SqlMetaData("ResourceTypeId", SqlDbType.SmallInt), new SqlMetaData("ResourceBatchOffset", SqlDbType.Int), new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("Number", SqlDbType.Decimal, 18, 6) };
+        private static readonly SqlMetaData[] UriSearchParamTableValuedParameterColumns = { new SqlMetaData("ResourceTypeId", SqlDbType.SmallInt), new SqlMetaData("ResourceBatchOffset", SqlDbType.Int), new SqlMetaData("SearchParamId", SqlDbType.SmallInt), new SqlMetaData("CompositeInstanceId", SqlDbType.TinyInt), new SqlMetaData("Uri", SqlDbType.VarChar, 256) };
 
         private readonly SqlServerDataStoreConfiguration _configuration;
         private readonly ISearchParameterDefinitionManager _searchParameterDefinitionManager;
@@ -57,23 +59,68 @@ namespace SandboxImporter
             InitializeStore().GetAwaiter().GetResult();
         }
 
-        public async Task<UpsertOutcome> UpsertAsync(ResourceWrapper resource, WeakETag weakETag, bool allowCreate, bool keepHistory, CancellationToken cancellationToken = default)
+        public Task<UpsertOutcome> UpsertAsync(ResourceWrapper resource, WeakETag weakETag, bool allowCreate, bool keepHistory, CancellationToken cancellationToken = default)
         {
-            using (var connection = new SqlConnection(_configuration.ConnectionString))
+            throw new NotImplementedException();
+        }
+
+        public async Task UpsertManyAsync(IEnumerable<ResourceWrapper> resources, bool allowCreate, bool keepHistory, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            ////var sw = System.Diagnostics.Stopwatch.StartNew();
+            while (true)
             {
-                await connection.OpenAsync(cancellationToken);
-
-                IReadOnlyCollection<SearchIndexEntry> searchIndexEntries = resource.SearchIndices;
-                ILookup<Type, (SearchParameter searchParameter, byte? componentIndex, byte? CompositeInstanceId, ISearchValue value)> lookupByType = GroupSearchIndexEntriesByType(searchIndexEntries);
-
-                using (var command = connection.CreateCommand())
+                try
                 {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.CommandText = "[dbo].UpsertResource";
+                    using (var connection = new SqlConnection(_configuration.ConnectionString))
+                    {
+                        await connection.OpenAsync(cancellationToken);
 
-                    short resourceTypeId = _resourceTypeToId[resource.ResourceTypeName];
-                    command.Parameters.AddWithValue("@resourceTypeId", resourceTypeId);
-                    command.Parameters.Add(new SqlParameter("@resourceId", SqlDbType.VarChar, 64) { Value = resource.ResourceId });
+                        var resourcesAndIndexes = resources.Where(r => r.ResourceTypeName != "Practitioner" && r.ResourceTypeName != "Organization").Select(resourceWrapper => (resourceWrapper, indexEntries: GroupSearchIndexEntriesByType(resourceWrapper.SearchIndices))).ToList();
+
+                        using (var command = connection.CreateCommand())
+                        {
+                            command.CommandTimeout = 360;
+                            command.CommandType = CommandType.StoredProcedure;
+                            command.CommandText = "[dbo].UpsertResource";
+
+                            AddResources(command, resourcesAndIndexes);
+
+                            AddStringSearchParams(resourcesAndIndexes, command);
+                            AddTokenSearchParams(resourcesAndIndexes, command);
+                            AddDateSearchParams(resourcesAndIndexes, command);
+
+                            AddReferenceSearchParams(resourcesAndIndexes, command);
+                            AddQuantitySearchParams(resourcesAndIndexes, command);
+                            AddNumberSearchParams(resourcesAndIndexes, command);
+                            AddUriSearchParams(resourcesAndIndexes, command);
+
+                            await command.ExecuteScalarAsync(cancellationToken);
+
+                            ////Console.WriteLine(sw.Elapsed + " for " + resourcesAndIndexes.Count + " resources. " + (sw.Elapsed.TotalMilliseconds / resourcesAndIndexes.Count) + " ms / resource");
+                            return;
+                        }
+                    }
+                }
+                catch (SqlException e) when (e.Number == 1205)
+                {
+                    Console.WriteLine("Deadlock. Will retry.");
+                }
+            }
+        }
+
+        private void AddResources(SqlCommand command, List<(ResourceWrapper resourceWrapper, ILookup<Type, SearchParameterEntry> indexEntries)> resourcesAndIndexes)
+        {
+            IEnumerable<SqlDataRecord> Rows()
+            {
+                int offset = 0;
+                foreach (var resourceAndIndex in resourcesAndIndexes)
+                {
+                    ResourceWrapper resource = resourceAndIndex.resourceWrapper;
+                    var r = new SqlDataRecord(ResourceTableValuedParameterColumns);
+
+                    r.SetInt16(0, _resourceTypeToId[resource.ResourceTypeName]);
+                    r.SetInt32(1, offset++);
+                    r.SetString(2, resource.ResourceId);
 
                     byte[] bytes = ArrayPool<byte>.Shared.Rent(resource.RawResource.Data.Length * 4);
                     try
@@ -87,27 +134,22 @@ namespace SandboxImporter
 
                             ms.Seek(0, 0);
 
-                            command.Parameters.AddWithValue("@rawResource", ms.GetBuffer()).Size = (int)ms.Length;
+                            byte[] buffer = ms.GetBuffer();
+                            r.SetBytes(3, 0, buffer, 0, (int)ms.Length);
+
+                            yield return r;
                         }
                     }
                     finally
                     {
                         ArrayPool<byte>.Shared.Return(bytes);
                     }
-
-                    AddStringSearchParams(lookupByType, command);
-                    AddTokenSearchParams(lookupByType, command);
-                    AddDateSearchParams(lookupByType, command);
-
-                    AddReferenceSearchParams(lookupByType, command);
-                    AddQuantitySearchParams(lookupByType, command);
-                    AddNumberSearchParams(lookupByType, command);
-                    AddUriSearchParams(lookupByType, command);
-
-                    await command.ExecuteScalarAsync(cancellationToken);
-                    return new UpsertOutcome(resource, SaveOutcomeType.Created);
                 }
             }
+
+            var param = command.Parameters.AddWithValue("@tvpResource", NullIfEmpty(Rows()));
+            param.SqlDbType = SqlDbType.Structured;
+            param.TypeName = "dbo.ResourceTableType";
         }
 
         public Task<ResourceWrapper> GetAsync(ResourceKey key, CancellationToken cancellationToken = default(CancellationToken))
@@ -171,9 +213,9 @@ namespace SandboxImporter
             }
         }
 
-        private static ILookup<Type, (SearchParameter searchParameter, byte? componentIndex, byte? CompositeInstanceId, ISearchValue value)> GroupSearchIndexEntriesByType(IReadOnlyCollection<SearchIndexEntry> searchIndexEntries)
+        private static ILookup<Type, SearchParameterEntry> GroupSearchIndexEntriesByType(IReadOnlyCollection<SearchIndexEntry> searchIndexEntries)
         {
-            IEnumerable<(SearchParameter searchParameter, byte? componentIndex, byte? CompositeInstanceId, ISearchValue value)> Flatten()
+            IEnumerable<SearchParameterEntry> Flatten()
             {
                 byte compositeInstanceId = 0;
                 foreach (var searchIndexEntry in searchIndexEntries)
@@ -184,7 +226,7 @@ namespace SandboxImporter
                         {
                             foreach (ISearchValue componentValue in composite.Components[index])
                             {
-                                yield return (searchIndexEntry.SearchParameter, index, CompositeInstanceId: compositeInstanceId, componentValue);
+                                yield return new SearchParameterEntry(searchIndexEntry.SearchParameter, index, compositeInstanceId, componentValue);
                             }
                         }
 
@@ -192,228 +234,281 @@ namespace SandboxImporter
                     }
                     else
                     {
-                        yield return (searchIndexEntry.SearchParameter, null, null, searchIndexEntry.Value);
+                        yield return new SearchParameterEntry(searchIndexEntry.SearchParameter, null, null, searchIndexEntry.Value);
                     }
                 }
             }
 
-            return Flatten().ToLookup(e => e.value.GetType());
+            return Flatten().ToLookup(e => e.Value.GetType());
         }
 
-        private void AddTokenSearchParams(ILookup<Type, (SearchParameter searchParameter, byte? componentIndex, byte? CompositeInstanceId, ISearchValue value)> lookupByType, SqlCommand command)
+        private void AddTokenSearchParams(List<(ResourceWrapper resourceWrapper, ILookup<Type, SearchParameterEntry> indexEntries)> resourcesAndIndexes, SqlCommand command)
         {
-            var tokenEntries = lookupByType[typeof(TokenSearchValue)]
-                .Where(e => !string.Equals(e.searchParameter.Name, SearchParameterNames.ResourceType, StringComparison.Ordinal) &&
-                            !string.Equals(e.searchParameter.Name, SearchParameterNames.Id, StringComparison.Ordinal)).ToList();
+            IEnumerable<SqlDataRecord> rows = resourcesAndIndexes.SelectMany((tuple, offset) =>
+            {
+                var stringEntries = tuple.indexEntries[typeof(TokenSearchValue)]
+                    .Where(e => !string.Equals(e.SearchParameter.Name, SearchParameterNames.ResourceType, StringComparison.Ordinal) &&
+                                !string.Equals(e.SearchParameter.Name, SearchParameterNames.Id, StringComparison.Ordinal));
 
-            SqlDataRecord[] tokenTextRecords = tokenEntries
-                .Where(e => e.componentIndex == null)
-                .Select(t => (t.searchParameter, ((TokenSearchValue)t.value).Text))
-                .Where(t => !string.IsNullOrEmpty(t.Text))
-                .Distinct()
-                .Select(e =>
-                {
-                    var r = new SqlDataRecord(TokenTextSearchParamTableValuedParameterColumns);
-                    r.SetInt16(0, _searchParamUrlToId[(e.searchParameter.Url, null)]);
-                    r.SetString(1, e.Text);
-
-                    return r;
-                })
-                .ToArray();
-
-            SqlParameter param = command.Parameters.AddWithValue("@tvpTokenTextSearchParam", tokenTextRecords.Length == 0 ? null : tokenTextRecords);
-            param.SqlDbType = SqlDbType.Structured;
-            param.TypeName = "dbo.TokenTextSearchParamTableType";
-
-            SqlDataRecord[] tokenRecords = tokenEntries
-                .Where(e =>
-                {
-                    var tokenSearchValue = (TokenSearchValue)e.value;
-                    return !string.IsNullOrEmpty(tokenSearchValue.System) || !string.IsNullOrEmpty(tokenSearchValue.Code);
-                })
-                .Select(e =>
+                var resourceTypeId = _resourceTypeToId[tuple.resourceWrapper.ResourceTypeName];
+                return stringEntries
+                    .Where(e =>
+                    {
+                        var tokenSearchValue = (TokenSearchValue)e.Value;
+                        return !string.IsNullOrEmpty(tokenSearchValue.System) || !string.IsNullOrEmpty(tokenSearchValue.Code);
+                    })
+                    .Select(e =>
                 {
                     var r = new SqlDataRecord(TokenSearchParamTableValuedParameterColumns);
-                    r.SetInt16(0, _searchParamUrlToId[(e.searchParameter.Url, e.componentIndex)]);
+                    r.SetInt16(0, resourceTypeId);
+                    r.SetInt32(1, offset);
+
+                    r.SetInt16(2, _searchParamUrlToId[(e.SearchParameter.Url, e.ComponentIndex)]);
                     if (e.CompositeInstanceId != null)
                     {
-                        r.SetByte(1, e.CompositeInstanceId.Value);
+                        r.SetByte(3, e.CompositeInstanceId.Value);
                     }
 
-                    var tokenSearchValue = (TokenSearchValue)e.value;
+                    var tokenSearchValue = (TokenSearchValue)e.Value;
 
                     if (!string.IsNullOrWhiteSpace(tokenSearchValue.System))
                     {
-                        r.SetString(2, tokenSearchValue.System);
+                        r.SetString(4, tokenSearchValue.System);
                     }
 
                     if (!string.IsNullOrWhiteSpace(tokenSearchValue.Code))
                     {
-                        r.SetString(3, tokenSearchValue.Code);
+                        r.SetString(5, tokenSearchValue.Code);
                     }
 
                     return r;
-                })
-                .ToArray();
+                });
+            });
 
-            param = command.Parameters.AddWithValue("@tvpTokenSearchParam", tokenRecords.Length == 0 ? null : tokenRecords);
+            SqlParameter param = command.Parameters.AddWithValue("@tvpTokenSearchParam", NullIfEmpty(rows));
             param.SqlDbType = SqlDbType.Structured;
             param.TypeName = "dbo.TokenSearchParamTableType";
+
+            rows = resourcesAndIndexes.SelectMany((tuple, offset) =>
+            {
+                var stringEntries = tuple.indexEntries[typeof(TokenSearchValue)]
+                    .Where(e => !string.Equals(e.SearchParameter.Name, SearchParameterNames.ResourceType, StringComparison.Ordinal) &&
+                                !string.Equals(e.SearchParameter.Name, SearchParameterNames.Id, StringComparison.Ordinal));
+
+                var resourceTypeId = _resourceTypeToId[tuple.resourceWrapper.ResourceTypeName];
+                return stringEntries
+                    .Where(e => e.ComponentIndex == null)
+                    .Select(t => (searchParameter: t.SearchParameter, ((TokenSearchValue)t.Value).Text))
+                    .Where(t => !string.IsNullOrEmpty(t.Text))
+                    .Distinct()
+                    .Select(e =>
+                    {
+                        var r = new SqlDataRecord(TokenTextSearchParamTableValuedParameterColumns);
+                        r.SetInt16(0, resourceTypeId);
+                        r.SetInt32(1, offset);
+
+                        r.SetInt16(2, _searchParamUrlToId[(e.searchParameter.Url, null)]);
+                        r.SetString(3, e.Text);
+
+                        return r;
+                    });
+            });
+
+            param = command.Parameters.AddWithValue("@tvpTokenTextSearchParam", NullIfEmpty(rows));
+            param.SqlDbType = SqlDbType.Structured;
+            param.TypeName = "dbo.TokenTextSearchParamTableType";
         }
 
-        private void AddStringSearchParams(ILookup<Type, (SearchParameter searchParameter, byte? componentIndex, byte? CompositeInstanceId, ISearchValue value)> lookupByType, SqlCommand command)
+        private void AddStringSearchParams(List<(ResourceWrapper resourceWrapper, ILookup<Type, SearchParameterEntry> indexEntries)> resourcesAndIndexes, SqlCommand command)
         {
-            var stringEntries = lookupByType[typeof(StringSearchValue)].ToList();
-            SqlDataRecord[] stringRecords = stringEntries.Select(e =>
+            IEnumerable<SqlDataRecord> rows = resourcesAndIndexes.SelectMany((tuple, offset) =>
             {
-                var r = new SqlDataRecord(StringSearchParamTableValuedParameterColumns);
-                r.SetInt16(0, _searchParamUrlToId[(e.searchParameter.Url, e.componentIndex)]);
-                if (e.CompositeInstanceId != null)
+                var stringEntries = tuple.indexEntries[typeof(StringSearchValue)];
+                var resourceTypeId = _resourceTypeToId[tuple.resourceWrapper.ResourceTypeName];
+                return stringEntries.Select(e =>
                 {
-                    r.SetByte(1, e.CompositeInstanceId.Value);
-                }
+                    var r = new SqlDataRecord(StringSearchParamTableValuedParameterColumns);
+                    r.SetInt16(0, resourceTypeId);
+                    r.SetInt32(1, offset);
 
-                r.SetString(2, ((StringSearchValue)e.value).String);
-                return r;
-            }).ToArray();
+                    r.SetInt16(2, _searchParamUrlToId[(e.SearchParameter.Url, e.ComponentIndex)]);
+                    if (e.CompositeInstanceId != null)
+                    {
+                        r.SetByte(3, e.CompositeInstanceId.Value);
+                    }
 
-            SqlParameter param = command.Parameters.AddWithValue("@tvpStringSearchParam", stringRecords.Length == 0 ? null : stringRecords);
+                    r.SetString(4, ((StringSearchValue)e.Value).String);
+                    return r;
+                });
+            });
+
+            SqlParameter param = command.Parameters.AddWithValue("@tvpStringSearchParam", NullIfEmpty(rows));
             param.SqlDbType = SqlDbType.Structured;
             param.TypeName = "dbo.StringSearchParamTableType";
         }
 
-        private void AddDateSearchParams(ILookup<Type, (SearchParameter searchParameter, byte? componentIndex, byte? CompositeInstanceId, ISearchValue value)> lookupByType, SqlCommand command)
+        private void AddDateSearchParams(List<(ResourceWrapper resourceWrapper, ILookup<Type, SearchParameterEntry> indexEntries)> resourcesAndIndexes, SqlCommand command)
         {
-            var entries = lookupByType[typeof(DateTimeSearchValue)].ToList();
-
-            SqlDataRecord[] records = entries.Select(e =>
+            IEnumerable<SqlDataRecord> rows = resourcesAndIndexes.SelectMany((tuple, offset) =>
             {
-                var r = new SqlDataRecord(DateSearchParamTableValuedParameterColumns);
-                r.SetInt16(0, _searchParamUrlToId[(e.searchParameter.Url, e.componentIndex)]);
-                if (e.CompositeInstanceId != null)
+                var stringEntries = tuple.indexEntries[typeof(DateTimeSearchValue)];
+                var resourceTypeId = _resourceTypeToId[tuple.resourceWrapper.ResourceTypeName];
+                return stringEntries.Select(e =>
                 {
-                    r.SetByte(1, e.CompositeInstanceId.Value);
-                }
+                    var r = new SqlDataRecord(DateSearchParamTableValuedParameterColumns);
+                    r.SetInt16(0, resourceTypeId);
+                    r.SetInt32(1, offset);
 
-                r.SetDateTime(2, ((DateTimeSearchValue)e.value).Start.ToUniversalTime().DateTime);
-                r.SetDateTime(3, ((DateTimeSearchValue)e.value).End.ToUniversalTime().DateTime);
-                return r;
-            }).ToArray();
+                    r.SetInt16(2, _searchParamUrlToId[(e.SearchParameter.Url, e.ComponentIndex)]);
+                    if (e.CompositeInstanceId != null)
+                    {
+                        r.SetByte(3, e.CompositeInstanceId.Value);
+                    }
 
-            SqlParameter param = command.Parameters.AddWithValue("@tvpDateSearchParam", records.Length == 0 ? null : records);
+                    r.SetDateTime(4, ((DateTimeSearchValue)e.Value).Start.ToUniversalTime().DateTime);
+                    r.SetDateTime(5, ((DateTimeSearchValue)e.Value).End.ToUniversalTime().DateTime);
+                    return r;
+                });
+            });
+
+            SqlParameter param = command.Parameters.AddWithValue("@tvpDateSearchParam", NullIfEmpty(rows));
             param.SqlDbType = SqlDbType.Structured;
             param.TypeName = "dbo.DateSearchParamTableType";
         }
 
-        private void AddReferenceSearchParams(ILookup<Type, (SearchParameter searchParameter, byte? componentIndex, byte? CompositeInstanceId, ISearchValue value)> lookupByType, SqlCommand command)
+        private void AddReferenceSearchParams(List<(ResourceWrapper resourceWrapper, ILookup<Type, SearchParameterEntry> indexEntries)> resourcesAndIndexes, SqlCommand command)
         {
-            var entries = lookupByType[typeof(ReferenceSearchValue)].ToList();
-
-            SqlDataRecord[] referenceParamRecords = entries.Select(e =>
+            IEnumerable<SqlDataRecord> rows = resourcesAndIndexes.SelectMany((tuple, offset) =>
             {
-                var referenceSearchValue = (ReferenceSearchValue)e.value;
-
-                var r = new SqlDataRecord(ReferenceSearchParamTableValuedParameterColumns);
-                r.SetInt16(0, _searchParamUrlToId[(e.searchParameter.Url, e.componentIndex)]);
-                if (e.CompositeInstanceId != null)
+                var stringEntries = tuple.indexEntries[typeof(ReferenceSearchValue)];
+                var resourceTypeId = _resourceTypeToId[tuple.resourceWrapper.ResourceTypeName];
+                return stringEntries.Select(e =>
                 {
-                    r.SetByte(1, e.CompositeInstanceId.Value);
-                }
+                    var referenceSearchValue = (ReferenceSearchValue)e.Value;
 
-                if (referenceSearchValue.BaseUri != null)
-                {
-                    r.SetString(2, referenceSearchValue.BaseUri.ToString());
-                }
+                    var r = new SqlDataRecord(ReferenceSearchParamTableValuedParameterColumns);
+                    r.SetInt16(0, resourceTypeId);
+                    r.SetInt32(1, offset);
 
-                if (referenceSearchValue.ResourceType != null)
-                {
-                    r.SetInt16(3, _resourceTypeToId[referenceSearchValue.ResourceType.ToString()]);
-                }
+                    r.SetInt16(2, _searchParamUrlToId[(e.SearchParameter.Url, e.ComponentIndex)]);
+                    if (e.CompositeInstanceId != null)
+                    {
+                        r.SetByte(3, e.CompositeInstanceId.Value);
+                    }
 
-                r.SetString(4, referenceSearchValue.ResourceId);
-                return r;
-            }).ToArray();
+                    if (referenceSearchValue.BaseUri != null)
+                    {
+                        r.SetString(4, referenceSearchValue.BaseUri.ToString());
+                    }
 
-            SqlParameter referenceParam = command.Parameters.AddWithValue("@tvpReferenceSearchParam", referenceParamRecords.Length == 0 ? null : referenceParamRecords);
+                    if (referenceSearchValue.ResourceType != null)
+                    {
+                        r.SetInt16(5, _resourceTypeToId[referenceSearchValue.ResourceType.ToString()]);
+                    }
+
+                    r.SetString(6, referenceSearchValue.ResourceId);
+                    return r;
+                });
+            });
+
+            SqlParameter referenceParam = command.Parameters.AddWithValue("@tvpReferenceSearchParam", NullIfEmpty(rows));
             referenceParam.SqlDbType = SqlDbType.Structured;
             referenceParam.TypeName = "dbo.ReferenceSearchParamTableType";
         }
 
-        private void AddQuantitySearchParams(ILookup<Type, (SearchParameter searchParameter, byte? componentIndex, byte? CompositeInstanceId, ISearchValue value)> lookupByType, SqlCommand command)
+        private void AddQuantitySearchParams(List<(ResourceWrapper resourceWrapper, ILookup<Type, SearchParameterEntry> indexEntries)> resourcesAndIndexes, SqlCommand command)
         {
-            var entries = lookupByType[typeof(QuantitySearchValue)].ToList();
-
-            SqlDataRecord[] records = entries.Select(e =>
+            IEnumerable<SqlDataRecord> rows = resourcesAndIndexes.SelectMany((tuple, offset) =>
             {
-                var value = (QuantitySearchValue)e.value;
-                var r = new SqlDataRecord(QuantitySearchParamTableValuedParameterColumns);
-                r.SetInt16(0, _searchParamUrlToId[(e.searchParameter.Url, e.componentIndex)]);
-                if (e.CompositeInstanceId != null)
+                var stringEntries = tuple.indexEntries[typeof(QuantitySearchValue)];
+                var resourceTypeId = _resourceTypeToId[tuple.resourceWrapper.ResourceTypeName];
+                return stringEntries.Select(e =>
                 {
-                    r.SetByte(1, e.CompositeInstanceId.Value);
-                }
+                    var value = (QuantitySearchValue)e.Value;
+                    var r = new SqlDataRecord(QuantitySearchParamTableValuedParameterColumns);
+                    r.SetInt16(0, resourceTypeId);
+                    r.SetInt32(1, offset);
 
-                if (!string.IsNullOrWhiteSpace(value.System))
-                {
-                    r.SetString(2, value.System);
-                }
+                    r.SetInt16(2, _searchParamUrlToId[(e.SearchParameter.Url, e.ComponentIndex)]);
+                    if (e.CompositeInstanceId != null)
+                    {
+                        r.SetByte(3, e.CompositeInstanceId.Value);
+                    }
 
-                if (!string.IsNullOrWhiteSpace(value.Code))
-                {
-                    r.SetString(3, value.Code);
-                }
+                    if (!string.IsNullOrWhiteSpace(value.System))
+                    {
+                        r.SetString(4, value.System);
+                    }
 
-                r.SetDecimal(4, value.Quantity);
-                return r;
-            }).ToArray();
+                    if (!string.IsNullOrWhiteSpace(value.Code))
+                    {
+                        r.SetString(5, value.Code);
+                    }
 
-            SqlParameter param = command.Parameters.AddWithValue("@tvpQuantitySearchParam", records.Length == 0 ? null : records);
+                    r.SetDecimal(6, value.Quantity);
+                    return r;
+                });
+            });
+
+            SqlParameter param = command.Parameters.AddWithValue("@tvpQuantitySearchParam", NullIfEmpty(rows));
             param.SqlDbType = SqlDbType.Structured;
             param.TypeName = "dbo.QuantitySearchParamTableType";
         }
 
-        private void AddNumberSearchParams(ILookup<Type, (SearchParameter searchParameter, byte? componentIndex, byte? CompositeInstanceId, ISearchValue value)> lookupByType, SqlCommand command)
+        private void AddNumberSearchParams(List<(ResourceWrapper resourceWrapper, ILookup<Type, SearchParameterEntry> indexEntries)> resourcesAndIndexes, SqlCommand command)
         {
-            var entries = lookupByType[typeof(NumberSearchValue)].ToList();
-
-            SqlDataRecord[] records = entries.Select(e =>
+            IEnumerable<SqlDataRecord> rows = resourcesAndIndexes.SelectMany((tuple, offset) =>
             {
-                var value = (NumberSearchValue)e.value;
-                var r = new SqlDataRecord(NumberSearchParamTableValuedParameterColumns);
-                r.SetInt16(0, _searchParamUrlToId[(e.searchParameter.Url, e.componentIndex)]);
-                if (e.CompositeInstanceId != null)
+                var stringEntries = tuple.indexEntries[typeof(NumberSearchValue)];
+                var resourceTypeId = _resourceTypeToId[tuple.resourceWrapper.ResourceTypeName];
+                return stringEntries.Select(e =>
                 {
-                    r.SetByte(1, e.CompositeInstanceId.Value);
-                }
+                    var value = (NumberSearchValue)e.Value;
+                    var r = new SqlDataRecord(NumberSearchParamTableValuedParameterColumns);
+                    r.SetInt16(0, resourceTypeId);
+                    r.SetInt32(1, offset);
 
-                r.SetDecimal(2, value.Number);
-                return r;
-            }).ToArray();
+                    r.SetInt16(2, _searchParamUrlToId[(e.SearchParameter.Url, e.ComponentIndex)]);
+                    if (e.CompositeInstanceId != null)
+                    {
+                        r.SetByte(3, e.CompositeInstanceId.Value);
+                    }
 
-            SqlParameter param = command.Parameters.AddWithValue("@tvpNumberSearchParam", records.Length == 0 ? null : records);
+                    r.SetDecimal(4, value.Number);
+                    return r;
+                });
+            });
+
+            SqlParameter param = command.Parameters.AddWithValue("@tvpNumberSearchParam", NullIfEmpty(rows));
             param.SqlDbType = SqlDbType.Structured;
             param.TypeName = "dbo.NumberSearchParamTableType";
         }
 
-        private void AddUriSearchParams(ILookup<Type, (SearchParameter searchParameter, byte? componentIndex, byte? CompositeInstanceId, ISearchValue value)> lookupByType, SqlCommand command)
+        private void AddUriSearchParams(List<(ResourceWrapper resourceWrapper, ILookup<Type, SearchParameterEntry> indexEntries)> resourcesAndIndexes, SqlCommand command)
         {
-            var entries = lookupByType[typeof(UriSearchValue)].ToList();
-
-            SqlDataRecord[] records = entries.Select(e =>
+            IEnumerable<SqlDataRecord> rows = resourcesAndIndexes.SelectMany((tuple, offset) =>
             {
-                var value = (UriSearchValue)e.value;
-                var r = new SqlDataRecord(UriSearchParamTableValuedParameterColumns);
-                r.SetInt16(0, _searchParamUrlToId[(e.searchParameter.Url, e.componentIndex)]);
-                if (e.CompositeInstanceId != null)
+                var stringEntries = tuple.indexEntries[typeof(UriSearchValue)];
+                var resourceTypeId = _resourceTypeToId[tuple.resourceWrapper.ResourceTypeName];
+                return stringEntries.Select(e =>
                 {
-                    r.SetByte(1, e.CompositeInstanceId.Value);
-                }
+                    var value = (UriSearchValue)e.Value;
+                    var r = new SqlDataRecord(UriSearchParamTableValuedParameterColumns);
+                    r.SetInt16(0, resourceTypeId);
+                    r.SetInt32(1, offset);
 
-                r.SetString(2, value.Uri);
-                return r;
-            }).ToArray();
+                    r.SetInt16(2, _searchParamUrlToId[(e.SearchParameter.Url, e.ComponentIndex)]);
+                    if (e.CompositeInstanceId != null)
+                    {
+                        r.SetByte(3, e.CompositeInstanceId.Value);
+                    }
 
-            SqlParameter param = command.Parameters.AddWithValue("@tvpUriSearchParam", records.Length == 0 ? null : records);
+                    r.SetString(4, value.Uri);
+                    return r;
+                });
+            });
+
+            SqlParameter param = command.Parameters.AddWithValue("@tvpUriSearchParam", NullIfEmpty(rows));
             param.SqlDbType = SqlDbType.Structured;
             param.TypeName = "dbo.UriSearchParamTableType";
         }
@@ -451,6 +546,81 @@ namespace SandboxImporter
                 {
                     yield return new { p.Name, Uri = p.Url, ComponentIndex = (int?)null };
                 }
+            }
+        }
+
+        private static IEnumerable<T> NullIfEmpty<T>(IEnumerable<T> seq)
+        {
+            IEnumerator<T> enumerator = seq.GetEnumerator();
+            if (!enumerator.MoveNext())
+            {
+                return null;
+            }
+
+            return new WrappedEnumerable<T>(seq, enumerator);
+        }
+
+        private struct SearchParameterEntry
+        {
+            public SearchParameterEntry(SearchParameter searchParameter, byte? componentIndex, byte? compositeInstanceId, ISearchValue value)
+            {
+                SearchParameter = searchParameter;
+                ComponentIndex = componentIndex;
+                CompositeInstanceId = compositeInstanceId;
+                Value = value;
+            }
+
+            public SearchParameter SearchParameter { get; }
+
+            public byte? ComponentIndex { get; }
+
+            public byte? CompositeInstanceId { get; }
+
+            public ISearchValue Value { get; }
+        }
+
+        private class WrappedEnumerable<T> : IEnumerable<T>
+        {
+            private readonly IEnumerable<T> _original;
+            private IEnumerator<T> _startedEnumerator;
+
+            public WrappedEnumerable(IEnumerable<T> original, IEnumerator<T> startedEnumerator)
+            {
+                _original = original;
+                _startedEnumerator = startedEnumerator;
+            }
+
+            public IEnumerator<T> GetEnumerator()
+            {
+                IEnumerable<T> Inner(IEnumerator<T> e)
+                {
+                    try
+                    {
+                        do
+                        {
+                            yield return e.Current;
+                        }
+                        while (e.MoveNext());
+                    }
+                    finally
+                    {
+                        e.Dispose();
+                    }
+                }
+
+                if (_startedEnumerator != null)
+                {
+                    IEnumerator<T> e = _startedEnumerator;
+                    _startedEnumerator = null;
+                    return Inner(e).GetEnumerator();
+                }
+
+                return _original.GetEnumerator();
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return ((IEnumerable)this).GetEnumerator();
             }
         }
     }
