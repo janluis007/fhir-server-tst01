@@ -3,13 +3,20 @@ DROP PROCEDURE IF EXISTS dbo.UpsertResource
 
 declare @sql varchar(max)=''
 
-select @sql =@sql + 'drop table ' + name  + '; ' 
+select @sql = @sql + 'DROP PROCEDURE ' + name  + '; ' 
 from sys.objects where type = 'U'
 
-select @sql =@sql + 'drop type ' + name  + '; ' 
+
+select @sql = @sql + 'drop table ' + name  + '; ' 
+from sys.tables
+
+select @sql = @sql + 'drop table ' + name  + '; ' 
+from sys.objects where type = 'U'
+
+select @sql = @sql + 'drop type ' + name  + '; ' 
 from sys.table_types
 
-select @sql =@sql + 'drop sequence ' + name  + '; ' 
+select @sql = @sql + 'drop sequence ' + name  + '; ' 
 from sys.sequences
 
 
@@ -148,7 +155,6 @@ GO
 
 CREATE CLUSTERED INDEX IXC_DateSearchParam ON [dbo].[DateSearchParam]
 (
-	[ResourceTypeId],
 	[ResourceSurrogateId],
 	SearchParamId,
 	CompositeInstanceId,
@@ -171,7 +177,6 @@ CREATE TABLE [dbo].[NumberSearchParam](
 GO
 CREATE CLUSTERED INDEX IXC_NumberSearchParam ON [dbo].[NumberSearchParam]
 (
-	[ResourceTypeId],
 	[ResourceSurrogateId],
 	SearchParamId,
 	CompositeInstanceId,
@@ -196,7 +201,6 @@ WITH (DATA_COMPRESSION = PAGE)
 
 CREATE CLUSTERED INDEX IXC_QuantitySearchParam ON [dbo].[QuantitySearchParam]
 (
-	[ResourceTypeId],
 	[ResourceSurrogateId],
 	SearchParamId,
 	CompositeInstanceId,
@@ -236,7 +240,6 @@ GO
 
 CREATE CLUSTERED INDEX IXC_ReferenceSearchParam ON [dbo].[ReferenceSearchParam]
 (
-	[ResourceTypeId],
 	SearchParamId,
 	BaseUri,
 	ReferenceResourceTypeId,
@@ -291,7 +294,6 @@ GO
 
 CREATE CLUSTERED INDEX IXC_StringSearchParam ON [dbo].[StringSearchParam]
 (
-	[ResourceTypeId],
 	[ResourceSurrogateId],
 	SearchParamId,
 	CompositeInstanceId,
@@ -319,7 +321,6 @@ GO
 
 CREATE CLUSTERED INDEX IXC_TokenSearchParam ON [dbo].[TokenSearchParam]
 (
-	[ResourceTypeId],
 	[ResourceSurrogateId],
 	SearchParamId,
 	Code,
@@ -346,7 +347,6 @@ GO
 
 CREATE CLUSTERED INDEX IXC_TokenTextSearchParam ON [dbo].[TokenTextSearchParam]
 (
-	[ResourceTypeId],
 	[ResourceSurrogateId],
 	[SearchParamId],
 	[Text]
@@ -373,7 +373,6 @@ WITH (DATA_COMPRESSION = PAGE)
 
 CREATE CLUSTERED INDEX IXC_UriSearchParam ON [dbo].[UriSearchParam]
 (
-	[ResourceTypeId],
 	[ResourceSurrogateId],
 	SearchParamId,
 	CompositeInstanceId,
