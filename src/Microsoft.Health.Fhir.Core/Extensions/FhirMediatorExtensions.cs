@@ -10,11 +10,13 @@ using System.Threading.Tasks;
 using EnsureThat;
 using Hl7.Fhir.Model;
 using MediatR;
+using Microsoft.Health.Fhir.Core.Features.Operations.Import.Models;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Messages.Create;
 using Microsoft.Health.Fhir.Core.Messages.Delete;
 using Microsoft.Health.Fhir.Core.Messages.Export;
 using Microsoft.Health.Fhir.Core.Messages.Get;
+using Microsoft.Health.Fhir.Core.Messages.Import;
 using Microsoft.Health.Fhir.Core.Messages.Search;
 using Microsoft.Health.Fhir.Core.Messages.Upsert;
 using Microsoft.Health.Fhir.Core.Models;
@@ -142,6 +144,31 @@ namespace Microsoft.Health.Fhir.Core.Extensions
             var request = new GetExportRequest(requestUri, jobId);
 
             GetExportResponse response = await mediator.Send(request, cancellationToken);
+            return response;
+        }
+
+        public static async Task<CreateImportResponse> ImportAsync(this IMediator mediator, Uri requestUri, ImportRequest importRequest, CancellationToken cancellationToken = default)
+        {
+            EnsureArg.IsNotNull(mediator, nameof(mediator));
+            EnsureArg.IsNotNull(requestUri, nameof(requestUri));
+            EnsureArg.IsNotNull(importRequest, nameof(importRequest));
+
+            var request = new CreateImportRequest(requestUri, importRequest);
+
+            var response = await mediator.Send(request, cancellationToken);
+
+            return response;
+        }
+
+        public static async Task<GetImportResponse> GetImportStatusAsync(this IMediator mediator, Uri requestUri, string jobId, CancellationToken cancellationToken = default)
+        {
+            EnsureArg.IsNotNull(mediator, nameof(mediator));
+            EnsureArg.IsNotNull(requestUri, nameof(requestUri));
+            EnsureArg.IsNotNullOrWhiteSpace(jobId, nameof(jobId));
+
+            var request = new GetImportRequest(requestUri, jobId);
+
+            GetImportResponse response = await mediator.Send(request, cancellationToken);
             return response;
         }
     }

@@ -3,12 +3,10 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-namespace Microsoft.Health.Fhir.Core.Configs
+namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage.Operations.Import
 {
-    public class OperationsConfiguration
+    public static class CosmosDbImportConstants
     {
-        public ExportJobConfiguration Export { get; set; } = new ExportJobConfiguration();
-
-        public ImportJobConfiguration Import { get; set; } = new ImportJobConfiguration();
+        public const string ImportJobPartitionKey = "ImportJob";
     }
 }
