@@ -13,17 +13,24 @@ using Microsoft.Health.Fhir.Core.Exceptions;
 using Microsoft.Health.Fhir.Core.Features.Conformance;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Messages.Upsert;
+using Microsoft.Health.Fhir.Core.Notifications;
 
 namespace Microsoft.Health.Fhir.Core.Features.Resources.Upsert
 {
     public class UpsertResourceHandler : BaseResourceHandler, IRequestHandler<UpsertResourceRequest, UpsertResourceResponse>
     {
+        private readonly IMediator _mediator;
+
         public UpsertResourceHandler(
             IFhirDataStore fhirDataStore,
             Lazy<IConformanceProvider> conformanceProvider,
-            IResourceWrapperFactory resourceWrapperFactory)
+            IResourceWrapperFactory resourceWrapperFactory,
+            IMediator mediator)
             : base(fhirDataStore, conformanceProvider, resourceWrapperFactory)
         {
+            EnsureArg.IsNotNull(mediator, nameof(mediator));
+
+            _mediator = mediator;
         }
 
         public async Task<UpsertResourceResponse> Handle(UpsertResourceRequest message, CancellationToken cancellationToken)
@@ -43,6 +50,16 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources.Upsert
             ResourceWrapper resourceWrapper = CreateResourceWrapper(resource, deleted: false);
             UpsertOutcome result = await FhirDataStore.UpsertAsync(resourceWrapper, message.WeakETag, allowCreate, keepHistory, cancellationToken);
             resource.VersionId = result.Wrapper.Version;
+
+            switch (resource)
+            {
+                case Subscription s:
+                    await _mediator.Publish(new UpsertSubscriptionNotification(s), cancellationToken);
+                    break;
+                default:
+                    await _mediator.Publish(new UpsertResourceNotification(resource), cancellationToken);
+                    break;
+            }
 
             return new UpsertResourceResponse(new SaveOutcome(resource, result.OutcomeType));
         }
