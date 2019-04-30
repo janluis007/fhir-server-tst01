@@ -24,6 +24,9 @@ namespace Microsoft.Health.Fhir.Web
         {
             services.AddDevelopmentIdentityProvider(Configuration);
 
+            services.AddRestSubscription();
+            services.AddSignalRSubscription();
+
             services.AddFhirServer(Configuration).AddCosmosDb(Configuration);
 
             AddApplicationInsightsTelemetry(services);

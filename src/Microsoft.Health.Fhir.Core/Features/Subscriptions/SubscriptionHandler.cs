@@ -16,8 +16,10 @@ namespace Microsoft.Health.Fhir.Core.Features.Subscriptions
         private readonly IMediator _mediator;
         private readonly ILogger<SubscriptionHandler> _logger;
         private readonly SubscriptionStore _subscriptionStore;
+        private readonly IRestSubscriptionNotifier _restSubscriptionNotifier;
+        private readonly IWebsocketSubscriptionNotifier _websocketSubscriptionNotifier;
 
-        public SubscriptionHandler(IMediator mediator, SubscriptionStore subscriptionStore, ILogger<SubscriptionHandler> logger)
+        public SubscriptionHandler(IMediator mediator, SubscriptionStore subscriptionStore, IRestSubscriptionNotifier restSubscriptionNotifier, IWebsocketSubscriptionNotifier websocketSubscriptionNotifier, ILogger<SubscriptionHandler> logger)
         {
             EnsureArg.IsNotNull(mediator, nameof(mediator));
             EnsureArg.IsNotNull(subscriptionStore, nameof(subscriptionStore));
@@ -25,6 +27,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Subscriptions
 
             _mediator = mediator;
             _subscriptionStore = subscriptionStore;
+            _restSubscriptionNotifier = restSubscriptionNotifier;
+            _websocketSubscriptionNotifier = websocketSubscriptionNotifier;
             _logger = logger;
         }
 
@@ -45,7 +49,33 @@ namespace Microsoft.Health.Fhir.Core.Features.Subscriptions
 
                 if (subscription.Criteria.StartsWith($"{rootCharacter}{notificationResource.ResourceType}", StringComparison.InvariantCulture))
                 {
-                    _logger.LogInformation("WINNER! WINNER! CHICKEN DINNER!");
+                    switch (subscription.Channel.Type)
+                    {
+                        case Subscription.SubscriptionChannelType.RestHook:
+                            if (_restSubscriptionNotifier != null)
+                            {
+                                _logger.LogInformation("Notifying via REST Hook call");
+                                _restSubscriptionNotifier.Notify(subscription);
+                            }
+                            else
+                            {
+                                _logger.LogWarning("No rest hook notifier found to alert on");
+                            }
+
+                            break;
+                        case Subscription.SubscriptionChannelType.Websocket:
+                            if (_websocketSubscriptionNotifier != null)
+                            {
+                                _logger.LogInformation("Notifying via websocket call");
+                                _websocketSubscriptionNotifier.Ping(subscription);
+                            }
+                            else
+                            {
+                                _logger.LogWarning("No websocket notifier found to alert on");
+                            }
+
+                            break;
+                    }
                 }
             }
         }
