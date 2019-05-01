@@ -23,19 +23,19 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
     {
         private readonly IFhirOperationDataStore _fhirOperationDataStore;
         private readonly ImportJobConfiguration _importJobConfiguration;
-        private readonly IImportJobTaskFactory _importobTaskFactory;
+        private readonly IImportJobTaskFactory _importJobTaskFactory;
         private readonly ILogger _logger;
 
-        public ImportJobWorker(IFhirOperationDataStore fhirOperationsDataStore, IOptions<ImportJobConfiguration> exportJobConfiguration, IImportJobTaskFactory exportJobTaskFactory, ILogger<ImportJobWorker> logger)
+        public ImportJobWorker(IFhirOperationDataStore fhirOperationDataStore, IOptions<ImportJobConfiguration> importJobConfiguration, IImportJobTaskFactory importJobTaskFactory, ILogger<ImportJobWorker> logger)
         {
-            EnsureArg.IsNotNull(fhirOperationsDataStore, nameof(fhirOperationsDataStore));
-            EnsureArg.IsNotNull(exportJobConfiguration?.Value, nameof(exportJobConfiguration));
-            EnsureArg.IsNotNull(exportJobTaskFactory, nameof(exportJobTaskFactory));
+            EnsureArg.IsNotNull(fhirOperationDataStore, nameof(fhirOperationDataStore));
+            EnsureArg.IsNotNull(importJobConfiguration?.Value, nameof(importJobConfiguration));
+            EnsureArg.IsNotNull(importJobTaskFactory, nameof(importJobTaskFactory));
             EnsureArg.IsNotNull(logger, nameof(logger));
 
-            _fhirOperationDataStore = fhirOperationsDataStore;
-            _importJobConfiguration = exportJobConfiguration.Value;
-            _importobTaskFactory = exportJobTaskFactory;
+            _fhirOperationDataStore = fhirOperationDataStore;
+            _importJobConfiguration = importJobConfiguration.Value;
+            _importJobTaskFactory = importJobTaskFactory;
             _logger = logger;
         }
 
@@ -58,12 +58,16 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                             _importJobConfiguration.JobHeartbeatTimeoutThreshold,
                             cancellationToken);
 
-                        runningTasks.AddRange(jobs.Select(job => _importobTaskFactory.Create(job.JobRecord, job.ETag, cancellationToken)));
+                        runningTasks.AddRange(jobs.Select(job => _importJobTaskFactory.Create(job.JobRecord, job.ETag, cancellationToken)));
                     }
 
-                    await Task.Delay(_importJobConfiguration.JobPollingFrequency);
+                    await Task.Delay(_importJobConfiguration.JobPollingFrequency, cancellationToken);
                 }
-                catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    // The worker is canceled.
+                }
+                catch (Exception ex)
                 {
                     // The job failed.
                     _logger.LogError(ex, "Unhandled exception in the worker.");

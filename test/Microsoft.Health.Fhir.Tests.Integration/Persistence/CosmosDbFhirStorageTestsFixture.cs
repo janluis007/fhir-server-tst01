@@ -116,7 +116,7 @@ namespace Microsoft.Health.Fhir.Tests.Integration.Persistence
             var documentClient = new NonDisposingScope(_documentClient);
 
             _fhirDataStore = new CosmosFhirDataStore(
-                documentClient,
+                () => documentClient,
                 _cosmosDataStoreConfiguration,
                 optionsMonitor,
                 cosmosDocumentQueryFactory,

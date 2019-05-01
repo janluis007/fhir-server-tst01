@@ -62,7 +62,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Persistence
             return new ResourceWrapper(
                 resource,
                 rawResource,
-                new ResourceRequest(fhirRequestContext.Uri, fhirRequestContext.Method),
+                fhirRequestContext == null ? null : new ResourceRequest(fhirRequestContext.Uri, fhirRequestContext.Method),
                 deleted,
                 searchIndices,
                 _compartmentIndexer.Extract(resource.ResourceType, searchIndices),

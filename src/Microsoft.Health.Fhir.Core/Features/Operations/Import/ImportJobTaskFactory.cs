@@ -6,7 +6,10 @@
 using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
+using Hl7.Fhir.Serialization;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Microsoft.Health.Fhir.Core.Configs;
 using Microsoft.Health.Fhir.Core.Features.Operations.Import.Models;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 
@@ -17,17 +20,37 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
     /// </summary>
     public class ImportJobTaskFactory : IImportJobTaskFactory
     {
+        private readonly ImportJobConfiguration _importJobConfiguration;
         private readonly IFhirOperationDataStore _fhirOperationDataStore;
+        private readonly IImportProvider _importProvider;
+        private readonly IResourceWrapperFactory _resourceWrapperFactory;
+        private readonly IFhirDataStore _fhirDataStore;
+        private readonly FhirJsonParser _fhirJsonParser;
         private readonly ILoggerFactory _loggerFactory;
 
         public ImportJobTaskFactory(
+            IOptions<ImportJobConfiguration> importJobConfiguration,
             IFhirOperationDataStore fhirOperationDataStore,
+            IImportProvider importProvider,
+            IResourceWrapperFactory resourceWrapperFactory,
+            IFhirDataStore fhirDataStore,
+            FhirJsonParser fhirParser,
             ILoggerFactory loggerFactory)
         {
+            EnsureArg.IsNotNull(importJobConfiguration?.Value, nameof(importJobConfiguration));
             EnsureArg.IsNotNull(fhirOperationDataStore, nameof(fhirOperationDataStore));
             EnsureArg.IsNotNull(loggerFactory, nameof(loggerFactory));
+            EnsureArg.IsNotNull(importProvider, nameof(importProvider));
+            EnsureArg.IsNotNull(resourceWrapperFactory, nameof(resourceWrapperFactory));
+            EnsureArg.IsNotNull(fhirDataStore, nameof(fhirDataStore));
+            EnsureArg.IsNotNull(fhirParser, nameof(fhirParser));
 
+            _importJobConfiguration = importJobConfiguration.Value;
             _fhirOperationDataStore = fhirOperationDataStore;
+            _importProvider = importProvider;
+            _resourceWrapperFactory = resourceWrapperFactory;
+            _fhirDataStore = fhirDataStore;
+            _fhirJsonParser = fhirParser;
             _loggerFactory = loggerFactory;
         }
 
@@ -39,7 +62,12 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             var exportJobTask = new ImportJobTask(
                 importJobRecord,
                 weakETag,
+                _importJobConfiguration,
                 _fhirOperationDataStore,
+                _importProvider,
+                _resourceWrapperFactory,
+                _fhirDataStore,
+                _fhirJsonParser,
                 _loggerFactory.CreateLogger<ImportJobTask>());
 
             using (ExecutionContext.SuppressFlow())

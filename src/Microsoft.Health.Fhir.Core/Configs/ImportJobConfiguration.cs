@@ -19,5 +19,7 @@ namespace Microsoft.Health.Fhir.Core.Configs
         public TimeSpan JobHeartbeatTimeoutThreshold { get; set; } = TimeSpan.FromMinutes(10);
 
         public TimeSpan JobPollingFrequency { get; set; } = TimeSpan.FromSeconds(10);
+
+        public int BufferSizeInMbytes { get; set; } = 10;
     }
 }

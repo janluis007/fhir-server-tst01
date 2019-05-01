@@ -17,7 +17,6 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Health.Fhir.Core.Features;
 using Microsoft.Health.Fhir.Core.Features.Context;
-using Microsoft.Health.Fhir.Core.Features.Operations;
 using Microsoft.Health.Fhir.Core.Features.Routing;
 
 namespace Microsoft.Health.Fhir.Api.Features.Routing
@@ -176,15 +175,10 @@ namespace Microsoft.Health.Fhir.Api.Features.Routing
             return new Uri(uriString);
         }
 
-        public Uri ResolveOperationResultUrl(string operationName, string id)
+        public Uri ResolveOperationResultUrl(string routeName, string id)
         {
-            EnsureArg.IsNotNullOrWhiteSpace(operationName, nameof(operationName));
+            EnsureArg.IsNotNullOrWhiteSpace(routeName, nameof(routeName));
             EnsureArg.IsNotNullOrWhiteSpace(id, nameof(id));
-
-            if (!string.Equals(operationName, OperationsConstants.Export, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new OperationNotImplementedException(string.Format(Resources.OperationNotImplemented, operationName));
-            }
 
             var routeValues = new RouteValueDictionary()
             {
@@ -192,7 +186,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Routing
             };
 
             string uriString = UrlHelper.RouteUrl(
-                RouteNames.GetExportStatusById,
+                routeName,
                 routeValues,
                 Request.Scheme,
                 Request.Host.Value);

@@ -28,7 +28,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Persistence
 
         public IReadOnlyCollection<KeyValuePair<string, string>> Extract()
         {
-            return _fhirRequestContextAccessor.FhirRequestContext.Principal?.Claims?
+            return _fhirRequestContextAccessor.FhirRequestContext?.Principal?.Claims?
                 .Where(c => _securityConfiguration.LastModifiedClaims?.Contains(c.Type) ?? false)
                 .Select(c => new KeyValuePair<string, string>(c.Type, c.Value))
                 .ToList();

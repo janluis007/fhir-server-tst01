@@ -3,16 +3,15 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-namespace Microsoft.Health.Fhir.Core.Features.Operations
+using System;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
 {
-    public static class OperationsConstants
+    public interface IImportProvider
     {
-        public const string Operations = "_operations";
-
-        public const string Export = "export";
-
-        public const string Import = "import";
-
-        public const string ExportContentTypeHeaderValue = "application/json";
+        Task<StreamReader> DownloadRangeToStreamReaderAsync(Uri url, long offset, int length, CancellationToken cancellationToken);
     }
 }

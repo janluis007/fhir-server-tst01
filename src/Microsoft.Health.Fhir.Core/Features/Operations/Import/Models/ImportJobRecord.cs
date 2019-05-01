@@ -4,7 +4,9 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using EnsureThat;
+using Hl7.Fhir.Model;
 using Newtonsoft.Json;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations.Import.Models
@@ -14,17 +16,19 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import.Models
     /// </summary>
     public class ImportJobRecord
     {
-        public ImportJobRecord(Uri exportRequestUri)
+        public ImportJobRecord(Uri importRequestUri, ImportRequest request)
         {
-            EnsureArg.IsNotNull(exportRequestUri, nameof(exportRequestUri));
+            EnsureArg.IsNotNull(importRequestUri, nameof(importRequestUri));
+            EnsureArg.IsNotNull(request, nameof(request));
 
-            RequestUri = exportRequestUri;
+            RequestUri = importRequestUri;
+            Request = request;
 
             // Default values
             SchemaVersion = 1;
             Status = OperationStatus.Queued;
             Id = Guid.NewGuid().ToString();
-            QueuedTime = DateTimeOffset.Now;
+            QueuedTime = DateTimeOffset.UtcNow;
         }
 
         [JsonConstructor]
@@ -32,8 +36,11 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import.Models
         {
         }
 
-        [JsonProperty(JobRecordProperties.Request)]
+        [JsonProperty("requestUri")]
         public Uri RequestUri { get; private set; }
+
+        [JsonProperty("request")]
+        public ImportRequest Request { get; private set; }
 
         [JsonProperty(JobRecordProperties.Id)]
         public string Id { get; private set; }
@@ -50,8 +57,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import.Models
         ////[JsonProperty(JobRecordProperties.Output)]
         ////public List<ImportFileInfo> Output { get; private set; } = new List<ImportFileInfo>();
 
-        ////[JsonProperty(JobRecordProperties.Error)]
-        ////public List<ImportFileInfo> Errors { get; private set; } = new List<ImportFileInfo>();
+        [JsonProperty(JobRecordProperties.Error)]
+        public List<OperationOutcome> Errors { get; private set; } = new List<OperationOutcome>();
 
         [JsonProperty(JobRecordProperties.Status)]
         public OperationStatus Status { get; set; }
@@ -71,7 +78,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import.Models
         [JsonProperty(JobRecordProperties.TotalNumberOfFailures)]
         public int TotalNumberOfFailures { get; set; }
 
-        ////[JsonProperty(JobRecordProperties.Progress)]
-        ////public ExportJobProgress Progress { get; set; }
+        [JsonProperty(JobRecordProperties.Progress)]
+        public IList<ImportJobProgress> Progress { get; } = new List<ImportJobProgress>();
     }
 }

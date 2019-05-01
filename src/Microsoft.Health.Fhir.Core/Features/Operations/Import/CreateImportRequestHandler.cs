@@ -30,7 +30,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             // TODO: Later we will add some logic here that will check whether a duplicate job already exists
             // and handle it accordingly. For now we just assume all export jobs are unique and create a new one.
 
-            var jobRecord = new ImportJobRecord(request.RequestUri);
+            var jobRecord = new ImportJobRecord(request.RequestUri, request.ImportRequest);
             ImportJobOutcome result = await _fhirOperationDataStore.CreateImportJobAsync(jobRecord, cancellationToken);
 
             // If job creation had failed we would have thrown an exception.

@@ -3,6 +3,7 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -38,7 +39,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                     outcome.JobRecord.QueuedTime,
                     outcome.JobRecord.RequestUri,
                     requiresAccessToken: false,
-                    null,
+                    outcome.JobRecord.Progress.Select((progress, index) => new ImportEntryInfo(outcome.JobRecord.Request.Input[index].Type, progress.Count)).ToArray(),
                     null);
 
                 exportResponse = new GetImportResponse(HttpStatusCode.OK, jobResult);

@@ -5,21 +5,21 @@
 
 using System.Net;
 using EnsureThat;
-using Microsoft.Health.Fhir.Core.Features.Operations.Export.Models;
+using Microsoft.Health.Fhir.Core.Features.Operations.Import.Models;
 
 namespace Microsoft.Health.Fhir.Api.Features.ActionResults
 {
     /// <summary>
     /// Used to return the result of an import operation.
     /// </summary>
-    public class ImportResult : BaseActionResult<ExportJobResult>
+    public class ImportResult : BaseActionResult<ImportJobResult>
     {
         public ImportResult(HttpStatusCode statusCode)
             : base(null, statusCode)
         {
         }
 
-        public ImportResult(ExportJobResult jobResult, HttpStatusCode statusCode)
+        public ImportResult(ImportJobResult jobResult, HttpStatusCode statusCode)
             : base(jobResult, statusCode)
         {
             EnsureArg.IsNotNull(jobResult, nameof(jobResult));
@@ -28,18 +28,18 @@ namespace Microsoft.Health.Fhir.Api.Features.ActionResults
         /// <summary>
         /// Creates an ExportResult with HttpStatusCode Accepted.
         /// </summary>
-        public static ExportResult Accepted()
+        public static ImportResult Accepted()
         {
-            return new ExportResult(HttpStatusCode.Accepted);
+            return new ImportResult(HttpStatusCode.Accepted);
         }
 
         /// <summary>
         /// Creates an ExportResult with HttpStatusCode Ok.
         /// </summary>
         /// <param name="jobResult">The job payload that must be returned as part of the ExportResult.</param>
-        public static ExportResult Ok(ExportJobResult jobResult)
+        public static ImportResult Ok(ImportJobResult jobResult)
         {
-            return new ExportResult(jobResult, HttpStatusCode.OK);
+            return new ImportResult(jobResult, HttpStatusCode.OK);
         }
     }
 }

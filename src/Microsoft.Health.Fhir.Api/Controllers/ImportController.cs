@@ -2,6 +2,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
+using System.Net;
 using System.Threading.Tasks;
 using EnsureThat;
 using MediatR;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Health.Fhir.Api.Features.ActionResults;
 using Microsoft.Health.Fhir.Api.Features.Audit;
 using Microsoft.Health.Fhir.Api.Features.Headers;
+using Microsoft.Health.Fhir.Api.Features.Routing;
 using Microsoft.Health.Fhir.Core.Configs;
 using Microsoft.Health.Fhir.Core.Exceptions;
 using Microsoft.Health.Fhir.Core.Extensions;
@@ -63,23 +65,44 @@ namespace Microsoft.Health.Fhir.Api.Controllers
         }
 
         [HttpPost]
-        [Route("$import")]
-        [AuditEventType("import")]
+        [Route(KnownRoutes.Import)]
+        [AuditEventType(AuditEventSubType.Import)]
         public async Task<IActionResult> Import([FromBody]ImportRequest importRequest)
         {
-            bool isValid = ModelState.IsValid;
-
             if (!_importJobConfig.Enabled)
             {
-                throw new RequestNotValidException(string.Format(Resources.UnsupportedOperation, "import"));
+                throw new RequestNotValidException(string.Format(Resources.UnsupportedOperation, OperationsConstants.Import));
             }
 
             CreateImportResponse response = await _mediator.ImportAsync(_fhirRequestContextAccessor.FhirRequestContext.Uri, importRequest, HttpContext.RequestAborted);
 
-            var exportResult = ExportResult.Accepted();
-            exportResult.SetContentLocationHeader(_urlResolver, OperationsConstants.Export, response.JobId);
+            var importResult = ImportResult.Accepted();
+            importResult.SetContentLocationHeader<ImportResult, ImportJobResult>(_urlResolver, RouteNames.GetImportStatusById, response.JobId);
 
-            return exportResult;
+            return importResult;
+        }
+
+        [HttpGet]
+        [Route(KnownRoutes.ImportStatusById, Name = RouteNames.GetImportStatusById)]
+        [AuditEventType(AuditEventSubType.Import)]
+        public async Task<IActionResult> GetImportStatusById(string id)
+        {
+            var getImportResult = await _mediator.GetImportStatusAsync(_fhirRequestContextAccessor.FhirRequestContext.Uri, id);
+
+            // If the job is complete, we need to return 200 along the completed data to the client.
+            // Else we need to return 202.
+            ImportResult importActionResult;
+            if (getImportResult.StatusCode == HttpStatusCode.OK)
+            {
+                importActionResult = ImportResult.Ok(getImportResult.JobResult);
+                importActionResult.SetContentTypeHeader<ImportResult, ImportJobResult>(OperationsConstants.ExportContentTypeHeaderValue);
+            }
+            else
+            {
+                importActionResult = ImportResult.Accepted();
+            }
+
+            return importActionResult;
         }
     }
 }
