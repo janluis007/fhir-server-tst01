@@ -5,18 +5,19 @@
 
 using EnsureThat;
 using Microsoft.Health.Extensions.DependencyInjection;
-using Microsoft.Health.Fhir.Subscription.SignalR.Features.Subscriptions;
+using Microsoft.Health.Fhir.Subscription.Webhook.Features.Subscriptions;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
-    public static class FhirServerBuilderSignalRSubscriptionRegistrationExtensions
+    public static class FhirServerBuilderWebhookSubscriptionRegistrationExtensions
     {
-        public static IServiceCollection AddSignalRSubscription(this IServiceCollection serviceCollection)
+        public static IServiceCollection AddWebhookSubscription(this IServiceCollection serviceCollection)
         {
             EnsureArg.IsNotNull(serviceCollection, nameof(serviceCollection));
 
-            serviceCollection.Add<SignalRSubscriptionNotifier>()
+            serviceCollection.Add<QueueWebhookSubscriptionNotifier>()
                 .Singleton()
+                .AsSelf()
                 .AsImplementedInterfaces();
 
             return serviceCollection;

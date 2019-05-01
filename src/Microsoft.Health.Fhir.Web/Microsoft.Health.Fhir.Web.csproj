@@ -21,7 +21,7 @@
     <ProjectReference Include="..\Microsoft.Health.Fhir.Core\Microsoft.Health.Fhir.Core.csproj" />
     <ProjectReference Include="..\Microsoft.Health.Fhir.CosmosDb\Microsoft.Health.Fhir.CosmosDb.csproj" />
     <ProjectReference Include="..\Microsoft.Health.Fhir.Subscription.Rest\Microsoft.Health.Fhir.Subscription.Rest.csproj" />
-    <ProjectReference Include="..\Microsoft.Health.Fhir.Subscription.SignalR\Microsoft.Health.Fhir.Subscription.SignalR.csproj" />
+    <ProjectReference Include="..\Microsoft.Health.Fhir.Subscription.Webhook\Microsoft.Health.Fhir.Subscription.Webhook.csproj" />
   </ItemGroup>
 
 </Project>
