@@ -206,7 +206,10 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
                 Status = system.Status.IntersectEnum(configured.Status, issues, "Status"),
                 AcceptUnknown = system.AcceptUnknown.IntersectEnum(configured.AcceptUnknown, issues, "AcceptUknown"),
                 Format = system.Format?.IntersectList(configured.Format, x => x, issues, "Format"),
+                ////Extension = system.Extension?.IntersectList(configured.Extension, x => x, issues, "Extension"),
             };
+
+            intersecting.Extension = system.Extension.ToList();
 
             DateTimeOffset cDate;
             if (DateTimeOffset.TryParse(configured.Date, out cDate))

@@ -3,15 +3,18 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-using System.Threading.Tasks;
+using System.Collections.Generic;
+using Hl7.Fhir.Model;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Queue;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Health.Fhir.Core.Features.Conformance;
 using Microsoft.Health.Fhir.Core.Features.Subscriptions;
+using Task = System.Threading.Tasks.Task;
 
 namespace Microsoft.Health.Fhir.Subscription.Webhook.Features.Subscriptions
 {
-    public class QueueWebhookSubscriptionNotifier : IWebsocketSubscriptionNotifier
+    public class QueueWebhookSubscriptionNotifier : IWebsocketSubscriptionNotifier, IProvideCapability
     {
         private readonly CloudQueue _queue;
 
@@ -37,6 +40,16 @@ namespace Microsoft.Health.Fhir.Subscription.Webhook.Features.Subscriptions
             // Create a message and add it to the queue.
             var message = new CloudQueueMessage(subscription.Id);
             await _queue.AddMessageAsync(message);
+        }
+
+        public void Build(ListedCapabilityStatement statement)
+        {
+            if (statement.Extension == null)
+            {
+               statement.Extension = new List<Extension>();
+            }
+
+            statement.Extension.Add(new Extension("http://hl7.org/fhir/StructureDefinition/capabilitystatement-websocket", new FhirUri("wss://fhir-subscriptions-ws.azurewebsites.net/socket")));
         }
     }
 }
