@@ -16,12 +16,12 @@ namespace Microsoft.Health.Fhir.Core.Configs
 
         public ushort MaximumNumberOfConcurrentJobsAllowed { get; set; } = 1;
 
-        public ushort MaximumNumberOfConcurrentTaskPerJob { get; set; } = 10;
+        public ushort MaximumNumberOfConcurrentTaskPerJob { get; set; } = 3;
 
         public TimeSpan JobHeartbeatTimeoutThreshold { get; set; } = TimeSpan.FromMinutes(10);
 
         public TimeSpan JobPollingFrequency { get; set; } = TimeSpan.FromSeconds(10);
 
-        public int BufferSizeInMbytes { get; set; } = 10;
+        public int BufferSizeInMbytes { get; set; } = 5;
     }
 }

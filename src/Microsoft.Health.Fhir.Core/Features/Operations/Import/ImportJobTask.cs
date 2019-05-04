@@ -5,9 +5,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using EnsureThat;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
@@ -67,7 +69,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             _fhirJsonParser = fhirParser;
             _logger = logger;
 
-            _bufferSize = _importJobConfiguration.BufferSizeInMbytes * 1024;
+            _bufferSize = _importJobConfiguration.BufferSizeInMbytes * 1024 * 1024;
             _weakETag = weakETag;
         }
 
@@ -132,7 +134,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
 
                         if (completedTask.IsFaulted)
                         {
-                            _importJobRecord.Errors.Add(new OperationOutcome()
+                            _importJobRecord.Errors.TryAdd(new OperationOutcome()
                             {
                                 Issue = new System.Collections.Generic.List<OperationOutcome.IssueComponent>()
                                     {
@@ -210,28 +212,62 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
 
             bool isComplete = false;
 
+            Stopwatch stopwatch = new Stopwatch();
+            Stopwatch overallStopwatch = new Stopwatch();
+
+            Task<StreamReader> downloadTask = _importProvider.DownloadRangeToStreamReaderAsync(blobUrl, progress.BytesProcessed, _bufferSize, cancellationToken);
+            StreamReader streamReader = null;
+
             do
             {
-                StreamReader streamReader = null;
+                stopwatch.Restart();
 
-                using (IDisposable scope = _logger.BeginScope("DownloadRange {Url}.", blobUrl))
-                {
-                    streamReader = await _importProvider.DownloadRangeToStreamReaderAsync(blobUrl, progress.BytesProcessed, _bufferSize, cancellationToken);
-                }
+                streamReader?.Dispose();
+                streamReader = await downloadTask;
+
+                _logger.LogInformation("Download range took {Duration}.", stopwatch.ElapsedMilliseconds);
 
                 isComplete = streamReader.BaseStream.Length < _bufferSize;
 
                 string line;
 
+                List<Task> tasks = new List<Task>();
+
                 do
                 {
-                    using (IDisposable scope = _logger.BeginScope("Read line"))
-                    {
-                        line = await streamReader.ReadLineAsync();
-                    }
+                    overallStopwatch.Restart();
+                    stopwatch.Restart();
+
+                    line = await streamReader.ReadLineAsync();
+
+                    _logger.LogInformation("Read line took {Duration}.", stopwatch.ElapsedMilliseconds);
 
                     if (streamReader.EndOfStream && !isComplete)
                     {
+                        // Load the next batch.
+                        downloadTask = _importProvider.DownloadRangeToStreamReaderAsync(blobUrl, progress.BytesProcessed, _bufferSize, cancellationToken);
+
+                        await Task.WhenAll(tasks);
+
+                        foreach (Task task in tasks)
+                        {
+                            if (task.IsFaulted)
+                            {
+                                _importJobRecord.Errors.TryAdd(new OperationOutcome()
+                                {
+                                    Issue = new System.Collections.Generic.List<OperationOutcome.IssueComponent>()
+                                {
+                                    new OperationOutcome.IssueComponent()
+                                    {
+                                        Diagnostics = task.Exception.ToString(),
+                                    },
+                                },
+                                });
+                            }
+                        }
+
+                        tasks.Clear();
+
                         // We have reached the end. Commit up to this point.
                         await UpdateJobStatus(OperationStatus.Running, cancellationToken);
 
@@ -242,27 +278,29 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                         // Upsert the resource.
                         try
                         {
-                            Resource resource = null;
-                            ResourceWrapper wrapper = null;
+                            stopwatch.Restart();
 
-                            using (IDisposable scope = _logger.BeginScope("Parse"))
-                            {
-                                resource = _fhirJsonParser.Parse<Resource>(line);
-                            }
+                            Resource resource = _fhirJsonParser.Parse<Resource>(line);
 
-                            using (IDisposable scope = _logger.BeginScope("Create wrapper"))
-                            {
-                                wrapper = _resourceWrapperFactory.Create(resource, false);
-                            }
+                            _logger.LogInformation("Parsing took {Duration}.", stopwatch.ElapsedMilliseconds);
 
-                            using (IDisposable scope = _logger.BeginScope("Upsert {ResourceType}.", resource.ResourceType))
-                            {
-                                await _fhirDataStore.UpsertAsync(wrapper, null, true, true, cancellationToken);
-                            }
+                            stopwatch.Restart();
+
+                            ResourceWrapper wrapper = _resourceWrapperFactory.Create(resource, false);
+
+                            _logger.LogInformation("Creating took {Duration}.", stopwatch.ElapsedMilliseconds);
+
+                            stopwatch.Restart();
+
+                            Task upsertTask = _fhirDataStore.UpsertAsync(wrapper, null, true, true, cancellationToken);
+
+                            tasks.Add(upsertTask);
+
+                            _logger.LogInformation("Upsert took {Duration}.", stopwatch.ElapsedMilliseconds);
                         }
                         catch (Exception ex)
                         {
-                            _importJobRecord.Errors.Add(new OperationOutcome()
+                            _importJobRecord.Errors.TryAdd(new OperationOutcome()
                             {
                                 Issue = new System.Collections.Generic.List<OperationOutcome.IssueComponent>()
                                     {
@@ -278,7 +316,30 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
 
                         // Increment the number of bytes processed (including the new line).
                         progress.BytesProcessed += Encoding.UTF8.GetBytes(line).Length + NewLineLength;
+
+                        if (tasks.Count >= 10)
+                        {
+                            Task completedTask = await Task.WhenAny(tasks);
+
+                            if (completedTask.IsFaulted)
+                            {
+                                _importJobRecord.Errors.TryAdd(new OperationOutcome()
+                                {
+                                    Issue = new System.Collections.Generic.List<OperationOutcome.IssueComponent>()
+                                    {
+                                        new OperationOutcome.IssueComponent()
+                                        {
+                                            Diagnostics = completedTask.Exception.ToString(),
+                                        },
+                                    },
+                                });
+                            }
+
+                            tasks.Remove(completedTask);
+                        }
                     }
+
+                    _logger.LogInformation("Overall took {Duration}.", overallStopwatch.ElapsedMilliseconds);
                 }
                 while (!streamReader.EndOfStream);
             }

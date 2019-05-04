@@ -4,6 +4,7 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using EnsureThat;
 using Hl7.Fhir.Model;
@@ -58,7 +59,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import.Models
         ////public List<ImportFileInfo> Output { get; private set; } = new List<ImportFileInfo>();
 
         [JsonProperty(JobRecordProperties.Error)]
-        public List<OperationOutcome> Errors { get; private set; } = new List<OperationOutcome>();
+        public IProducerConsumerCollection<OperationOutcome> Errors { get; private set; } = new ConcurrentBag<OperationOutcome>();
 
         [JsonProperty(JobRecordProperties.Status)]
         public OperationStatus Status { get; set; }

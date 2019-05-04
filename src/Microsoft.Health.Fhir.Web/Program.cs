@@ -4,6 +4,7 @@
 // -------------------------------------------------------------------------------------------------
 
 using System.Net;
+using System.Threading;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.KeyVault;
@@ -18,6 +19,7 @@ namespace Microsoft.Health.Fhir.Web
         public static void Main(string[] args)
         {
             ServicePointManager.DefaultConnectionLimit = 10000;
+            ThreadPool.SetMinThreads(20, 20);
 
             var host = WebHost.CreateDefaultBuilder(args)
                 .ConfigureAppConfiguration((hostContext, builder) =>
