@@ -212,7 +212,12 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
 
             do
             {
-                StreamReader streamReader = await _importProvider.DownloadRangeToStreamReaderAsync(blobUrl, progress.BytesProcessed, _bufferSize, cancellationToken);
+                StreamReader streamReader = null;
+
+                using (IDisposable scope = _logger.BeginScope("DownloadRange {Url}.", blobUrl))
+                {
+                    streamReader = await _importProvider.DownloadRangeToStreamReaderAsync(blobUrl, progress.BytesProcessed, _bufferSize, cancellationToken);
+                }
 
                 isComplete = streamReader.BaseStream.Length < _bufferSize;
 
@@ -220,7 +225,10 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
 
                 do
                 {
-                    line = await streamReader.ReadLineAsync();
+                    using (IDisposable scope = _logger.BeginScope("Read line"))
+                    {
+                        line = await streamReader.ReadLineAsync();
+                    }
 
                     if (streamReader.EndOfStream && !isComplete)
                     {
@@ -234,11 +242,23 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                         // Upsert the resource.
                         try
                         {
-                            Resource resource = _fhirJsonParser.Parse<Resource>(line);
+                            Resource resource = null;
+                            ResourceWrapper wrapper = null;
 
-                            ResourceWrapper wrapper = _resourceWrapperFactory.Create(resource, false);
+                            using (IDisposable scope = _logger.BeginScope("Parse"))
+                            {
+                                resource = _fhirJsonParser.Parse<Resource>(line);
+                            }
 
-                            await _fhirDataStore.UpsertAsync(wrapper, null, true, true, cancellationToken);
+                            using (IDisposable scope = _logger.BeginScope("Create wrapper"))
+                            {
+                                wrapper = _resourceWrapperFactory.Create(resource, false);
+                            }
+
+                            using (IDisposable scope = _logger.BeginScope("Upsert {ResourceType}.", resource.ResourceType))
+                            {
+                                await _fhirDataStore.UpsertAsync(wrapper, null, true, true, cancellationToken);
+                            }
                         }
                         catch (Exception ex)
                         {
