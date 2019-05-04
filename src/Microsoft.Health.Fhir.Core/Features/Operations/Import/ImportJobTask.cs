@@ -4,6 +4,7 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -18,7 +19,7 @@ using Task = System.Threading.Tasks.Task;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
 {
-    public class ImportJobTask
+    public sealed class ImportJobTask : IDisposable
     {
         private static readonly int NewLineLength = "\n".Length;
 
@@ -30,6 +31,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
         private readonly IFhirDataStore _fhirDataStore;
         private readonly FhirJsonParser _fhirJsonParser;
         private readonly ILogger _logger;
+        private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
         private readonly int _bufferSize;
 
@@ -69,6 +71,11 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             _weakETag = weakETag;
         }
 
+        public void Dispose()
+        {
+            _semaphore?.Dispose();
+        }
+
         public async Task ExecuteAsync(CancellationToken cancellationToken)
         {
             try
@@ -87,10 +94,13 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                     return;
                 }
 
+                var tasks = new List<Task>();
+                int i = 0;
+
                 // Find the entry to work on.
-                for (int i = 0; i < _importJobRecord.Request.Input.Count; i++)
+                while (i < _importJobRecord.Request.Input.Count)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    ImportRequestEntry input = _importJobRecord.Request.Input[i];
 
                     // Get the current progress. If there is none, create one.
                     ImportJobProgress progress = null;
@@ -111,70 +121,44 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                         }
                     }
 
-                    // Process the file.
-                    var blobUrl = new Uri(_importJobRecord.Request.Input[i].Url);
+                    var task = Task.Run(() => ProcessInput(input, progress, cancellationToken));
 
-                    bool isComplete = false;
+                    tasks.Add(task);
+                    i++;
 
-                    do
+                    if (tasks.Count == _importJobConfiguration.MaximumNumberOfConcurrentTaskPerJob)
                     {
-                        StreamReader streamReader = await _importProvider.DownloadRangeToStreamReaderAsync(blobUrl, progress.BytesProcessed, _bufferSize, cancellationToken);
+                        Task completedTask = await Task.WhenAny(tasks);
 
-                        isComplete = streamReader.BaseStream.Length < _bufferSize;
-
-                        string line;
-
-                        do
+                        if (completedTask.IsFaulted)
                         {
-                            line = await streamReader.ReadLineAsync();
-
-                            if (streamReader.EndOfStream && !isComplete)
+                            _importJobRecord.Errors.Add(new OperationOutcome()
                             {
-                                // We have reached the end. Commit up to this point.
-                                await UpdateJobStatus(OperationStatus.Running, cancellationToken);
-
-                                // TODO: Handle the next page.
-                                break;
-                            }
-                            else
-                            {
-                                // Upsert the resource.
-                                try
-                                {
-                                    Resource resource = _fhirJsonParser.Parse<Resource>(line);
-
-                                    ResourceWrapper wrapper = _resourceWrapperFactory.Create(resource, false);
-
-                                    await _fhirDataStore.UpsertAsync(wrapper, null, true, true, cancellationToken);
-                                }
-                                catch (Exception ex)
-                                {
-                                    _importJobRecord.Errors.Add(new OperationOutcome()
+                                Issue = new System.Collections.Generic.List<OperationOutcome.IssueComponent>()
                                     {
-                                        Issue = new System.Collections.Generic.List<OperationOutcome.IssueComponent>()
+                                        new OperationOutcome.IssueComponent()
                                         {
-                                            new OperationOutcome.IssueComponent()
-                                            {
-                                                Diagnostics = ex.ToString(),
-                                            },
+                                            Diagnostics = completedTask.Exception.ToString(),
                                         },
-                                    });
-                                }
-
-                                progress.Count++;
-
-                                // Increment the number of bytes processed (including the new line).
-                                progress.BytesProcessed += Encoding.UTF8.GetBytes(line).Length + NewLineLength;
-                            }
+                                    },
+                            });
                         }
-                        while (!streamReader.EndOfStream);
+
+                        await UpdateJobStatus(OperationStatus.Running, cancellationToken);
+
+                        tasks.Remove(completedTask);
                     }
-                    while (!isComplete);
-
-                    progress.IsComplete = true;
-
-                    await UpdateJobStatus(OperationStatus.Running, cancellationToken);
                 }
+
+                ////while (tasks.Count < _importJobConfiguration.MaximumNumberOfConcurrentTaskPerJob &&
+                ////    _importJobRecord.Request.Input.Count < i)
+                ////{
+                ////}
+
+                ////for (int i = 0; i < _importJobRecord.Request.Input.Count; i++)
+                ////{
+                ////    await UpdateJobStatus(OperationStatus.Running, cancellationToken);
+                ////}
 
                 // We have acquired the job, process the export.
                 _logger.LogTrace("Successfully completed the job.");
@@ -182,6 +166,10 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                 _importJobRecord.EndTime = DateTimeOffset.UtcNow;
 
                 await UpdateJobStatus(OperationStatus.Completed, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // The job is being terminated.
             }
             catch (Exception ex)
             {
@@ -197,11 +185,86 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
 
         private async Task UpdateJobStatus(OperationStatus operationStatus, CancellationToken cancellationToken)
         {
-            _importJobRecord.Status = operationStatus;
+            await _semaphore.WaitAsync();
 
-            ImportJobOutcome updatedImportJobOutcome = await _fhirOperationDataStore.UpdateImportJobAsync(_importJobRecord, _weakETag, cancellationToken);
+            try
+            {
+                _importJobRecord.Status = operationStatus;
 
-            _weakETag = updatedImportJobOutcome.ETag;
+                ImportJobOutcome updatedImportJobOutcome = await _fhirOperationDataStore.UpdateImportJobAsync(_importJobRecord, _weakETag, cancellationToken);
+
+                _weakETag = updatedImportJobOutcome.ETag;
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+        }
+
+        private async Task ProcessInput(ImportRequestEntry input, ImportJobProgress progress, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Process the file.
+            var blobUrl = new Uri(input.Url);
+
+            bool isComplete = false;
+
+            do
+            {
+                StreamReader streamReader = await _importProvider.DownloadRangeToStreamReaderAsync(blobUrl, progress.BytesProcessed, _bufferSize, cancellationToken);
+
+                isComplete = streamReader.BaseStream.Length < _bufferSize;
+
+                string line;
+
+                do
+                {
+                    line = await streamReader.ReadLineAsync();
+
+                    if (streamReader.EndOfStream && !isComplete)
+                    {
+                        // We have reached the end. Commit up to this point.
+                        await UpdateJobStatus(OperationStatus.Running, cancellationToken);
+
+                        break;
+                    }
+                    else
+                    {
+                        // Upsert the resource.
+                        try
+                        {
+                            Resource resource = _fhirJsonParser.Parse<Resource>(line);
+
+                            ResourceWrapper wrapper = _resourceWrapperFactory.Create(resource, false);
+
+                            await _fhirDataStore.UpsertAsync(wrapper, null, true, true, cancellationToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            _importJobRecord.Errors.Add(new OperationOutcome()
+                            {
+                                Issue = new System.Collections.Generic.List<OperationOutcome.IssueComponent>()
+                                    {
+                                        new OperationOutcome.IssueComponent()
+                                        {
+                                            Diagnostics = ex.ToString(),
+                                        },
+                                    },
+                            });
+                        }
+
+                        progress.Count++;
+
+                        // Increment the number of bytes processed (including the new line).
+                        progress.BytesProcessed += Encoding.UTF8.GetBytes(line).Length + NewLineLength;
+                    }
+                }
+                while (!streamReader.EndOfStream);
+            }
+            while (!isComplete);
+
+            progress.IsComplete = true;
         }
     }
 }
