@@ -4,6 +4,7 @@
 // -------------------------------------------------------------------------------------------------
 
 using System.Collections.Generic;
+using Hl7.Fhir.Model;
 using static Hl7.Fhir.Model.CapabilityStatement;
 
 namespace Microsoft.Health.Fhir.Core.Features.Conformance
@@ -24,5 +25,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
         public IList<SearchParamComponent> SearchParam { get; set; }
 
         public IList<OperationComponent> Operation { get; set; }
+
+        public IList<Extension> Extension { get; set; }
     }
 }

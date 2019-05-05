@@ -16,6 +16,7 @@ using Microsoft.Health.Fhir.Core.Exceptions;
 using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features.Conformance;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
+using Microsoft.Health.Fhir.Core.Features.Resources;
 using Microsoft.Health.Fhir.Core.Features.Resources.Create;
 using Microsoft.Health.Fhir.Core.Features.Resources.Delete;
 using Microsoft.Health.Fhir.Core.Features.Resources.Get;
@@ -70,8 +71,10 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Persistence
 
             var mediator = Substitute.For<IMediator>();
 
-            collection.Add(x => new CreateResourceHandler(_fhirDataStore, lazyConformanceProvider, _resourceWrapperFactory, mediator)).Singleton().AsSelf().AsImplementedInterfaces();
-            collection.Add(x => new UpsertResourceHandler(_fhirDataStore, lazyConformanceProvider, _resourceWrapperFactory, mediator)).Singleton().AsSelf().AsImplementedInterfaces();
+            var resourceModifierEngine = Substitute.For<ResourceModifierEngine>();
+
+            collection.Add(x => new CreateResourceHandler(_fhirDataStore, lazyConformanceProvider, _resourceWrapperFactory, mediator, resourceModifierEngine)).Singleton().AsSelf().AsImplementedInterfaces();
+            collection.Add(x => new UpsertResourceHandler(_fhirDataStore, lazyConformanceProvider, _resourceWrapperFactory, mediator, resourceModifierEngine)).Singleton().AsSelf().AsImplementedInterfaces();
             collection.Add(x => new GetResourceHandler(_fhirDataStore, lazyConformanceProvider, _resourceWrapperFactory, Deserializers.ResourceDeserializer)).Singleton().AsSelf().AsImplementedInterfaces();
             collection.Add(x => new DeleteResourceHandler(_fhirDataStore, lazyConformanceProvider, _resourceWrapperFactory)).Singleton().AsSelf().AsImplementedInterfaces();
 

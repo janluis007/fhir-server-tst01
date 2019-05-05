@@ -20,17 +20,21 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources.Upsert
     public class UpsertResourceHandler : BaseResourceHandler, IRequestHandler<UpsertResourceRequest, UpsertResourceResponse>
     {
         private readonly IMediator _mediator;
+        private readonly ResourceModifierEngine _resourceModifierEngine;
 
         public UpsertResourceHandler(
             IFhirDataStore fhirDataStore,
             Lazy<IConformanceProvider> conformanceProvider,
             IResourceWrapperFactory resourceWrapperFactory,
-            IMediator mediator)
+            IMediator mediator,
+            ResourceModifierEngine resourceModifierEngine)
             : base(fhirDataStore, conformanceProvider, resourceWrapperFactory)
         {
             EnsureArg.IsNotNull(mediator, nameof(mediator));
+            EnsureArg.IsNotNull(resourceModifierEngine, nameof(resourceModifierEngine));
 
             _mediator = mediator;
+            _resourceModifierEngine = resourceModifierEngine;
         }
 
         public async Task<UpsertResourceResponse> Handle(UpsertResourceRequest message, CancellationToken cancellationToken)
@@ -38,6 +42,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources.Upsert
             EnsureArg.IsNotNull(message, nameof(message));
 
             Resource resource = message.Resource;
+
+            _resourceModifierEngine.Modify(resource);
 
             if (await ConformanceProvider.Value.RequireETag(resource.TypeName, cancellationToken) && message.WeakETag == null)
             {

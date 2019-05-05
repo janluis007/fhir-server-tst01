@@ -4,6 +4,7 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
@@ -20,17 +21,22 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources.Create
     public class CreateResourceHandler : BaseResourceHandler, IRequestHandler<CreateResourceRequest, UpsertResourceResponse>
     {
         private readonly IMediator _mediator;
+        private readonly ResourceModifierEngine _resourceModifierEngine;
 
         public CreateResourceHandler(
             IFhirDataStore fhirDataStore,
             Lazy<IConformanceProvider> conformanceProvider,
             IResourceWrapperFactory resourceWrapperFactory,
-            IMediator mediator)
+            IMediator mediator,
+            ResourceModifierEngine resourceModifierEngine)
             : base(fhirDataStore, conformanceProvider, resourceWrapperFactory)
         {
             EnsureArg.IsNotNull(mediator, nameof(mediator));
+            EnsureArg.IsNotNull(resourceModifierEngine, nameof(resourceModifierEngine));
 
             _mediator = mediator;
+
+            _resourceModifierEngine = resourceModifierEngine;
         }
 
         public async Task<UpsertResourceResponse> Handle(CreateResourceRequest message, CancellationToken cancellationToken)
@@ -41,6 +47,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources.Create
 
             // If an Id is supplied on create it should be removed/ignored
             resource.Id = null;
+
+            _resourceModifierEngine.Modify(resource);
 
             ResourceWrapper resourceWrapper = CreateResourceWrapper(resource, deleted: false);
 

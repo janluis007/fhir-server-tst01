@@ -5,17 +5,17 @@
 
 using EnsureThat;
 using Microsoft.Health.Extensions.DependencyInjection;
-using Microsoft.Health.Fhir.Subscription.Webhook.Features.Subscriptions;
+using Microsoft.Health.Fhir.Subscription.Websocket.Features.Subscriptions;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
-    public static class FhirServerBuilderWebhookSubscriptionRegistrationExtensions
+    public static class FhirServerBuilderWebsocketSubscriptionRegistrationExtensions
     {
-        public static IServiceCollection AddWebhookSubscription(this IServiceCollection serviceCollection)
+        public static IServiceCollection AddWebsocketSubscription(this IServiceCollection serviceCollection)
         {
             EnsureArg.IsNotNull(serviceCollection, nameof(serviceCollection));
 
-            serviceCollection.Add<QueueWebhookSubscriptionNotifier>()
+            serviceCollection.Add<QueueWebsocketSubscriptionNotifier>()
                 .Singleton()
                 .AsSelf()
                 .AsImplementedInterfaces();

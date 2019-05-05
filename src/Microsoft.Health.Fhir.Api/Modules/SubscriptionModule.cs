@@ -5,6 +5,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Health.Extensions.DependencyInjection;
+using Microsoft.Health.Fhir.Core.Features.Resources;
 using Microsoft.Health.Fhir.Core.Features.Subscriptions;
 
 namespace Microsoft.Health.Fhir.Api.Modules
@@ -19,6 +20,15 @@ namespace Microsoft.Health.Fhir.Api.Modules
 
             services.Add<SubscriptionHandler>()
                 .Scoped()
+                .AsSelf();
+
+            services.Add<SubscriptionResourceModifier>()
+                .Singleton()
+                .AsSelf()
+                .AsImplementedInterfaces();
+
+            services.Add<ResourceModifierEngine>()
+                .Singleton()
                 .AsSelf();
         }
     }

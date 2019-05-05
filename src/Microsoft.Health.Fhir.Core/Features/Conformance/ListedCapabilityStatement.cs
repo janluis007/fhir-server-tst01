@@ -42,7 +42,5 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
         public IList<ListedRestComponent> Rest { get; set; }
 
         public IList<Code<PublicationStatus>> StatusElement { get; set; }
-
-        public IList<Extension> Extension { get; set; }
     }
 }

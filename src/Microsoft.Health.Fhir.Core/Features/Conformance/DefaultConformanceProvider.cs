@@ -44,7 +44,6 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
                 _builderActions.ForEach(action => action(_capabilityStatement));
             }
 
-            _capabilityStatement.Extension.Add(new Extension("http://hl7.org/fhir/StructureDefinition/capabilitystatement-websocket", new FhirUri("wss://fhir-subscriptions-ws.azurewebsites.net/socket")));
             return _capabilityStatement;
         }
 

@@ -206,10 +206,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
                 Status = system.Status.IntersectEnum(configured.Status, issues, "Status"),
                 AcceptUnknown = system.AcceptUnknown.IntersectEnum(configured.AcceptUnknown, issues, "AcceptUknown"),
                 Format = system.Format?.IntersectList(configured.Format, x => x, issues, "Format"),
-                ////Extension = system.Extension?.IntersectList(configured.Extension, x => x, issues, "Extension"),
             };
-
-            intersecting.Extension = system.Extension.ToList();
 
             DateTimeOffset cDate;
             if (DateTimeOffset.TryParse(configured.Date, out cDate))
@@ -236,6 +233,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
                     Interaction = systemRest.Interaction?.IntersectList(configuredRest.Interaction, x => x.Code, issues, $"Rest.Interaction"),
                     SearchParam = systemRest.SearchParam?.IntersectList(configuredRest.SearchParam, x => x.Name, issues, $"Rest.SearchParam"),
                     Operation = systemRest.Operation?.IntersectList(configuredRest.Operation, x => x.Name, issues, $"Rest.Operation"),
+                    Extension = systemRest.Extension?.IntersectList(configuredRest.Extension, x => x.Url, issues, "Rest.Extension"),
                 };
 
                 intersecting.Rest.Add(rest);

@@ -25,7 +25,7 @@ namespace Microsoft.Health.Fhir.Web
             services.AddDevelopmentIdentityProvider(Configuration);
 
             services.AddRestSubscription();
-            services.AddWebhookSubscription();
+            services.AddWebsocketSubscription();
 
             services.AddFhirServer(Configuration).AddCosmosDb(Configuration);
 

@@ -17,6 +17,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
             serviceCollection.Add<RestSubscriptionNotifier>()
                 .Singleton()
+                .AsSelf()
                 .AsImplementedInterfaces();
 
             return serviceCollection;

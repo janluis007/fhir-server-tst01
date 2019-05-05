@@ -10,7 +10,6 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
-using Hl7.Fhir.Model;
 using Microsoft.Health.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 
@@ -59,11 +58,6 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
                             {
                                 provider.Build(buildCapabilityStatement);
                             }
-                        }
-
-                        if (buildCapabilityStatement.Extension == null)
-                        {
-                            buildCapabilityStatement.Extension = new List<Extension>();
                         }
 
                         _listedCapabilityStatement = buildCapabilityStatement;

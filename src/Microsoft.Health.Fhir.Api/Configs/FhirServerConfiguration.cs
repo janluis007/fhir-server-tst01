@@ -18,5 +18,7 @@ namespace Microsoft.Health.Fhir.Api.Configs
         public virtual CorsConfiguration Cors { get; } = new CorsConfiguration();
 
         public OperationsConfiguration Operations { get; } = new OperationsConfiguration();
+
+        public SubscriptionConfiguration Subscriptions { get; } = new SubscriptionConfiguration();
     }
 }
