@@ -36,22 +36,10 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Schema
             {
                 connection.Open();
                 var server = new Server(new ServerConnection(connection));
-                server.ConnectionContext.ExecuteNonQuery(GetMigrationScript(version));
+                server.ConnectionContext.ExecuteNonQuery(ScriptHelper.GetMigrationScript(version));
             }
 
             CompleteSchemaVersion(version);
-        }
-
-        private static string GetMigrationScript(int version)
-        {
-            string resourceName = $"{typeof(SchemaUpgradeRunner).Namespace}.Migrations.{version}.sql";
-            using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName))
-            {
-                using (var reader = new StreamReader(stream))
-                {
-                    return reader.ReadToEnd();
-                }
-            }
         }
 
         private void InsertSchemaVersion(int schemaVersion)

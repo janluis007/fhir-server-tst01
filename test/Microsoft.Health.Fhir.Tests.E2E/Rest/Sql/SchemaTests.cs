@@ -31,7 +31,6 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest.Sql
             {
                 new object[] { "_schema/compatibility" },
                 new object[] { "_schema/versions/current" },
-                new object[] { "_schema/versions/123/script" },
             };
 
         [RunLocalOnlyFact]
@@ -54,6 +53,43 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest.Sql
             JToken firstResult = jArrayResponse.First;
             string scriptUrl = $"{_client.BaseAddress}_schema/versions/{firstResult["id"]}/script";
             Assert.Equal(scriptUrl, firstResult["script"]);
+        }
+
+        [RunLocalOnlyFact]
+        public async Task WhenRequestingScript_GivenAValidScriptVersion_SqlShouldBeReturned()
+        {
+            var request = new HttpRequestMessage
+            {
+                Method = HttpMethod.Get,
+                RequestUri = new Uri(_client.BaseAddress, "_schema/versions/1/script"),
+            };
+
+            HttpResponseMessage response = await _client.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            var result = await response.Content.ReadAsStringAsync();
+
+            Assert.Contains("Insert Into", result);
+            Assert.Equal("1.sql", response.Content.Headers.ContentDisposition.FileName);
+        }
+
+        [RunLocalOnlyTheory]
+        [InlineData("0")]
+        [InlineData("1000")]
+        [InlineData("a")]
+        [InlineData("1.0")]
+        public async Task WhenRequestingScript_GivenAnInvalidScriptVersion_NotFoundShouldBeReturned(string version)
+        {
+            var request = new HttpRequestMessage
+            {
+                Method = HttpMethod.Get,
+                RequestUri = new Uri(_client.BaseAddress, $"_schema/versions/{version}/script"),
+            };
+
+            HttpResponseMessage response = await _client.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
         [RunLocalOnlyTheory]

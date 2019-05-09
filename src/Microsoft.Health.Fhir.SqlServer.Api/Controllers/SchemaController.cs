@@ -16,7 +16,7 @@ using Microsoft.Health.Fhir.SqlServer.Features.Schema;
 
 namespace Microsoft.Health.Fhir.SqlServer.Api.Controllers
 {
-    [NotImplementedExceptionFilter]
+    [SchemaControllerExceptionFilter]
     [Route(KnownRoutes.SchemaRoot)]
     public class SchemaController : Controller
     {
@@ -68,7 +68,12 @@ namespace Microsoft.Health.Fhir.SqlServer.Api.Controllers
         {
             _logger.LogInformation($"Attempting to get script for schema version: {id}");
 
-            throw new NotImplementedException(Resources.ScriptNotImplemented);
+            if (id <= 0 || id > (int)_schemaInformation.MaximumSupportedVersion)
+            {
+                throw new ArgumentOutOfRangeException(nameof(id), "The version specified is not available.");
+            }
+
+            return File(ScriptHelper.GetMigrationScriptAsBytes(id), "application/octet-stream", $"{id}.sql");
         }
 
         [HttpGet]

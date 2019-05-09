@@ -35,7 +35,7 @@ namespace Microsoft.Health.Fhir.SqlServer.Api.UnitTests.Features.Filters
         [Fact]
         public void GivenANotImplementedException_WhenExecutingAnAction_ThenTheResponseShouldBeAJsonResultWithStatusCode()
         {
-            var filter = new NotImplementedExceptionFilterAttribute();
+            var filter = new SchemaControllerExceptionFilterAttribute();
 
             _context.Exception = Substitute.For<NotImplementedException>();
 

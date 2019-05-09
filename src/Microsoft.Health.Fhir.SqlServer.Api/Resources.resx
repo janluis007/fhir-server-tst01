@@ -129,4 +129,7 @@
   <data name="ScriptNotImplemented" xml:space="preserve">
     <value>Script isn't current implemented.</value>
   </data>
+  <data name="ScriptVersionNotFound" xml:space="preserve">
+    <value>The script version specified was not found.</value>
+  </data>
 </root>

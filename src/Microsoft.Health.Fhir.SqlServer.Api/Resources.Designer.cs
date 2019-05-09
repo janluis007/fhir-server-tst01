@@ -95,5 +95,14 @@ namespace Microsoft.Health.Fhir.SqlServer.Api {
                 return ResourceManager.GetString("ScriptNotImplemented", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The script version specified was not found..
+        /// </summary>
+        internal static string ScriptVersionNotFound {
+            get {
+                return ResourceManager.GetString("ScriptVersionNotFound", resourceCulture);
+            }
+        }
     }
 }
