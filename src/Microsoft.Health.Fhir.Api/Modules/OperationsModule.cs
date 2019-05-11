@@ -10,6 +10,7 @@ using Microsoft.Health.Fhir.Api.Features.Operations.Import;
 using Microsoft.Health.Fhir.Core.Features.Operations.Export;
 using Microsoft.Health.Fhir.Core.Features.Operations.Import;
 using Microsoft.Health.Fhir.Operation.AzureBlob.Import;
+using Microsoft.Health.Fhir.Operation.GoogleCloudPlatform;
 
 namespace Microsoft.Health.Fhir.Api.Modules
 {
@@ -44,6 +45,10 @@ namespace Microsoft.Health.Fhir.Api.Modules
                 .AsSelf();
 
             services.Add<AzureBlobImportProvider>()
+                .Transient()
+                .AsService<IImportProvider>();
+
+            services.Add<BucketProvider>()
                 .Transient()
                 .AsService<IImportProvider>();
 

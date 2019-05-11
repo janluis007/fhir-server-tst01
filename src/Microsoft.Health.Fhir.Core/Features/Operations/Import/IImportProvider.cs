@@ -12,6 +12,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
 {
     public interface IImportProvider
     {
+        string ProviderType { get; }
+
         Task<StreamReader> DownloadRangeToStreamReaderAsync(Uri url, long offset, int length, CancellationToken cancellationToken);
     }
 }

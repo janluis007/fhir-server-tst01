@@ -16,6 +16,8 @@ namespace Microsoft.Health.Fhir.Operation.AzureBlob.Import
 {
     public class AzureBlobImportProvider : IImportProvider
     {
+        public string ProviderType { get; } = "azure-blob";
+
         public async Task<StreamReader> DownloadRangeToStreamReaderAsync(Uri url, long offset, int length, CancellationToken cancellationToken)
         {
             EnsureArg.IsNotNull(url, nameof(url));

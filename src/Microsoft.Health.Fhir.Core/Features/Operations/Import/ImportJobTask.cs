@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,7 +29,6 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
         private readonly ImportJobRecord _importJobRecord;
         private readonly ImportJobConfiguration _importJobConfiguration;
         private readonly IFhirOperationDataStore _fhirOperationDataStore;
-        private readonly IImportProvider _importProvider;
         private readonly IResourceWrapperFactory _resourceWrapperFactory;
         private readonly IFhirDataStore _fhirDataStore;
         private readonly FhirJsonParser _fhirJsonParser;
@@ -36,6 +36,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
         private readonly int _bufferSize;
+        private readonly Dictionary<string, IImportProvider> _importProviderDictionary;
 
         private WeakETag _weakETag;
 
@@ -44,7 +45,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             WeakETag weakETag,
             ImportJobConfiguration importJobConfiguration,
             IFhirOperationDataStore fhirOperationDataStore,
-            IImportProvider importProvider,
+            IEnumerable<IImportProvider> importProviders,
             IResourceWrapperFactory resourceWrapperFactory,
             IFhirDataStore fhirDataStore,
             FhirJsonParser fhirParser,
@@ -54,7 +55,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             EnsureArg.IsNotNull(weakETag, nameof(weakETag));
             EnsureArg.IsNotNull(importJobConfiguration, nameof(importJobConfiguration));
             EnsureArg.IsNotNull(fhirOperationDataStore, nameof(fhirOperationDataStore));
-            EnsureArg.IsNotNull(importProvider, nameof(importProvider));
+            EnsureArg.IsNotNull(importProviders, nameof(importProviders));
             EnsureArg.IsNotNull(resourceWrapperFactory, nameof(resourceWrapperFactory));
             EnsureArg.IsNotNull(fhirDataStore, nameof(fhirDataStore));
             EnsureArg.IsNotNull(fhirParser, nameof(fhirParser));
@@ -63,13 +64,14 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             _importJobRecord = importJobRecord;
             _importJobConfiguration = importJobConfiguration;
             _fhirOperationDataStore = fhirOperationDataStore;
-            _importProvider = importProvider;
             _resourceWrapperFactory = resourceWrapperFactory;
             _fhirDataStore = fhirDataStore;
             _fhirJsonParser = fhirParser;
             _logger = logger;
 
             _bufferSize = _importJobConfiguration.BufferSizeInMbytes * 1024 * 1024;
+            _importProviderDictionary = importProviders.ToDictionary(p => p.ProviderType, StringComparer.Ordinal);
+
             _weakETag = weakETag;
         }
 
@@ -162,6 +164,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                 ////    await UpdateJobStatus(OperationStatus.Running, cancellationToken);
                 ////}
 
+                await Task.WhenAll(tasks);
+
                 // We have acquired the job, process the export.
                 _logger.LogTrace("Successfully completed the job.");
 
@@ -212,10 +216,12 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
 
             bool isComplete = false;
 
-            Stopwatch stopwatch = new Stopwatch();
-            Stopwatch overallStopwatch = new Stopwatch();
+            var stopwatch = new Stopwatch();
+            var overallStopwatch = new Stopwatch();
 
-            Task<StreamReader> downloadTask = _importProvider.DownloadRangeToStreamReaderAsync(blobUrl, progress.BytesProcessed, _bufferSize, cancellationToken);
+            IImportProvider provider = _importProviderDictionary[input.StorageDetail.Type];
+
+            Task<StreamReader> downloadTask = provider.DownloadRangeToStreamReaderAsync(blobUrl, progress.BytesProcessed, _bufferSize, cancellationToken);
             StreamReader streamReader = null;
 
             do
@@ -245,7 +251,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                     if (streamReader.EndOfStream && !isComplete)
                     {
                         // Load the next batch.
-                        downloadTask = _importProvider.DownloadRangeToStreamReaderAsync(blobUrl, progress.BytesProcessed, _bufferSize, cancellationToken);
+                        downloadTask = provider.DownloadRangeToStreamReaderAsync(blobUrl, progress.BytesProcessed, _bufferSize, cancellationToken);
 
                         await Task.WhenAll(tasks);
 
@@ -313,6 +319,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                         }
 
                         progress.Count++;
+
+                        _logger.LogInformation($"Processed {progress.Count}");
 
                         // Increment the number of bytes processed (including the new line).
                         progress.BytesProcessed += Encoding.UTF8.GetBytes(line).Length + NewLineLength;

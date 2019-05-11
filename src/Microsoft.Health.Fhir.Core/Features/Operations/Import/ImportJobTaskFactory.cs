@@ -3,6 +3,7 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
@@ -22,7 +23,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
     {
         private readonly ImportJobConfiguration _importJobConfiguration;
         private readonly IFhirOperationDataStore _fhirOperationDataStore;
-        private readonly IImportProvider _importProvider;
+        private readonly IEnumerable<IImportProvider> _importProviders;
         private readonly IResourceWrapperFactory _resourceWrapperFactory;
         private readonly IFhirDataStore _fhirDataStore;
         private readonly FhirJsonParser _fhirJsonParser;
@@ -31,7 +32,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
         public ImportJobTaskFactory(
             IOptions<ImportJobConfiguration> importJobConfiguration,
             IFhirOperationDataStore fhirOperationDataStore,
-            IImportProvider importProvider,
+            IEnumerable<IImportProvider> importProviders,
             IResourceWrapperFactory resourceWrapperFactory,
             IFhirDataStore fhirDataStore,
             FhirJsonParser fhirParser,
@@ -40,14 +41,14 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             EnsureArg.IsNotNull(importJobConfiguration?.Value, nameof(importJobConfiguration));
             EnsureArg.IsNotNull(fhirOperationDataStore, nameof(fhirOperationDataStore));
             EnsureArg.IsNotNull(loggerFactory, nameof(loggerFactory));
-            EnsureArg.IsNotNull(importProvider, nameof(importProvider));
+            EnsureArg.IsNotNull(importProviders, nameof(importProviders));
             EnsureArg.IsNotNull(resourceWrapperFactory, nameof(resourceWrapperFactory));
             EnsureArg.IsNotNull(fhirDataStore, nameof(fhirDataStore));
             EnsureArg.IsNotNull(fhirParser, nameof(fhirParser));
 
             _importJobConfiguration = importJobConfiguration.Value;
             _fhirOperationDataStore = fhirOperationDataStore;
-            _importProvider = importProvider;
+            _importProviders = importProviders;
             _resourceWrapperFactory = resourceWrapperFactory;
             _fhirDataStore = fhirDataStore;
             _fhirJsonParser = fhirParser;
@@ -64,7 +65,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                 weakETag,
                 _importJobConfiguration,
                 _fhirOperationDataStore,
-                _importProvider,
+                _importProviders,
                 _resourceWrapperFactory,
                 _fhirDataStore,
                 _fhirJsonParser,
