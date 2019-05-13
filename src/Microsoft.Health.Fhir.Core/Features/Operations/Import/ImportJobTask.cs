@@ -154,16 +154,6 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                     }
                 }
 
-                ////while (tasks.Count < _importJobConfiguration.MaximumNumberOfConcurrentTaskPerJob &&
-                ////    _importJobRecord.Request.Input.Count < i)
-                ////{
-                ////}
-
-                ////for (int i = 0; i < _importJobRecord.Request.Input.Count; i++)
-                ////{
-                ////    await UpdateJobStatus(OperationStatus.Running, cancellationToken);
-                ////}
-
                 await Task.WhenAll(tasks);
 
                 // We have acquired the job, process the export.
@@ -237,7 +227,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
 
                 string line;
 
-                List<Task> tasks = new List<Task>();
+                var tasks = new List<Task>();
 
                 do
                 {
@@ -287,6 +277,13 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                             stopwatch.Restart();
 
                             Resource resource = _fhirJsonParser.Parse<Resource>(line);
+
+                            if (resource.Meta == null)
+                            {
+                                resource.Meta = new Meta();
+                            }
+
+                            resource.Meta.LastUpdated = Clock.UtcNow;
 
                             _logger.LogInformation("Parsing took {Duration}.", stopwatch.ElapsedMilliseconds);
 
