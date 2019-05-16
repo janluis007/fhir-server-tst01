@@ -6,6 +6,7 @@
 using System;
 using System.Collections.Generic;
 using EnsureThat;
+using Microsoft.Health.Fhir.Core.Messages.Export;
 using Newtonsoft.Json;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations.Export.Models
@@ -17,13 +18,14 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export.Models
     {
         private const string SecretPrefix = "Export-Destination-";
 
-        public ExportJobRecord(Uri exportRequestUri, string hash, IReadOnlyCollection<KeyValuePair<string, string>> requestorClaims = null)
+        public ExportJobRecord(Uri exportRequestUri, string hash, IReadOnlyCollection<KeyValuePair<string, string>> requestorClaims = null, CreateExportRequest request = null)
         {
             EnsureArg.IsNotNull(exportRequestUri, nameof(exportRequestUri));
             EnsureArg.IsNotNullOrWhiteSpace(hash, nameof(hash));
 
             RequestUri = exportRequestUri;
             Hash = hash;
+            CreateExportRequest = request;
             RequestorClaims = requestorClaims;
 
             // Default values
@@ -40,8 +42,11 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export.Models
         {
         }
 
-        [JsonProperty(JobRecordProperties.Request)]
+        [JsonProperty(JobRecordProperties.RequestUri)]
         public Uri RequestUri { get; private set; }
+
+        [JsonProperty(JobRecordProperties.CreateExportRequest)]
+        public CreateExportRequest CreateExportRequest { get; private set; }
 
         [JsonProperty(JobRecordProperties.RequestorClaims)]
         public IReadOnlyCollection<KeyValuePair<string, string>> RequestorClaims { get; private set; }
@@ -65,7 +70,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export.Models
         public List<ExportFileInfo> Output { get; private set; } = new List<ExportFileInfo>();
 
         [JsonProperty(JobRecordProperties.Error)]
-        public List<ExportFileInfo> Errors { get; private set; } = new List<ExportFileInfo>();
+        public List<ExportFileInfo> Error { get; private set; } = new List<ExportFileInfo>();
 
         [JsonProperty(JobRecordProperties.Status)]
         public OperationStatus Status { get; set; }

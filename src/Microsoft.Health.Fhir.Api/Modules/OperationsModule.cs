@@ -29,7 +29,7 @@ namespace Microsoft.Health.Fhir.Api.Modules
                 .AsFactory();
 
             services.Add<ExportJobWorker>()
-                .Singleton()
+                .Scoped()
                 .AsSelf();
         }
     }

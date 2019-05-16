@@ -30,6 +30,19 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
             CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
+        /// Searches for resources using the given input parameters. For use when we want to search for resources from within
+        /// the service. We don't want to return a Bundle in such cases.
+        /// </summary>
+        /// <param name="resourceType">The resource type that should be searched. Can be null.</param>
+        /// <param name="queryParameters">The search queries.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>Results of the search wrapped in a <see cref="SearchResult"/></returns>
+        Task<SearchResult> InternalRequestForSearchAsync(
+            string resourceType,
+            IReadOnlyList<Tuple<string, string>> queryParameters,
+            CancellationToken cancellationToken = default(CancellationToken));
+
+        /// <summary>
         /// Searches resources based on the given compartment using the <paramref name="queryParameters"/>.
         /// </summary>
         /// <param name="compartmentType">The compartment type that needs to be searched.</param>

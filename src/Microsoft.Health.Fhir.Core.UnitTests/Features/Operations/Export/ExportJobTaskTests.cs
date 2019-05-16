@@ -11,6 +11,7 @@ using Microsoft.Health.Fhir.Core.Features.Operations;
 using Microsoft.Health.Fhir.Core.Features.Operations.Export;
 using Microsoft.Health.Fhir.Core.Features.Operations.Export.Models;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
+using Microsoft.Health.Fhir.Core.Features.SecretStore;
 using NSubstitute;
 using Xunit;
 
@@ -22,6 +23,8 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Operations.Export
         private static readonly WeakETag _weakETag = WeakETag.FromVersionId("0");
 
         private readonly IFhirOperationDataStore _fhirOperationDataStore = Substitute.For<IFhirOperationDataStore>();
+        private readonly ISecretStore _secretStore = Substitute.For<ISecretStore>();
+        private readonly IExportExecutor _exportExecutor = Substitute.For<IExportExecutor>();
 
         private ExportJobTask _exportJobTask;
 
@@ -36,6 +39,8 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Operations.Export
 
             _exportJobTask = new ExportJobTask(
                 _fhirOperationDataStore,
+                _secretStore,
+                _exportExecutor,
                 NullLogger<ExportJobTask>.Instance);
         }
 

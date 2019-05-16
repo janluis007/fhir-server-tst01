@@ -10,8 +10,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Health.Fhir.Core.Features.Operations;
 using Microsoft.Health.Fhir.Core.Features.Operations.Export;
 using Microsoft.Health.Fhir.Core.Features.Operations.Export.Models;
+using Microsoft.Health.Fhir.Core.Features.SecretStore;
 using Microsoft.Health.Fhir.Tests.Common.FixtureParameters;
 using Microsoft.Health.Fhir.Tests.Integration.Persistence;
+using NSubstitute;
 using Xunit;
 
 namespace Microsoft.Health.Fhir.Tests.Integration.Features.Operations.Export
@@ -21,13 +23,17 @@ namespace Microsoft.Health.Fhir.Tests.Integration.Features.Operations.Export
     public class ExportJobTaskTests : IClassFixture<FhirStorageTestsFixture>
     {
         private readonly IFhirOperationDataStore _fhirOperationDataStore;
+        private readonly ISecretStore _secretStore;
+        private readonly IExportExecutor _exportExecutor;
         private readonly ExportJobTask _exportJobTask;
 
         public ExportJobTaskTests(FhirStorageTestsFixture fixture)
         {
             _fhirOperationDataStore = fixture.OperationDataStore;
+            _secretStore = Substitute.For<ISecretStore>();
+            _exportExecutor = Substitute.For<IExportExecutor>();
 
-            _exportJobTask = new ExportJobTask(_fhirOperationDataStore, NullLogger<ExportJobTask>.Instance);
+            _exportJobTask = new ExportJobTask(_fhirOperationDataStore, _secretStore, _exportExecutor, NullLogger<ExportJobTask>.Instance);
         }
 
         [Fact]

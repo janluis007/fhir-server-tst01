@@ -6,6 +6,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.Health.Fhir.Core.Configs;
@@ -18,23 +19,29 @@ namespace Microsoft.Health.Fhir.Api.Features.Operations.Export
     /// </summary>
     public class ExportJobWorkerBackgroundService : BackgroundService
     {
-        private readonly ExportJobWorker _exportJobWorker;
+        private ExportJobWorker _exportJobWorker;
         private readonly ExportJobConfiguration _exportJobConfiguration;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public ExportJobWorkerBackgroundService(ExportJobWorker exportJobWorker, IOptions<ExportJobConfiguration> exportJobConfiguration)
+        public ExportJobWorkerBackgroundService(IServiceScopeFactory scopeFactory, IOptions<ExportJobConfiguration> exportJobConfiguration)
         {
-            EnsureArg.IsNotNull(exportJobWorker, nameof(exportJobWorker));
+            EnsureArg.IsNotNull(scopeFactory, nameof(scopeFactory));
             EnsureArg.IsNotNull(exportJobConfiguration?.Value, nameof(exportJobConfiguration));
 
-            _exportJobWorker = exportJobWorker;
+            _scopeFactory = scopeFactory;
             _exportJobConfiguration = exportJobConfiguration.Value;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            if (_exportJobConfiguration.Enabled)
+            using (var scope = _scopeFactory.CreateScope())
             {
-                await _exportJobWorker.ExecuteAsync(stoppingToken);
+                _exportJobWorker = scope.ServiceProvider.GetRequiredService<ExportJobWorker>();
+
+                if (_exportJobConfiguration.Enabled)
+                {
+                    await _exportJobWorker.ExecuteAsync(stoppingToken);
+                }
             }
         }
     }

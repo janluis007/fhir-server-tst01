@@ -48,6 +48,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Operations.Export
             Assert.NotNull(result.JobResult.Output);
             Assert.NotEqual(default, result.JobResult.TransactionTime);
             Assert.NotNull(result.JobResult.RequestUri);
+            Assert.NotNull(result.JobResult.Error);
         }
 
         [Fact]

@@ -35,7 +35,9 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations
 
         public const string TotalNumberOfFailures = "totalNumberOfFailures";
 
-        public const string Request = "request";
+        public const string CreateExportRequest = "createExportRequest";
+
+        public const string RequestUri = "requestUri";
 
         public const string RequestorClaims = "requestorClaims";
 
