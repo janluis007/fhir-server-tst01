@@ -25,7 +25,8 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest.Audit
     public class AuditTests : IClassFixture<AuditTestFixture>
     {
         private const string RequestIdHeaderName = "X-Request-Id";
-        private const string ExpectedClaimKey = "appid";
+        private const string ExpectedClaimKey = "iss";
+        private const string ExpectedIssuer = "https://localhost:44348";
 
         private readonly AuditTestFixture _fixture;
         private readonly FhirClient _client;
@@ -143,13 +144,11 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest.Audit
 
             var expectedUri = new Uri($"http://localhost/Patient/{result.Resource.Id}");
 
-            string expectedAppId = TestApplications.ServiceClient.ClientId;
-
             // TODO: The resource type being logged here is incorrect. The issue is tracked by https://github.com/Microsoft/fhir-server/issues/334.
             Assert.Collection(
                 _auditLogger.GetAuditEntriesByCorrelationId(correlationId),
-                ae => ValidateExecutingAuditEntry(ae, "delete", expectedUri, correlationId, expectedAppId, ExpectedClaimKey),
-                ae => ValidateExecutedAuditEntry(ae, "delete", null, expectedUri, HttpStatusCode.NoContent, correlationId, expectedAppId, ExpectedClaimKey));
+                ae => ValidateExecutingAuditEntry(ae, "delete", expectedUri, correlationId, ExpectedIssuer, ExpectedClaimKey),
+                ae => ValidateExecutedAuditEntry(ae, "delete", null, expectedUri, HttpStatusCode.NoContent, correlationId, ExpectedIssuer, ExpectedClaimKey));
         }
 
         [Fact]
@@ -347,7 +346,7 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest.Audit
             await ExecuteAndValidate(
                 client => client.RunAsClientApplication(TestApplications.NativeClient),
                 HttpStatusCode.Forbidden,
-                expectedAppId: TestApplications.NativeClient.ClientId);
+                ExpectedIssuer);
         }
 
         private async Task ExecuteAndValidate<T>(Func<Task<FhirResponse<T>>> action, string expectedAction, ResourceType expectedResourceType, Func<T, string> expectedPathGenerator, HttpStatusCode expectedStatusCode)
@@ -369,12 +368,10 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest.Audit
 
             var expectedUri = new Uri($"http://localhost/{expectedPathGenerator(response.Resource)}");
 
-            string expectedAppId = TestApplications.ServiceClient.ClientId;
-
             Assert.Collection(
                 _auditLogger.GetAuditEntriesByCorrelationId(correlationId),
-                ae => ValidateExecutingAuditEntry(ae, expectedAction, expectedUri, correlationId, expectedAppId, ExpectedClaimKey),
-                ae => ValidateExecutedAuditEntry(ae, expectedAction, expectedResourceType, expectedUri, expectedStatusCode, correlationId, expectedAppId, ExpectedClaimKey));
+                ae => ValidateExecutingAuditEntry(ae, expectedAction, expectedUri, correlationId, ExpectedIssuer, ExpectedClaimKey),
+                ae => ValidateExecutedAuditEntry(ae, expectedAction, expectedResourceType, expectedUri, expectedStatusCode, correlationId, ExpectedIssuer, ExpectedClaimKey));
         }
 
         private async Task ExecuteAndValidate(Func<Task<HttpResponseMessage>> action, string expectedAction, string expectedPathSegment, HttpStatusCode expectedStatusCode, string expectedClaimValue, string expectedClaimKey)
