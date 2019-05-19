@@ -5,6 +5,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using EnsureThat;
 using Hl7.Fhir.Model;
 using Task = System.Threading.Tasks.Task;
@@ -13,21 +14,24 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export.ExportDestinatio
 {
     public class MockExportDestinationClient : IExportDestinationClient
     {
-        private Dictionary<string, List<Resource>> _exportedData = new Dictionary<string, List<Resource>>();
+        private Dictionary<Uri, List<Resource>> _exportedData = new Dictionary<Uri, List<Resource>>();
+        private readonly Uri _baseUri = new Uri("https://localhost:44348/");
 
-        public async Task CreateNewFileAsync(string fileName)
+        public async Task<Uri> CreateNewFileAsync(string fileName)
         {
             EnsureArg.IsNotNullOrWhiteSpace(fileName, nameof(fileName));
 
-            _exportedData.Add(fileName, new List<Resource>());
-            await Task.CompletedTask;
+            var fileUri = new Uri(_baseUri, fileName);
+            _exportedData.Add(fileUri, new List<Resource>());
+
+            return await Task.FromResult(fileUri);
         }
 
-        public async Task CommitAsync(Dictionary<string, List<Resource>> fileNameToResourcesMapping)
+        public async Task CommitAsync(Dictionary<Uri, List<Resource>> fileNameToResourcesMapping)
         {
             EnsureArg.IsNotNull(fileNameToResourcesMapping, nameof(fileNameToResourcesMapping));
 
-            foreach (KeyValuePair<string, List<Resource>> kvp in fileNameToResourcesMapping)
+            foreach (KeyValuePair<Uri, List<Resource>> kvp in fileNameToResourcesMapping)
             {
                 List<Resource> resource;
                 if (!_exportedData.TryGetValue(kvp.Key, out resource))

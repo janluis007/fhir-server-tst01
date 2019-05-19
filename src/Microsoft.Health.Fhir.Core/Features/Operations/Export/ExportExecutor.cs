@@ -45,10 +45,15 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export
                 queryParams.Add(new Tuple<string, string>(KnownQueryParameterNames.ContinuationToken, continuationToken));
             }
 
-            SearchResult searchResult = await _searchService.InternalRequestForSearchAsync(resourceType: null, queryParams);
+            var searchOptions = new SearchOptions()
+            {
+                MaxItemCount = maxCountPerQuery,
+            };
+
+            SearchResult searchResult = await _searchService.InternalRequestForSearchAsync(resourceType: null, queryParams, searchOptions);
 
             var getExportDataResult = new GetExportDataResult(searchResult.ContinuationToken);
-            foreach (var resourceWrapper in searchResult.Results)
+            foreach (ResourceWrapper resourceWrapper in searchResult.Results)
             {
                 Resource r = _resourceDeserializer.DeserializeRaw(resourceWrapper.RawResource);
                 getExportDataResult.Resources.Add(r);

@@ -47,9 +47,22 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
             return Create(null, null, resourceType, queryParameters);
         }
 
+        public SearchOptions Create(string resourceType, IReadOnlyList<Tuple<string, string>> queryParameters, SearchOptions searchOptions)
+        {
+            return Create(null, null, resourceType, queryParameters, searchOptions);
+        }
+
         public SearchOptions Create(string compartmentType, string compartmentId, string resourceType, IReadOnlyList<Tuple<string, string>> queryParameters)
         {
-            var options = new SearchOptions();
+            return Create(compartmentType, compartmentId, resourceType, queryParameters, searchOptions: null);
+        }
+
+        public SearchOptions Create(string compartmentType, string compartmentId, string resourceType, IReadOnlyList<Tuple<string, string>> queryParameters, SearchOptions searchOptions)
+        {
+            if (searchOptions == null)
+            {
+                searchOptions = new SearchOptions();
+            }
 
             string continuationToken = null;
 
@@ -95,16 +108,16 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
                 }
             }
 
-            options.ContinuationToken = continuationToken;
+            searchOptions.ContinuationToken = continuationToken;
 
             // Check the item count.
             if (searchParams.Count != null)
             {
-                options.MaxItemCount = searchParams.Count.Value;
+                searchOptions.MaxItemCount = searchParams.Count.Value;
             }
 
             // Check to see if only the count should be returned
-            options.CountOnly = searchParams.Summary == SummaryType.Count;
+            searchOptions.CountOnly = searchParams.Summary == SummaryType.Count;
 
             // If the resource type is not specified, then the common
             // search parameters should be used.
@@ -158,11 +171,11 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
 
             if (searchExpressions.Count == 1)
             {
-                options.Expression = searchExpressions[0];
+                searchOptions.Expression = searchExpressions[0];
             }
             else if (searchExpressions.Count > 1)
             {
-                options.Expression = Expression.And(searchExpressions.ToArray());
+                searchOptions.Expression = Expression.And(searchExpressions.ToArray());
             }
 
             if (unsupportedSearchParameters.Any())
@@ -171,9 +184,9 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
                 // For now, we will ignore any unknown search parameters.
             }
 
-            options.UnsupportedSearchParams = unsupportedSearchParameters;
+            searchOptions.UnsupportedSearchParams = unsupportedSearchParameters;
 
-            return options;
+            return searchOptions;
         }
     }
 }

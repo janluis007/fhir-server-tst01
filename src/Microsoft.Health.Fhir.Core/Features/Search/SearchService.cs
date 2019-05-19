@@ -62,10 +62,23 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
             IReadOnlyList<Tuple<string, string>> queryParameters,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            SearchOptions searchOptions = _searchOptionsFactory.Create(resourceType, queryParameters);
+            return await InternalRequestForSearchAsync(
+                resourceType,
+                queryParameters,
+                searchOptions: null,
+                cancellationToken);
+        }
+
+        public async Task<SearchResult> InternalRequestForSearchAsync(
+            string resourceType,
+            IReadOnlyList<Tuple<string, string>> queryParameters,
+            SearchOptions searchOptions,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            SearchOptions finalSearchOptions = _searchOptionsFactory.Create(resourceType, queryParameters, searchOptions);
 
             // Execute the actual search.
-            SearchResult result = await SearchInternalAsync(searchOptions, cancellationToken);
+            SearchResult result = await SearchInternalAsync(finalSearchOptions, cancellationToken);
             return result;
         }
 

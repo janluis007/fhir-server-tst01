@@ -44,12 +44,12 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export.Models
         public Uri FileUri { get; private set; }
 
         [JsonProperty(JobRecordProperties.Sequence)]
-        public int Sequence { get; private set; }
+        public int Sequence { get; set; }
 
         [JsonProperty(JobRecordProperties.Count)]
-        public int Count { get; private set; }
+        public int Count { get; set; }
 
         [JsonProperty(JobRecordProperties.CommitedBytes)]
-        public long CommittedBytes { get; private set; }
+        public long CommittedBytes { get; set; }
     }
 }

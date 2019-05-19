@@ -26,7 +26,10 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export
         private readonly IExportExecutor _exportExecutor;
         private readonly ILogger _logger;
 
-        private readonly Dictionary<string, string> _resourceTypeFileNameMapping = new Dictionary<string, string>();
+        // Currently we will have only one file per resource type. In the future we might add the ability to split
+        // individual files based on a max file size. This could result in a single resource having multiple files.
+        // We will have to update the mapping to support multiple ExportFileInfo per resource type.
+        private readonly Dictionary<string, ExportFileInfo> _resourceTypeToFileInfoMapping = new Dictionary<string, ExportFileInfo>();
 
         private ExportJobRecord _exportJobRecord;
         private WeakETag _weakETag;
@@ -76,16 +79,10 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export
 
                     if (result.Resources.Count > 0)
                     {
-                        Dictionary<string, List<Resource>> resourcesToSend = await ProcessResources(result.Resources, destinationClient);
+                        Dictionary<Uri, List<Resource>> resourcesToSend = await ProcessResources(result.Resources, destinationClient);
 
                         // Send list of file names and resources to the destination client to commit.
                         await destinationClient.CommitAsync(resourcesToSend);
-                    }
-
-                    // Check whether we have reached the end of the search.
-                    if (string.IsNullOrWhiteSpace(result.ContinuationToken))
-                    {
-                        break;
                     }
 
                     // Update the job record and store it in the data store.
@@ -96,7 +93,17 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export
                     }
 
                     _exportJobRecord.Progress = new ExportJobProgress(result.ContinuationToken, page);
+
+                    _exportJobRecord.Output.Clear();
+                    _exportJobRecord.Output.AddRange(_resourceTypeToFileInfoMapping.Values);
+
                     await UpdateJobRecord(_exportJobRecord, cancellationToken);
+
+                    // Check whether we have reached the end of the search.
+                    if (string.IsNullOrWhiteSpace(result.ContinuationToken))
+                    {
+                        break;
+                    }
                 }
 
                 _logger.LogTrace("Successfully completed the job.");
@@ -146,41 +153,43 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export
         }
 
         /// <summary>
-        /// Given a list of resources, this method looks at the resource type and determines which file name it should
+        /// Given a list of resources, this method looks at the resource type and determines which file it should
         /// be saved to. If no file exists for a given resource, it will use the <paramref name="destinationClient"/> to create a new file.
         /// </summary>
         /// <param name="resources">List of resources to process.</param>
         /// <param name="destinationClient">Client used to connect to a destination.</param>
-        /// <returns>A mapping of resources and the file name they should be saved to.</returns>
-        private async Task<Dictionary<string, List<Resource>>> ProcessResources(List<Resource> resources, IExportDestinationClient destinationClient)
+        /// <returns>A mapping of resources and the file they should be saved to.</returns>
+        private async Task<Dictionary<Uri, List<Resource>>> ProcessResources(List<Resource> resources, IExportDestinationClient destinationClient)
         {
-            var fileNameToResourcesMapping = new Dictionary<string, List<Resource>>();
+            var fileToResourcesMapping = new Dictionary<Uri, List<Resource>>();
             foreach (Resource resource in resources)
             {
                 string resourceType = resource.ResourceType.ToString();
 
                 // Check whether we already have an exisiting file for the current resource type.
-                string fileName;
-                if (!_resourceTypeFileNameMapping.TryGetValue(resourceType, out fileName))
+                ExportFileInfo exportFileInfo;
+                if (!_resourceTypeToFileInfoMapping.TryGetValue(resourceType, out exportFileInfo))
                 {
-                    fileName = resourceType + ".ndjson";
-                    await destinationClient.CreateNewFileAsync(fileName);
+                    string fileName = resourceType + ".ndjson";
+                    Uri fileUri = await destinationClient.CreateNewFileAsync(fileName);
 
-                    _resourceTypeFileNameMapping.Add(resourceType, fileName);
+                    exportFileInfo = new ExportFileInfo(resourceType, fileUri, sequence: 0, count: 0, committedBytes: 0);
+                    _resourceTypeToFileInfoMapping.Add(resourceType, exportFileInfo);
                 }
 
                 // Add current resource to the list of resources for the appropriate resource type.
                 List<Resource> existingResources;
-                if (!fileNameToResourcesMapping.TryGetValue(fileName, out existingResources))
+                if (!fileToResourcesMapping.TryGetValue(exportFileInfo.FileUri, out existingResources))
                 {
                     existingResources = new List<Resource>();
-                    fileNameToResourcesMapping.Add(fileName, existingResources);
+                    fileToResourcesMapping.Add(exportFileInfo.FileUri, existingResources);
                 }
 
                 existingResources.Add(resource);
+                exportFileInfo.Count++;
             }
 
-            return fileNameToResourcesMapping;
+            return fileToResourcesMapping;
         }
     }
 }

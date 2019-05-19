@@ -12,8 +12,12 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
     {
         SearchOptions Create(string resourceType, IReadOnlyList<Tuple<string, string>> queryParameters);
 
+        SearchOptions Create(string resourceType, IReadOnlyList<Tuple<string, string>> queryParameters, SearchOptions searchOptions);
+
         SearchOptions Create(IReadOnlyList<Tuple<string, string>> queryParameters);
 
         SearchOptions Create(string compartmentType, string compartmentId, string resourceType, IReadOnlyList<Tuple<string, string>> queryParameters);
+
+        SearchOptions Create(string compartmentType, string compartmentId, string resourceType, IReadOnlyList<Tuple<string, string>> queryParameters, SearchOptions searchOptions);
     }
 }
