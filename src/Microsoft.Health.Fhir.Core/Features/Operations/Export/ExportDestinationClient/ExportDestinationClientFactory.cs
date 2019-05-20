@@ -32,8 +32,6 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export.ExportDestinatio
             }
 
             return new MockExportDestinationClient();
-
-            // throw new ArgumentException($"{destinationType} is not registered");
         }
     }
 }

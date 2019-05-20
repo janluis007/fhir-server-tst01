@@ -25,5 +25,10 @@ namespace Microsoft.Health.Fhir.Core.Configs
         /// List of destinations that are supported for export operation.
         /// </summary>
         public HashSet<string> SupportedDestinations { get; } = new HashSet<string>(StringComparer.Ordinal);
+
+        /// <summary>
+        /// Controls how many items will be returned for each search query while exporting the data.
+        /// </summary>
+        public int MaxItemCountPerQuery { get; set; }
     }
 }

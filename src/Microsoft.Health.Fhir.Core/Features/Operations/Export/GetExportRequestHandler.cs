@@ -36,7 +36,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export
             {
                 var jobResult = new ExportJobResult(
                     outcome.JobRecord.QueuedTime,
-                    outcome.JobRecord.RequestUri,
+                    outcome.JobRecord.CreateExportRequest.RequestUri,
                     requiresAccessToken: false,
                     outcome.JobRecord.Output,
                     outcome.JobRecord.Error);

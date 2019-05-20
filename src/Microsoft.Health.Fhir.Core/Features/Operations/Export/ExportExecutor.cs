@@ -8,6 +8,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using EnsureThat;
 using Hl7.Fhir.Model;
+using Microsoft.Extensions.Options;
+using Microsoft.Health.Fhir.Core.Configs;
 using Microsoft.Health.Fhir.Core.Features.Operations.Export.Models;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Features.Search;
@@ -17,19 +19,22 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export
 {
     public class ExportExecutor : IExportExecutor
     {
-        private ISearchService _searchService;
-        private ResourceDeserializer _resourceDeserializer;
+        private readonly ISearchService _searchService;
+        private readonly ResourceDeserializer _resourceDeserializer;
+        private readonly ExportJobConfiguration _exportJobConfiguration;
 
-        public ExportExecutor(ISearchService searchService, ResourceDeserializer resourceDeserializer)
+        public ExportExecutor(ISearchService searchService, ResourceDeserializer resourceDeserializer, IOptions<ExportJobConfiguration> exportJobConfiguration)
         {
             EnsureArg.IsNotNull(searchService, nameof(searchService));
             EnsureArg.IsNotNull(resourceDeserializer, nameof(resourceDeserializer));
+            EnsureArg.IsNotNull(exportJobConfiguration?.Value, nameof(exportJobConfiguration));
 
             _searchService = searchService;
             _resourceDeserializer = resourceDeserializer;
+            _exportJobConfiguration = exportJobConfiguration.Value;
         }
 
-        public async Task<GetExportDataResult> GetExportDataAsync(CreateExportRequest exportRequest, ExportJobProgress jobProgress, int maxCountPerQuery = 100)
+        public async Task<GetExportDataResult> GetExportDataAsync(CreateExportRequest exportRequest, ExportJobProgress jobProgress)
         {
             EnsureArg.IsNotNull(exportRequest, nameof(exportRequest));
 
@@ -47,16 +52,16 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export
 
             var searchOptions = new SearchOptions()
             {
-                MaxItemCount = maxCountPerQuery,
+                MaxItemCount = _exportJobConfiguration.MaxItemCountPerQuery,
             };
 
-            SearchResult searchResult = await _searchService.InternalRequestForSearchAsync(resourceType: null, queryParams, searchOptions);
+            SearchResult searchResult = await _searchService.InternalRequestForSearchAsync(exportRequest.ResourceType, queryParams, searchOptions);
 
             var getExportDataResult = new GetExportDataResult(searchResult.ContinuationToken);
             foreach (ResourceWrapper resourceWrapper in searchResult.Results)
             {
-                Resource r = _resourceDeserializer.DeserializeRaw(resourceWrapper.RawResource);
-                getExportDataResult.Resources.Add(r);
+                Resource resource = _resourceDeserializer.DeserializeRaw(resourceWrapper.RawResource);
+                getExportDataResult.Resources.Add(resource);
             }
 
             return getExportDataResult;

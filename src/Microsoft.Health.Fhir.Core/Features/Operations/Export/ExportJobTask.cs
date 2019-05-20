@@ -26,9 +26,9 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export
         private readonly IExportExecutor _exportExecutor;
         private readonly ILogger _logger;
 
-        // Currently we will have only one file per resource type. In the future we might add the ability to split
+        // Currently we will have only one file per resource type. In the future we will add the ability to split
         // individual files based on a max file size. This could result in a single resource having multiple files.
-        // We will have to update the mapping to support multiple ExportFileInfo per resource type.
+        // We will have to update the below mapping to support multiple ExportFileInfo per resource type.
         private readonly Dictionary<string, ExportFileInfo> _resourceTypeToFileInfoMapping = new Dictionary<string, ExportFileInfo>();
 
         private ExportJobRecord _exportJobRecord;
@@ -64,25 +64,24 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export
                 // We have acquired the job, process the export.
 
                 // Get destination type from secret store.
-                // Get the appropriate destination client from the client factory.
-                var destinationClient = ExportDestinationClientFactory.Instance.GetExportDestinationClient("Mock");
+                // DestinationInfo destInfo = await GetDestinationInfo();
 
-                // Connect to the destination
-                await destinationClient.ConnectAsync("destinationConnection");
+                // TODO: This uses a mock destination client. Will be replaced by an actual destination client later.
+                // Get the appropriate destination client from the client factory and connect to destination.
+                var mockDestinationClient = ExportDestinationClientFactory.Instance.GetExportDestinationClient("Mock");
+                await mockDestinationClient.ConnectAsync("destinationConnection");
 
                 // Start exporting the resources by using the ExportExecutor.
-                int totalResources = 0;
                 while (true)
                 {
-                    GetExportDataResult result = await _exportExecutor.GetExportDataAsync(_exportJobRecord.CreateExportRequest, exportJobRecord.Progress, 100);
-                    totalResources += result.Resources.Count;
+                    GetExportDataResult result = await _exportExecutor.GetExportDataAsync(_exportJobRecord.CreateExportRequest, exportJobRecord.Progress);
 
                     if (result.Resources.Count > 0)
                     {
-                        Dictionary<Uri, List<Resource>> resourcesToSend = await ProcessResources(result.Resources, destinationClient);
+                        Dictionary<Uri, List<Resource>> resourcesToSend = await ProcessResources(result.Resources, mockDestinationClient);
 
-                        // Send list of file names and resources to the destination client to commit.
-                        await destinationClient.CommitAsync(resourcesToSend);
+                        // Send list of resources and the corresponding files they need to be committed to to the destination client.
+                        await mockDestinationClient.CommitAsync(resourcesToSend);
                     }
 
                     // Update the job record and store it in the data store.
@@ -94,6 +93,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export
 
                     _exportJobRecord.Progress = new ExportJobProgress(result.ContinuationToken, page);
 
+                    // TODO: Optimize the process of updating the Output without having to replace the whole list every time.
                     _exportJobRecord.Output.Clear();
                     _exportJobRecord.Output.AddRange(_resourceTypeToFileInfoMapping.Values);
 

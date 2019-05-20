@@ -12,6 +12,7 @@ using Microsoft.Health.Fhir.Core.Features.Operations.Export;
 using Microsoft.Health.Fhir.Core.Features.Operations.Export.Models;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Features.SecretStore;
+using Microsoft.Health.Fhir.Core.Messages.Export;
 using NSubstitute;
 using Xunit;
 
@@ -19,7 +20,9 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Operations.Export
 {
     public class ExportJobTaskTests
     {
-        private static readonly ExportJobRecord _exportJobRecord = new ExportJobRecord(new Uri("https://localhost/ExportJob/"), "hash");
+        private static readonly ExportJobRecord _exportJobRecord = new ExportJobRecord(
+            new CreateExportRequest(new Uri("https://localhost/ExportJob/"), "destinationType", "destinationConnection"), "hash");
+
         private static readonly WeakETag _weakETag = WeakETag.FromVersionId("0");
 
         private readonly IFhirOperationDataStore _fhirOperationDataStore = Substitute.For<IFhirOperationDataStore>();

@@ -59,7 +59,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export
 
             if (outcome == null)
             {
-                var jobRecord = new ExportJobRecord(request.RequestUri, hash, requestorClaims, request);
+                var jobRecord = new ExportJobRecord(request, hash, requestorClaims);
 
                 // Store the destination secret.
                 await _secretStore.SetSecretAsync(jobRecord.SecretName, request.DestinationInfo.ToJson());

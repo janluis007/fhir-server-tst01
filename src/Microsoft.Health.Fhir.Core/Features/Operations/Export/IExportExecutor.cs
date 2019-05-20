@@ -11,6 +11,6 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export
 {
     public interface IExportExecutor
     {
-        Task<GetExportDataResult> GetExportDataAsync(CreateExportRequest exportRequest, ExportJobProgress jobProgress, int maxCountPerQuery);
+        Task<GetExportDataResult> GetExportDataAsync(CreateExportRequest exportRequest, ExportJobProgress jobProgress);
     }
 }

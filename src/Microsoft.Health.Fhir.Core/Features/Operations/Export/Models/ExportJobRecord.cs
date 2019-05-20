@@ -18,14 +18,13 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export.Models
     {
         private const string SecretPrefix = "Export-Destination-";
 
-        public ExportJobRecord(Uri exportRequestUri, string hash, IReadOnlyCollection<KeyValuePair<string, string>> requestorClaims = null, CreateExportRequest request = null)
+        public ExportJobRecord(CreateExportRequest exportRequest, string hash, IReadOnlyCollection<KeyValuePair<string, string>> requestorClaims = null)
         {
-            EnsureArg.IsNotNull(exportRequestUri, nameof(exportRequestUri));
+            EnsureArg.IsNotNull(exportRequest, nameof(exportRequest));
             EnsureArg.IsNotNullOrWhiteSpace(hash, nameof(hash));
 
-            RequestUri = exportRequestUri;
             Hash = hash;
-            CreateExportRequest = request;
+            CreateExportRequest = exportRequest;
             RequestorClaims = requestorClaims;
 
             // Default values
@@ -41,9 +40,6 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export.Models
         protected ExportJobRecord()
         {
         }
-
-        [JsonProperty(JobRecordProperties.RequestUri)]
-        public Uri RequestUri { get; private set; }
 
         [JsonProperty(JobRecordProperties.CreateExportRequest)]
         public CreateExportRequest CreateExportRequest { get; private set; }
