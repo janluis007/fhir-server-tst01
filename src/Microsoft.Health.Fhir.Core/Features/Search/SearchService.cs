@@ -24,76 +24,48 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
     public abstract class SearchService : ISearchService, IProvideCapability
     {
         private readonly ISearchOptionsFactory _searchOptionsFactory;
-        private readonly IBundleFactory _bundleFactory;
         private readonly IFhirDataStore _fhirDataStore;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SearchService"/> class.
         /// </summary>
         /// <param name="searchOptionsFactory">The search options factory.</param>
-        /// <param name="bundleFactory">The bundle factory</param>
         /// <param name="fhirDataStore">The data store</param>
-        protected SearchService(ISearchOptionsFactory searchOptionsFactory, IBundleFactory bundleFactory, IFhirDataStore fhirDataStore)
+        protected SearchService(ISearchOptionsFactory searchOptionsFactory, IFhirDataStore fhirDataStore)
         {
             EnsureArg.IsNotNull(searchOptionsFactory, nameof(searchOptionsFactory));
 
             _searchOptionsFactory = searchOptionsFactory;
-            _bundleFactory = bundleFactory;
             _fhirDataStore = fhirDataStore;
         }
 
         /// <inheritdoc />
-        public async Task<Bundle> SearchAsync(
+        public async Task<SearchResult> SearchAsync(
             string resourceType,
             IReadOnlyList<Tuple<string, string>> queryParameters,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken)
         {
             SearchOptions searchOptions = _searchOptionsFactory.Create(resourceType, queryParameters);
 
             // Execute the actual search.
-            SearchResult result = await SearchInternalAsync(searchOptions, cancellationToken);
-
-            return _bundleFactory.CreateSearchBundle(searchOptions.UnsupportedSearchParams, result);
+            return await SearchInternalAsync(searchOptions, cancellationToken);
         }
 
         /// <inheritdoc />
-        public async Task<SearchResult> InternalRequestForSearchAsync(
+        public async Task<SearchResult> SearchCompartmentAsync(
+            string compartmentType,
+            string compartmentId,
             string resourceType,
             IReadOnlyList<Tuple<string, string>> queryParameters,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            return await InternalRequestForSearchAsync(
-                resourceType,
-                queryParameters,
-                searchOptions: null,
-                cancellationToken);
-        }
-
-        public async Task<SearchResult> InternalRequestForSearchAsync(
-            string resourceType,
-            IReadOnlyList<Tuple<string, string>> queryParameters,
-            SearchOptions searchOptions,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            SearchOptions finalSearchOptions = _searchOptionsFactory.Create(resourceType, queryParameters, searchOptions);
-
-            // Execute the actual search.
-            SearchResult result = await SearchInternalAsync(finalSearchOptions, cancellationToken);
-            return result;
-        }
-
-        /// <inheritdoc />
-        public async Task<Bundle> SearchCompartmentAsync(string compartmentType, string compartmentId, string resourceType, IReadOnlyList<Tuple<string, string>> queryParameters, CancellationToken cancellationToken)
+            CancellationToken cancellationToken)
         {
             SearchOptions searchOptions = _searchOptionsFactory.Create(compartmentType, compartmentId, resourceType, queryParameters);
 
             // Execute the actual search.
-            SearchResult result = await SearchInternalAsync(searchOptions, cancellationToken);
-
-            return _bundleFactory.CreateSearchBundle(searchOptions.UnsupportedSearchParams, result);
+            return await SearchInternalAsync(searchOptions, cancellationToken);
         }
 
-        public async Task<Bundle> SearchHistoryAsync(
+        public async Task<SearchResult> SearchHistoryAsync(
             string resourceType,
             string resourceId,
             PartialDateTime at,
@@ -186,10 +158,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
                 queryParameters.Add(Tuple.Create(KnownQueryParameterNames.Count, count.ToString()));
             }
 
-            SearchOptions searchOptions =
-                !string.IsNullOrEmpty(resourceType)
-                    ? _searchOptionsFactory.Create(resourceType, queryParameters)
-                    : _searchOptionsFactory.Create(queryParameters);
+            SearchOptions searchOptions = _searchOptionsFactory.Create(resourceType, queryParameters);
 
             SearchResult searchResult = await SearchHistoryInternalAsync(searchOptions, cancellationToken);
 
@@ -206,9 +175,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
                 }
             }
 
-            return _bundleFactory.CreateHistoryBundle(
-                unsupportedSearchParams: null,
-                result: searchResult);
+            return searchResult;
         }
 
         /// <summary>

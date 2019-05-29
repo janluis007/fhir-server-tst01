@@ -3,15 +3,16 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
+using EnsureThat;
 using Newtonsoft.Json;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations.Export.Models
 {
     public class ExportJobProgress
     {
-        public ExportJobProgress(string query, int page)
+        public ExportJobProgress(string continuationToken, uint page)
         {
-            Query = query;
+            ContinuationToken = continuationToken;
             Page = page;
         }
 
@@ -21,9 +22,17 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export.Models
         }
 
         [JsonProperty(JobRecordProperties.Query)]
-        public string Query { get; private set; }
+        public string ContinuationToken { get; private set; }
 
         [JsonProperty(JobRecordProperties.Page)]
-        public int Page { get; private set; }
+        public uint Page { get; private set; }
+
+        public void UpdateContinuationToken(string continuationToken)
+        {
+            EnsureArg.IsNotNullOrWhiteSpace(continuationToken, nameof(continuationToken));
+
+            ContinuationToken = continuationToken;
+            Page++;
+        }
     }
 }

@@ -3,7 +3,6 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
@@ -16,19 +15,22 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
     public class SearchResourceHistoryHandler : IRequestHandler<SearchResourceHistoryRequest, SearchResourceHistoryResponse>
     {
         private readonly ISearchService _searchService;
+        private readonly IBundleFactory _bundleFactory;
 
-        public SearchResourceHistoryHandler(ISearchService searchService)
+        public SearchResourceHistoryHandler(ISearchService searchService, IBundleFactory bundleFactory)
         {
             EnsureArg.IsNotNull(searchService, nameof(searchService));
+            EnsureArg.IsNotNull(bundleFactory, nameof(bundleFactory));
 
             _searchService = searchService;
+            _bundleFactory = bundleFactory;
         }
 
         public async Task<SearchResourceHistoryResponse> Handle(SearchResourceHistoryRequest message, CancellationToken cancellationToken)
         {
             EnsureArg.IsNotNull(message, nameof(message));
 
-            Bundle bundle = await _searchService.SearchHistoryAsync(
+            SearchResult searchResult = await _searchService.SearchHistoryAsync(
                 message.ResourceType,
                 message.ResourceId,
                 message.At,
@@ -38,7 +40,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
                 message.ContinuationToken,
                 cancellationToken);
 
-            Debug.Assert(bundle != null, "SearchService should not return null bundle.");
+            Bundle bundle = _bundleFactory.CreateHistoryBundle(searchResult);
 
             return new SearchResourceHistoryResponse(bundle);
         }

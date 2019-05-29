@@ -37,32 +37,14 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
             _resourceTypeSearchParameter = searchParameterDefinitionManager.GetSearchParameter(ResourceType.Resource, SearchParameterNames.ResourceType);
         }
 
-        public SearchOptions Create(IReadOnlyList<Tuple<string, string>> queryParameters)
-        {
-            return Create(null, queryParameters);
-        }
-
         public SearchOptions Create(string resourceType, IReadOnlyList<Tuple<string, string>> queryParameters)
         {
             return Create(null, null, resourceType, queryParameters);
         }
 
-        public SearchOptions Create(string resourceType, IReadOnlyList<Tuple<string, string>> queryParameters, SearchOptions searchOptions)
-        {
-            return Create(null, null, resourceType, queryParameters, searchOptions);
-        }
-
         public SearchOptions Create(string compartmentType, string compartmentId, string resourceType, IReadOnlyList<Tuple<string, string>> queryParameters)
         {
-            return Create(compartmentType, compartmentId, resourceType, queryParameters, searchOptions: null);
-        }
-
-        public SearchOptions Create(string compartmentType, string compartmentId, string resourceType, IReadOnlyList<Tuple<string, string>> queryParameters, SearchOptions searchOptions)
-        {
-            if (searchOptions == null)
-            {
-                searchOptions = new SearchOptions();
-            }
+            var searchOptions = new SearchOptions();
 
             string continuationToken = null;
 

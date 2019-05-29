@@ -5,51 +5,77 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
-using Hl7.Fhir.Model;
 using Task = System.Threading.Tasks.Task;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations.Export.ExportDestinationClient
 {
     public class MockExportDestinationClient : IExportDestinationClient
     {
-        private Dictionary<Uri, List<Resource>> _exportedData = new Dictionary<Uri, List<Resource>>();
+        private Dictionary<Uri, StringBuilder> _exportedData = new Dictionary<Uri, StringBuilder>();
+        private Dictionary<(Uri FileUri, uint PartId), Stream> _streamMappings = new Dictionary<(Uri FileUri, uint PartId), Stream>();
+
         private readonly Uri _baseUri = new Uri("https://localhost:44348/");
 
-        public async Task<Uri> CreateNewFileAsync(string fileName)
-        {
-            EnsureArg.IsNotNullOrWhiteSpace(fileName, nameof(fileName));
+        public string DestinationType => "Mock";
 
-            var fileUri = new Uri(_baseUri, fileName);
-            _exportedData.Add(fileUri, new List<Resource>());
-
-            return await Task.FromResult(fileUri);
-        }
-
-        public async Task CommitAsync(Dictionary<Uri, List<Resource>> fileNameToResourcesMapping)
-        {
-            EnsureArg.IsNotNull(fileNameToResourcesMapping, nameof(fileNameToResourcesMapping));
-
-            foreach (KeyValuePair<Uri, List<Resource>> kvp in fileNameToResourcesMapping)
-            {
-                List<Resource> resource;
-                if (!_exportedData.TryGetValue(kvp.Key, out resource))
-                {
-                    throw new ArgumentException($"file {kvp.Key} does not exist.");
-                }
-
-                resource.AddRange(kvp.Value);
-            }
-
-            await Task.CompletedTask;
-        }
-
-        public async Task ConnectAsync(string destinationConnectionString)
+        public async Task ConnectAsync(string destinationConnectionString, CancellationToken cancellationToken)
         {
             EnsureArg.IsNotNullOrWhiteSpace(destinationConnectionString);
 
             await Task.CompletedTask;
+        }
+
+        public async Task<Uri> CreateFileAsync(string fileName, CancellationToken cancellationToken)
+        {
+            EnsureArg.IsNotNullOrWhiteSpace(fileName, nameof(fileName));
+
+            var fileUri = new Uri(_baseUri, fileName);
+
+            _exportedData.Add(fileUri, new StringBuilder());
+
+            return await Task.FromResult(fileUri);
+        }
+
+        public async Task WriteFilePartAsync(Uri fileUri, uint partId, byte[] bytes, CancellationToken cancellationToken)
+        {
+            EnsureArg.IsNotNull(fileUri, nameof(fileUri));
+            EnsureArg.IsNotNull(bytes, nameof(bytes));
+
+            var key = (fileUri, partId);
+
+            if (!_streamMappings.TryGetValue(key, out Stream stream))
+            {
+                stream = new MemoryStream();
+                _streamMappings.Add(key, stream);
+            }
+
+            await stream.WriteAsync(bytes, cancellationToken);
+        }
+
+        public async Task CommitAsync(CancellationToken cancellationToken)
+        {
+            foreach (KeyValuePair<(Uri, uint), Stream> mapping in _streamMappings)
+            {
+                Stream stream = mapping.Value;
+
+                // Reset the position.
+                stream.Position = 0;
+
+                StringBuilder stringBuilder = _exportedData[mapping.Key.Item1];
+
+                using (var reader = new StreamReader(stream, Encoding.UTF8))
+                {
+                    stringBuilder.Append(await reader.ReadToEndAsync());
+                }
+            }
+
+            // Now that all of the parts are committed, remove all stream mappings.
+            _streamMappings.Clear();
         }
     }
 }

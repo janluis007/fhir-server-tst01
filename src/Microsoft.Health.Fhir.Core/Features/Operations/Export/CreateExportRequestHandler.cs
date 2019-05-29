@@ -21,9 +21,9 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export
 {
     public class CreateExportRequestHandler : IRequestHandler<CreateExportRequest, CreateExportResponse>
     {
-        private IClaimsExtractor _claimsExtractor;
-        private IFhirOperationDataStore _fhirOperationDataStore;
-        private ISecretStore _secretStore;
+        private readonly IClaimsExtractor _claimsExtractor;
+        private readonly IFhirOperationDataStore _fhirOperationDataStore;
+        private readonly ISecretStore _secretStore;
 
         public CreateExportRequestHandler(IClaimsExtractor claimsExtractor, IFhirOperationDataStore fhirOperationDataStore, ISecretStore secretStore)
         {

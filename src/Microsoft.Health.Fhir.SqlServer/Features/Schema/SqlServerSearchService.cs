@@ -12,8 +12,8 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Schema
 {
     public class SqlServerSearchService : SearchService
     {
-        public SqlServerSearchService(ISearchOptionsFactory searchOptionsFactory, IBundleFactory bundleFactory, IFhirDataStore fhirDataStore)
-            : base(searchOptionsFactory, bundleFactory, fhirDataStore)
+        public SqlServerSearchService(ISearchOptionsFactory searchOptionsFactory, IFhirDataStore fhirDataStore)
+            : base(searchOptionsFactory, fhirDataStore)
         {
         }
 

@@ -29,6 +29,8 @@ namespace Microsoft.Health.Fhir.Core.Configs
         /// <summary>
         /// Controls how many items will be returned for each search query while exporting the data.
         /// </summary>
-        public int MaxItemCountPerQuery { get; set; }
+        public uint MaxItemCountPerQuery { get; set; } = 100;
+
+        public uint NumberOfPagesPerCommit { get; set; } = 10;
     }
 }

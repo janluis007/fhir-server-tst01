@@ -5,33 +5,37 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using EnsureThat;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations.Export.ExportDestinationClient
 {
-    public class ExportDestinationClientFactory
+    public class ExportDestinationClientFactory : IExportDestinationClientFactory
     {
-        private static readonly Lazy<ExportDestinationClientFactory> _instance = new Lazy<ExportDestinationClientFactory>(() => new ExportDestinationClientFactory());
         private Dictionary<string, Func<IExportDestinationClient>> _registeredTypes;
 
-        private ExportDestinationClientFactory()
+        public ExportDestinationClientFactory(IEnumerable<Func<IExportDestinationClient>> destinationClientFactories)
         {
-            _registeredTypes = new Dictionary<string, Func<IExportDestinationClient>>(StringComparer.Ordinal);
-            _registeredTypes.Add("Mock", () => new MockExportDestinationClient());
+            EnsureArg.IsNotNull(destinationClientFactories, nameof(destinationClientFactories));
+
+            _registeredTypes = destinationClientFactories.ToDictionary(factory => factory().DestinationType, StringComparer.Ordinal);
         }
 
-        public static ExportDestinationClientFactory Instance => _instance.Value;
-
-        public IExportDestinationClient GetExportDestinationClient(string destinationType)
+        public IExportDestinationClient Create(string destinationType)
         {
             EnsureArg.IsNotNullOrWhiteSpace(destinationType, nameof(destinationType));
 
-            if (_registeredTypes.TryGetValue(destinationType, out Func<IExportDestinationClient> ctor))
+            if (_registeredTypes.TryGetValue(destinationType, out Func<IExportDestinationClient> factory))
             {
-                return ctor();
+                return factory();
             }
 
-            return new MockExportDestinationClient();
+            throw new UnsupportedDestinationTypeException(destinationType);
+        }
+
+        public bool IsSupportedDestinationType(string destinationType)
+        {
+            return _registeredTypes.TryGetValue(destinationType, out Func<IExportDestinationClient> _);
         }
     }
 }

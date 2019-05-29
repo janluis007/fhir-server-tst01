@@ -17,7 +17,6 @@ using Microsoft.Health.Fhir.Api.Features.Exceptions;
 using Microsoft.Health.Fhir.Api.Features.Headers;
 using Microsoft.Health.Fhir.Api.Features.Operations.Export;
 using Microsoft.Health.Fhir.Core.Features.Cors;
-using Microsoft.Health.Fhir.Core.Features.Operations.Export;
 using Microsoft.Health.Fhir.Core.Registration;
 
 namespace Microsoft.Extensions.DependencyInjection
@@ -79,10 +78,6 @@ namespace Microsoft.Extensions.DependencyInjection
             EnsureArg.IsNotNull(fhirServerBuilder, nameof(fhirServerBuilder));
 
             fhirServerBuilder.Services.AddHostedService<ExportJobWorkerBackgroundService>();
-
-            fhirServerBuilder.Services.Add<ExportExecutor>()
-                .Transient()
-                .AsService<IExportExecutor>();
 
             return fhirServerBuilder;
         }

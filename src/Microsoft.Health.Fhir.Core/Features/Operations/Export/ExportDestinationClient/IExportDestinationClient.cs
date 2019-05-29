@@ -4,19 +4,22 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
-using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
-using Hl7.Fhir.Model;
 using Task = System.Threading.Tasks.Task;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations.Export.ExportDestinationClient
 {
     public interface IExportDestinationClient
     {
-        Task<Uri> CreateNewFileAsync(string fileName);
+        string DestinationType { get; }
 
-        Task CommitAsync(Dictionary<Uri, List<Resource>> fileNameToResourcesMapping);
+        Task ConnectAsync(string destinationConnectionString, CancellationToken cancellationToken);
 
-        Task ConnectAsync(string destinationConnectionString);
+        Task<Uri> CreateFileAsync(string fileName, CancellationToken cancellationToken);
+
+        Task WriteFilePartAsync(Uri fileUri, uint partId, byte[] bytes, CancellationToken cancellationToken);
+
+        Task CommitAsync(CancellationToken cancellationToken);
     }
 }
