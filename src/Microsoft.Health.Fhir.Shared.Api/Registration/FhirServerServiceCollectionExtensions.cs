@@ -4,14 +4,18 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
+using System.IO.Compression;
+using System.Linq;
 using System.Reflection;
 using EnsureThat;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Health.Extensions.DependencyInjection;
 using Microsoft.Health.Fhir.Api.Configs;
 using Microsoft.Health.Fhir.Api.Features.Audit;
+using Microsoft.Health.Fhir.Api.Features.ContentTypes;
 using Microsoft.Health.Fhir.Api.Features.Context;
 using Microsoft.Health.Fhir.Api.Features.Exceptions;
 using Microsoft.Health.Fhir.Api.Features.Headers;
@@ -66,6 +70,17 @@ namespace Microsoft.Extensions.DependencyInjection
 
             services.AddHttpClient();
 
+            services.AddResponseCompression(options =>
+            {
+                options.EnableForHttps = true;
+                options.MimeTypes = ResponseCompressionDefaults.MimeTypes
+                    .Concat(new[]
+                    {
+                        KnownContentTypes.JsonContentType,
+                        KnownContentTypes.XmlContentType,
+                    }).ToArray();
+            });
+
             return new FhirServerBuilder(services);
         }
 
@@ -105,6 +120,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 return app =>
                 {
                     IHostingEnvironment env = app.ApplicationServices.GetRequiredService<IHostingEnvironment>();
+
+                    app.UseResponseCompression();
 
                     // This middleware will add delegates to the OnStarting method of httpContext.Response for setting headers.
                     app.UseBaseHeaders();
