@@ -39,6 +39,9 @@
     <Compile Include="$(MSBuildThisFileDirectory)Features\Resources\Delete\DeleteResourceValidator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Features\Resources\Get\GetResourceHandler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Features\Resources\Get\GetResourceValidator.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Features\Resources\IResourceModifier.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Features\Resources\ResourceModifierEngine.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Features\Resources\SubscriptionResourceModifier.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Features\Resources\Upsert\ConditionalUpsertResourceHandler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Features\Resources\Upsert\UpsertResourceHandler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Features\Resources\Upsert\ConditionalUpsertResourceValidator.cs" />
@@ -84,8 +87,16 @@
     <Compile Include="$(MSBuildThisFileDirectory)Features\Search\SearchOptionsFactory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Features\Search\SearchResourceHandler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Features\Search\SearchResourceHistoryHandler.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Features\Subscriptions\IRestSubscriptionNotifier.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Features\Subscriptions\IWebsocketSubscriptionNotifier.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Features\Subscriptions\SubscriptionStore.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Features\Subscriptions\UpsertResourceNotificationHandler.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Features\Subscriptions\UpsertSubscriptionHandler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Features\Validation\ModelAttributeValidator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)FhirExtensions.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Notifications\DeleteSubscriptionNotification.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Notifications\UpsertResourceNotification.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Notifications\UpsertSubscriptionNotification.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)VersionSpecificModelInfoProvider.cs" />
   </ItemGroup>
 </Project>

@@ -40,6 +40,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="Hl7.Fhir.R4.Core">
+      <HintPath>..\..\..\fhir-net-api\src\Hl7.Fhir.Core\bin\Debug\netstandard2.0\Hl7.Fhir.R4.Core.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="xunit.runner.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

@@ -31,6 +31,85 @@
             "documentation": "Microsoft implementation of the FHIR Specification",
             "resource": [
                 {
+                    "type": "Topic",
+                    "profile": "http://hl7.org/fhir/StructureDefinition/topic",
+                    "interaction": [
+                        {
+                            "code": "create",
+                            "documentation": "Implemented per the specification"
+                        },
+                        {
+                            "code": "delete",
+                            "documentation": "Implemented per the specification"
+                        },
+                        {
+                            "code": "history-instance",
+                            "documentation": "Implemented per the specification"
+                        },
+                        {
+                            "code": "history-type",
+                            "documentation": "Implemented per the specification"
+                        },
+                        {
+                            "code": "read",
+                            "documentation": "Implemented per the specification"
+                        },
+                        {
+                            "code": "search-type",
+                            "documentation": "Implemented per the specification"
+                        },
+                        {
+                            "code": "update",
+                            "documentation": "Implemented per the specification"
+                        },
+                        {
+                            "code": "vread",
+                            "documentation": "Implemented per the specification"
+                        }
+                    ],
+                    "versioning": "versioned",
+                    "readHistory": true,
+                    "updateCreate": true,
+                    "conditionalCreate": false,
+                    "conditionalRead": "not-supported",
+                    "conditionalUpdate": false,
+                    "conditionalDelete": "not-supported",
+                    "searchInclude": [
+                    ],
+                    "searchParam": [
+                        {
+                            "name": "_id",
+                            "type": "token",
+                            "documentation": "Logical id of this artifact"
+                        },
+                        {
+                            "name": "_lastUpdated",
+                            "type": "date",
+                            "documentation": "When the resource version last changed"
+                        },
+                        {
+                            "name": "_profile",
+                            "type": "reference",
+                            "documentation": "Profiles this resource claims to conform to"
+                        },
+                        {
+                            "name": "_security",
+                            "type": "token",
+                            "documentation": "Security Labels applied to this resource"
+                        },
+                        {
+                            "name": "_source",
+                            "type": "uri",
+                            "documentation": "Identifies where the resource comes from"
+                        },
+                        {
+                            "name": "_tag",
+                            "type": "token",
+                            "documentation": "Tags applied to this resource"
+                        }
+                    ]
+                },
+                {
                     "type": "Account",
                     "profile": "http://hl7.org/fhir/StructureDefinition/account",
                     "interaction": [

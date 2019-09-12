@@ -26,6 +26,9 @@ namespace Microsoft.Health.Fhir.Web
         {
             services.AddDevelopmentIdentityProvider(Configuration);
 
+            services.AddRestSubscription();
+            services.AddWebsocketSubscription();
+
             Core.Registration.IFhirServerBuilder fhirServerBuilder = services.AddFhirServer(Configuration)
                 .AddExportWorker()
                 .AddKeyVaultSecretStore(Configuration)
