@@ -89,8 +89,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)Features\Search\SearchResourceHistoryHandler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Features\Subscriptions\IRestSubscriptionNotifier.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Features\Subscriptions\IWebsocketSubscriptionNotifier.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Features\Subscriptions\SubscriptionStore.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Features\Subscriptions\UpsertResourceNotificationHandler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Features\Subscriptions\UpsertSubscriptionHandler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Features\Validation\ModelAttributeValidator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)FhirExtensions.cs" />

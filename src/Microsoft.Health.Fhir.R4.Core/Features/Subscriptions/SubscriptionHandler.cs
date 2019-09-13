@@ -3,15 +3,16 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-using System;
+using System.Threading;
 using EnsureThat;
-using Hl7.Fhir.Model;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Microsoft.Health.Fhir.Core.Notifications;
+using Task = System.Threading.Tasks.Task;
 
 namespace Microsoft.Health.Fhir.Core.Features.Subscriptions
 {
-    public class SubscriptionHandler
+    public class SubscriptionHandler : INotificationHandler<TopicHitNotification>
     {
         private readonly IMediator _mediator;
         private readonly ILogger<SubscriptionHandler> _logger;
@@ -32,53 +33,47 @@ namespace Microsoft.Health.Fhir.Core.Features.Subscriptions
             _logger = logger;
         }
 
-        public void Handle(Resource notificationResource)
+        public async Task Handle(TopicHitNotification topicHitNotification, CancellationToken cancellationToken)
         {
-            var test = notificationResource;
             if (!_subscriptionStore.IsInitialized)
             {
                 _subscriptionStore.Start(_mediator);
             }
 
-            foreach (var subscription in _subscriptionStore.GetForResourceType())
+            foreach (var subscription in _subscriptionStore.GetForTopicId(topicHitNotification.TopicReference))
             {
-                // TODO: BKP Implemement topic matching
-                ////string rootCharacter = string.Empty;
-                ////if (subscription.Criteria.StartsWith("/", StringComparison.InvariantCulture))
-                ////{
-                ////    rootCharacter = "/";
-                ////}
+                // Kick stuff out that needs to be filtered
+                if (subscription.FilterBy.Count > 0)
+                {
+                }
 
-                ////if (subscription.Criteria.StartsWith($"{rootCharacter}{notificationResource.ResourceType}", StringComparison.InvariantCulture))
-                ////{
-                ////    switch (subscription.Channel.Type)
-                ////    {
-                ////        case Subscription.SubscriptionChannelType.RestHook:
-                ////            if (_restSubscriptionNotifier != null)
-                ////            {
-                ////                _logger.LogInformation("Notifying via REST Hook call");
-                ////                _restSubscriptionNotifier.Notify(subscription);
-                ////            }
-                ////            else
-                ////            {
-                ////                _logger.LogWarning("No rest hook notifier found to alert on");
-                ////            }
+                switch (subscription.Channel.Type.TextElement.ToString().ToUpperInvariant())
+                {
+                    case "REST HOOK":
+                        if (_restSubscriptionNotifier != null)
+                        {
+                            _logger.LogInformation("Notifying via REST Hook call");
+                            await _restSubscriptionNotifier.Notify(subscription);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("No rest hook notifier found to alert on");
+                        }
 
-                ////            break;
-                ////        case Subscription.SubscriptionChannelType.Websocket:
-                ////            if (_websocketSubscriptionNotifier != null)
-                ////            {
-                ////                _logger.LogInformation("Notifying via websocket call");
-                ////                _websocketSubscriptionNotifier.Ping(subscription);
-                ////            }
-                ////            else
-                ////            {
-                ////                _logger.LogWarning("No websocket notifier found to alert on");
-                ////            }
+                        break;
+                    case "WEBSOCKET":
+                        if (_websocketSubscriptionNotifier != null)
+                        {
+                            _logger.LogInformation("Notifying via websocket call");
+                            await _websocketSubscriptionNotifier.Ping(subscription);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("No websocket notifier found to alert on");
+                        }
 
-                ////            break;
-                ////    }
-                ////}
+                        break;
+                }
             }
         }
     }

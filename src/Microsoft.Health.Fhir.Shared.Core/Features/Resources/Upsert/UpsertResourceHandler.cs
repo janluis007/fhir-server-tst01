@@ -20,7 +20,10 @@ using Microsoft.Health.Fhir.ValueSets;
 
 namespace Microsoft.Health.Fhir.Core.Features.Resources.Upsert
 {
-    public class UpsertResourceHandler : BaseResourceHandler, IRequestHandler<UpsertResourceRequest, UpsertResourceResponse>
+    /// <summary>
+    /// Handles the version agnostic portions of the upsert resource
+    /// </summary>
+    public partial class UpsertResourceHandler : BaseResourceHandler, IRequestHandler<UpsertResourceRequest, UpsertResourceResponse>
     {
         private readonly IMediator _mediator;
         private readonly ResourceModifierEngine _resourceModifierEngine;
@@ -61,15 +64,9 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources.Upsert
             UpsertOutcome result = await FhirDataStore.UpsertAsync(resourceWrapper, message.WeakETag, allowCreate, keepHistory, cancellationToken);
             resource.VersionId = result.Wrapper.Version;
 
-            switch (resource)
-            {
-                case Subscription s:
-                    await _mediator.Publish(new UpsertSubscriptionNotification(s), cancellationToken);
-                    break;
-                default:
-                    await _mediator.Publish(new UpsertResourceNotification(resource), cancellationToken);
-                    break;
-            }
+            await HandleVersionSpecificOperations(resource, cancellationToken);
+
+            await _mediator.Publish(new UpsertResourceNotification(resource), cancellationToken);
 
             return new UpsertResourceResponse(new SaveOutcome(resource.ToResourceElement(), result.OutcomeType));
         }

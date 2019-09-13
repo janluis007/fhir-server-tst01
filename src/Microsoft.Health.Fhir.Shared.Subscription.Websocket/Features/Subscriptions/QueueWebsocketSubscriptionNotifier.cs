@@ -33,6 +33,11 @@ namespace Microsoft.Health.Fhir.Subscription.Websocket.Features.Subscriptions
 
             var storageConnectionString = configuration["Azure:Storage:ConnectionString"];
 
+            if (string.IsNullOrWhiteSpace(storageConnectionString))
+            {
+                storageConnectionString = "UseDevelopmentStorage=true";
+            }
+
             // Retrieve storage account from connection string.
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageConnectionString);
 
