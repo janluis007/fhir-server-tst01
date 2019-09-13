@@ -7,8 +7,12 @@ using System;
 using EnsureThat;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Health.Extensions.DependencyInjection;
+using Microsoft.Health.Fhir.Api.Features.Operations.Import;
 using Microsoft.Health.Fhir.Core.Features.Operations.Export;
 using Microsoft.Health.Fhir.Core.Features.Operations.Export.ExportDestinationClient;
+using Microsoft.Health.Fhir.Core.Features.Operations.Import;
+using Microsoft.Health.Fhir.Operation.AzureBlob.Import;
+using Microsoft.Health.Fhir.Operation.GoogleCloudPlatform;
 
 namespace Microsoft.Health.Fhir.Api.Modules
 {
@@ -49,6 +53,24 @@ namespace Microsoft.Health.Fhir.Api.Modules
             services.Add<ResourceToNdjsonBytesSerializer>()
                 .Singleton()
                 .AsService<IResourceToByteArraySerializer>();
+
+            services.Add<ImportJobTaskFactory>()
+                .Transient()
+                .AsService<IImportJobTaskFactory>();
+
+            services.Add<ImportJobWorker>()
+                .Transient()
+                .AsSelf();
+
+            services.Add<AzureBlobImportProvider>()
+                .Transient()
+                .AsService<IImportProvider>();
+
+            services.Add<BucketProvider>()
+                .Transient()
+                .AsService<IImportProvider>();
+
+            services.AddHostedService<ImportJobWorkerBackgroundService>();
         }
     }
 }

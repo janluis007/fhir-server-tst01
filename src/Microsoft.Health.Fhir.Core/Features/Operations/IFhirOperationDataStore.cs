@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Health.Fhir.Core.Features.Operations.Export.Models;
+using Microsoft.Health.Fhir.Core.Features.Operations.Import.Models;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations
@@ -56,5 +57,13 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>A list of acquired export job.</returns>
         Task<IReadOnlyCollection<ExportJobOutcome>> AcquireExportJobsAsync(ushort maximumNumberOfConcurrentJobsAllowed, TimeSpan jobHeartbeatTimeoutThreshold, CancellationToken cancellationToken);
+
+        Task<ImportJobOutcome> CreateImportJobAsync(ImportJobRecord jobRecord, CancellationToken cancellationToken);
+
+        Task<ImportJobOutcome> GetImportJobAsync(string jobId, CancellationToken cancellationToken);
+
+        Task<ImportJobOutcome> UpdateImportJobAsync(ImportJobRecord jobRecord, WeakETag eTag, CancellationToken cancellationToken);
+
+        Task<IReadOnlyCollection<ImportJobOutcome>> AcquireImportJobsAsync(ushort maximumNumberOfConcurrentJobsAllowed, TimeSpan jobHeartbeatTimeoutThreshold, CancellationToken cancellationToken);
     }
 }

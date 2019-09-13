@@ -40,5 +40,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Routing
         internal const string CancelExport = "CancelExport";
 
         internal const string PostBundle = "PostBundle";
+
+        internal const string GetImportStatusById = "GetImportStatusById";
     }
 }

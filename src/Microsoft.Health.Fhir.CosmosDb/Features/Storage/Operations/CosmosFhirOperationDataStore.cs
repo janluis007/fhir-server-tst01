@@ -5,6 +5,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Threading;
@@ -21,9 +22,12 @@ using Microsoft.Health.CosmosDb.Features.Storage;
 using Microsoft.Health.Extensions.DependencyInjection;
 using Microsoft.Health.Fhir.Core.Features.Operations;
 using Microsoft.Health.Fhir.Core.Features.Operations.Export.Models;
+using Microsoft.Health.Fhir.Core.Features.Operations.Import.Models;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.CosmosDb.Features.Storage.Operations.Export;
+using Microsoft.Health.Fhir.CosmosDb.Features.Storage.Operations.Import;
 using Microsoft.Health.Fhir.CosmosDb.Features.Storage.StoredProcedures.AcquireExportJobs;
+using Microsoft.Health.Fhir.CosmosDb.Features.Storage.StoredProcedures.AcquireImportJobs;
 
 namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage.Operations
 {
@@ -39,6 +43,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage.Operations
         private readonly ILogger _logger;
 
         private readonly AcquireExportJobs _acquireExportJobs = new AcquireExportJobs();
+        private readonly AcquireImportJobs _getAvailableImportJobs = new AcquireImportJobs();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CosmosFhirOperationDataStore"/> class.
@@ -258,6 +263,155 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage.Operations
                 }
 
                 _logger.LogError(dce, "Failed to acquire export jobs.");
+                throw;
+            }
+        }
+
+        public async Task<ImportJobOutcome> CreateImportJobAsync(ImportJobRecord jobRecord, CancellationToken cancellationToken)
+        {
+            EnsureArg.IsNotNull(jobRecord, nameof(jobRecord));
+
+            var cosmosImportJob = new CosmosImportJobRecordWrapper(jobRecord);
+
+            try
+            {
+                ResourceResponse<Document> result = await DocumentClient.CreateDocumentAsync(
+                    CollectionUri,
+                    cosmosImportJob,
+                    new RequestOptions() { PartitionKey = new PartitionKey(CosmosDbImportConstants.ImportJobPartitionKey) },
+                    disableAutomaticIdGeneration: true,
+                    cancellationToken: cancellationToken);
+
+                return new ImportJobOutcome(jobRecord, WeakETag.FromVersionId(result.Resource.ETag));
+            }
+            catch (DocumentClientException dce)
+            {
+                if (dce.StatusCode == HttpStatusCode.RequestEntityTooLarge)
+                {
+                    throw new RequestRateExceededException(dce.RetryAfter);
+                }
+
+                _logger.LogError(dce, "Unhandled Document Client Exception");
+                throw;
+            }
+        }
+
+        public async Task<ImportJobOutcome> GetImportJobAsync(string jobId, CancellationToken cancellationToken)
+        {
+            EnsureArg.IsNotNullOrWhiteSpace(jobId);
+
+            try
+            {
+                DocumentResponse<CosmosImportJobRecordWrapper> cosmosImportJobRecord = await DocumentClient.ReadDocumentAsync<CosmosImportJobRecordWrapper>(
+                    UriFactory.CreateDocumentUri(DatabaseId, CollectionId, jobId),
+                    new RequestOptions { PartitionKey = new PartitionKey(CosmosDbImportConstants.ImportJobPartitionKey) },
+                    cancellationToken);
+
+                var eTagHeaderValue = cosmosImportJobRecord.ResponseHeaders["ETag"];
+                var outcome = new ImportJobOutcome(cosmosImportJobRecord.Document.JobRecord, WeakETag.FromVersionId(eTagHeaderValue));
+
+                return outcome;
+            }
+            catch (DocumentClientException dce)
+            {
+                if (dce.StatusCode == HttpStatusCode.RequestEntityTooLarge)
+                {
+                    throw new RequestRateExceededException(dce.RetryAfter);
+                }
+                else if (dce.StatusCode == HttpStatusCode.NotFound)
+                {
+                    throw new JobNotFoundException(string.Format(Core.Resources.JobNotFound, jobId));
+                }
+
+                _logger.LogError(dce, "Unhandled Document Client Exception");
+                throw;
+            }
+        }
+
+        public async Task<ImportJobOutcome> UpdateImportJobAsync(ImportJobRecord jobRecord, WeakETag eTag, CancellationToken cancellationToken)
+        {
+            EnsureArg.IsNotNull(jobRecord, nameof(jobRecord));
+
+            var cosmosExportJob = new CosmosImportJobRecordWrapper(jobRecord);
+
+            var requestOptions = new RequestOptions()
+            {
+                PartitionKey = new PartitionKey(CosmosDbImportConstants.ImportJobPartitionKey),
+            };
+
+            // Create access condition so that record is replaced only if eTag matches.
+            if (eTag != null)
+            {
+                requestOptions.AccessCondition = new AccessCondition()
+                {
+                    Type = AccessConditionType.IfMatch,
+                    Condition = eTag.VersionId,
+                };
+            }
+
+            try
+            {
+                ResourceResponse<Document> replaceResult = await DocumentClient.ReplaceDocumentAsync(
+                    UriFactory.CreateDocumentUri(DatabaseId, CollectionId, jobRecord.Id),
+                    cosmosExportJob,
+                    requestOptions,
+                    cancellationToken: cancellationToken);
+
+                var latestETag = replaceResult.Resource.ETag;
+                return new ImportJobOutcome(jobRecord, WeakETag.FromVersionId(latestETag));
+            }
+            catch (DocumentClientException dce)
+            {
+                if (dce.StatusCode == HttpStatusCode.RequestEntityTooLarge)
+                {
+                    throw new RequestRateExceededException(dce.RetryAfter);
+                }
+                else if (dce.StatusCode == HttpStatusCode.PreconditionFailed)
+                {
+                    throw new JobConflictException();
+                }
+                else if (dce.StatusCode == HttpStatusCode.NotFound)
+                {
+                    throw new JobNotFoundException(string.Format(Core.Resources.JobNotFound, jobRecord.Id));
+                }
+
+                _logger.LogError(dce, "Unhandled Document Client Exception");
+                throw;
+            }
+        }
+
+        public async Task<IReadOnlyCollection<ImportJobOutcome>> AcquireImportJobsAsync(
+            ushort maximumNumberOfConcurrentJobsAllowed,
+            TimeSpan jobHeartbeatTimeoutThreshold,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                StoredProcedureResponse<IReadOnlyCollection<CosmosImportJobRecordWrapper>> response = await _retryExceptionPolicyFactory.CreateRetryPolicy().ExecuteAsync(
+                    async ct => await _getAvailableImportJobs.ExecuteAsync(
+                        DocumentClient,
+                        CollectionUri,
+                        maximumNumberOfConcurrentJobsAllowed,
+                        (ushort)jobHeartbeatTimeoutThreshold.TotalSeconds,
+                        ct),
+                    cancellationToken);
+
+                return response.Response.Select(wrapper => new ImportJobOutcome(wrapper.JobRecord, WeakETag.FromVersionId(wrapper.ETag))).ToList();
+            }
+            catch (DocumentClientException dce)
+            {
+                string subStatusInString = dce.ResponseHeaders.Get(CosmosDbHeaders.SubStatus);
+
+                if (!string.IsNullOrEmpty(subStatusInString) &&
+                    int.TryParse(subStatusInString, NumberStyles.Integer, CultureInfo.InvariantCulture, out int subStatus))
+                {
+                    if (subStatus == (int)HttpStatusCode.TooManyRequests)
+                    {
+                        throw new RequestRateExceededException(null);
+                    }
+                }
+
+                _logger.LogError(dce, "Unhandled Document Client Exception");
                 throw;
             }
         }

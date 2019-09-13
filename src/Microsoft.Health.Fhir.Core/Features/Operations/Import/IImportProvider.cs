@@ -3,12 +3,17 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-namespace Microsoft.Health.Fhir.Core.Configs
-{
-    public class OperationsConfiguration
-    {
-        public ExportJobConfiguration Export { get; set; } = new ExportJobConfiguration();
+using System;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
-        public ImportJobConfiguration Import { get; set; } = new ImportJobConfiguration();
+namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
+{
+    public interface IImportProvider
+    {
+        string ProviderType { get; }
+
+        Task<StreamReader> DownloadRangeToStreamReaderAsync(Uri url, long offset, int length, CancellationToken cancellationToken);
     }
 }
