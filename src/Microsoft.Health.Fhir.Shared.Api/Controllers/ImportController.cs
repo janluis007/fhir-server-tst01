@@ -42,14 +42,14 @@ namespace Microsoft.Health.Fhir.Api.Controllers
         private readonly IFhirRequestContextAccessor _fhirRequestContextAccessor;
         private readonly IUrlResolver _urlResolver;
         private readonly ImportJobConfiguration _importJobConfig;
-        private readonly ILogger<ExportController> _logger;
+        private readonly ILogger<ImportController> _logger;
 
         public ImportController(
             IMediator mediator,
             IFhirRequestContextAccessor fhirRequestContextAccessor,
             IUrlResolver urlResolver,
             IOptions<OperationsConfiguration> operationsConfig,
-            ILogger<ExportController> logger)
+            ILogger<ImportController> logger)
         {
             EnsureArg.IsNotNull(mediator, nameof(mediator));
             EnsureArg.IsNotNull(fhirRequestContextAccessor, nameof(fhirRequestContextAccessor));
@@ -77,7 +77,7 @@ namespace Microsoft.Health.Fhir.Api.Controllers
             CreateImportResponse response = await _mediator.ImportAsync(_fhirRequestContextAccessor.FhirRequestContext.Uri, importRequest, HttpContext.RequestAborted);
 
             var importResult = ImportResult.Accepted();
-            importResult.SetContentLocationHeader(_urlResolver, RouteNames.GetImportStatusById, response.JobId);
+            importResult.SetContentLocationHeader(_urlResolver, OperationsConstants.Import, response.JobId);
 
             return importResult;
         }
@@ -85,9 +85,9 @@ namespace Microsoft.Health.Fhir.Api.Controllers
         [HttpGet]
         [Route(KnownRoutes.ImportStatusById, Name = RouteNames.GetImportStatusById)]
         [AuditEventType(AuditEventSubType.Import)]
-        public async Task<IActionResult> GetImportStatusById(string id)
+        public async Task<IActionResult> GetImportStatusById(string idParameter)
         {
-            var getImportResult = await _mediator.GetImportStatusAsync(_fhirRequestContextAccessor.FhirRequestContext.Uri, id);
+            var getImportResult = await _mediator.GetImportStatusAsync(_fhirRequestContextAccessor.FhirRequestContext.Uri, idParameter);
 
             // If the job is complete, we need to return 200 along the completed data to the client.
             // Else we need to return 202.

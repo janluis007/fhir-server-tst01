@@ -216,7 +216,8 @@ namespace Microsoft.Health.Fhir.Api.Features.Routing
             EnsureArg.IsNotNullOrWhiteSpace(operationName, nameof(operationName));
             EnsureArg.IsNotNullOrWhiteSpace(id, nameof(id));
 
-            if (!string.Equals(operationName, OperationsConstants.Export, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(operationName, OperationsConstants.Export, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(operationName, OperationsConstants.Import, StringComparison.OrdinalIgnoreCase))
             {
                 throw new OperationNotImplementedException(string.Format(Resources.OperationNotImplemented, operationName));
             }
@@ -226,8 +227,18 @@ namespace Microsoft.Health.Fhir.Api.Features.Routing
                 { KnownActionParameterNames.Id, id },
             };
 
+            string routeName = " ";
+            if (string.Equals(operationName, OperationsConstants.Export, StringComparison.OrdinalIgnoreCase))
+            {
+                routeName = RouteNames.GetExportStatusById;
+            }
+            else
+            {
+                routeName = RouteNames.GetImportStatusById;
+            }
+
             string uriString = UrlHelper.RouteUrl(
-                RouteNames.GetExportStatusById,
+                routeName,
                 routeValues,
                 Request.Scheme,
                 Request.Host.Value);
