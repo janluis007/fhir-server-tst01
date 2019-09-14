@@ -12,8 +12,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
-using Hl7.Fhir.Model;
-using Hl7.Fhir.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Health.Fhir.Core.Configs;
 using Microsoft.Health.Fhir.Core.Features.Operations.Import.Models;
@@ -31,7 +29,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
         private readonly IFhirOperationDataStore _fhirOperationDataStore;
         private readonly IResourceWrapperFactory _resourceWrapperFactory;
         private readonly IFhirDataStore _fhirDataStore;
-        private readonly FhirJsonParser _fhirJsonParser;
+        private readonly ResourceDeserializer _resourceDeserializer;
         private readonly ILogger _logger;
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
@@ -48,7 +46,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             IEnumerable<IImportProvider> importProviders,
             IResourceWrapperFactory resourceWrapperFactory,
             IFhirDataStore fhirDataStore,
-            FhirJsonParser fhirParser,
+            ResourceDeserializer resourceDeserializer,
             ILogger<ImportJobTask> logger)
         {
             EnsureArg.IsNotNull(importJobRecord, nameof(importJobRecord));
@@ -58,7 +56,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             EnsureArg.IsNotNull(importProviders, nameof(importProviders));
             EnsureArg.IsNotNull(resourceWrapperFactory, nameof(resourceWrapperFactory));
             EnsureArg.IsNotNull(fhirDataStore, nameof(fhirDataStore));
-            EnsureArg.IsNotNull(fhirParser, nameof(fhirParser));
+            EnsureArg.IsNotNull(resourceDeserializer, nameof(resourceDeserializer));
             EnsureArg.IsNotNull(logger, nameof(logger));
 
             _importJobRecord = importJobRecord;
@@ -66,7 +64,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             _fhirOperationDataStore = fhirOperationDataStore;
             _resourceWrapperFactory = resourceWrapperFactory;
             _fhirDataStore = fhirDataStore;
-            _fhirJsonParser = fhirParser;
+            _resourceDeserializer = resourceDeserializer;
             _logger = logger;
 
             _bufferSize = _importJobConfiguration.BufferSizeInMbytes * 1024 * 1024;
@@ -134,7 +132,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                     {
                         Task completedTask = await Task.WhenAny(tasks);
 
-                        if (completedTask.IsFaulted)
+                        /*if (completedTask.IsFaulted)
                         {
                             _importJobRecord.Errors.TryAdd(new OperationOutcome()
                             {
@@ -146,7 +144,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                                         },
                                     },
                             });
-                        }
+                        }*/
 
                         await UpdateJobStatus(OperationStatus.Running, cancellationToken);
 
@@ -245,7 +243,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
 
                         await Task.WhenAll(tasks);
 
-                        foreach (Task task in tasks)
+                        /*foreach (Task task in tasks)
                         {
                             if (task.IsFaulted)
                             {
@@ -260,7 +258,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                                 },
                                 });
                             }
-                        }
+                        }*/
 
                         tasks.Clear();
 
@@ -276,6 +274,10 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                         {
                             stopwatch.Restart();
 
+                            var rawResource = new RawResource(line, Core.Models.FhirResourceFormat.Json);
+                            Core.Models.ResourceElement deserializedResource = _resourceDeserializer.DeserializeRaw(rawResource, "1.0", DateTime.UtcNow);
+
+                            /*
                             Resource resource = _fhirJsonParser.Parse<Resource>(line);
 
                             if (resource.Meta == null)
@@ -284,12 +286,13 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                             }
 
                             resource.Meta.LastUpdated = Clock.UtcNow;
+                            */
 
                             _logger.LogInformation("Parsing took {Duration}.", stopwatch.ElapsedMilliseconds);
 
                             stopwatch.Restart();
 
-                            ResourceWrapper wrapper = _resourceWrapperFactory.Create(resource, false);
+                            ResourceWrapper wrapper = _resourceWrapperFactory.Create(deserializedResource, false);
 
                             _logger.LogInformation("Creating took {Duration}.", stopwatch.ElapsedMilliseconds);
 
@@ -303,6 +306,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                         }
                         catch (Exception ex)
                         {
+                            _logger.LogWarning("Parsing and upserting resource failed", ex);
+                            /*
                             _importJobRecord.Errors.TryAdd(new OperationOutcome()
                             {
                                 Issue = new System.Collections.Generic.List<OperationOutcome.IssueComponent>()
@@ -312,7 +317,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                                             Diagnostics = ex.ToString(),
                                         },
                                     },
-                            });
+                            });*/
                         }
 
                         progress.Count++;
@@ -326,7 +331,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                         {
                             Task completedTask = await Task.WhenAny(tasks);
 
-                            if (completedTask.IsFaulted)
+                            /*if (completedTask.IsFaulted)
                             {
                                 _importJobRecord.Errors.TryAdd(new OperationOutcome()
                                 {
@@ -338,7 +343,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                                         },
                                     },
                                 });
-                            }
+                            }*/
 
                             tasks.Remove(completedTask);
                         }

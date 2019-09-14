@@ -275,7 +275,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage.Operations
 
             try
             {
-                ResourceResponse<Document> result = await DocumentClient.CreateDocumentAsync(
+                ResourceResponse<Document> result = await _documentClientScope.Value.CreateDocumentAsync(
                     CollectionUri,
                     cosmosImportJob,
                     new RequestOptions() { PartitionKey = new PartitionKey(CosmosDbImportConstants.ImportJobPartitionKey) },
@@ -302,7 +302,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage.Operations
 
             try
             {
-                DocumentResponse<CosmosImportJobRecordWrapper> cosmosImportJobRecord = await DocumentClient.ReadDocumentAsync<CosmosImportJobRecordWrapper>(
+                DocumentResponse<CosmosImportJobRecordWrapper> cosmosImportJobRecord = await _documentClientScope.Value.ReadDocumentAsync<CosmosImportJobRecordWrapper>(
                     UriFactory.CreateDocumentUri(DatabaseId, CollectionId, jobId),
                     new RequestOptions { PartitionKey = new PartitionKey(CosmosDbImportConstants.ImportJobPartitionKey) },
                     cancellationToken);
@@ -351,7 +351,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage.Operations
 
             try
             {
-                ResourceResponse<Document> replaceResult = await DocumentClient.ReplaceDocumentAsync(
+                ResourceResponse<Document> replaceResult = await _documentClientScope.Value.ReplaceDocumentAsync(
                     UriFactory.CreateDocumentUri(DatabaseId, CollectionId, jobRecord.Id),
                     cosmosExportJob,
                     requestOptions,
@@ -389,7 +389,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage.Operations
             {
                 StoredProcedureResponse<IReadOnlyCollection<CosmosImportJobRecordWrapper>> response = await _retryExceptionPolicyFactory.CreateRetryPolicy().ExecuteAsync(
                     async ct => await _getAvailableImportJobs.ExecuteAsync(
-                        DocumentClient,
+                        _documentClientScope.Value,
                         CollectionUri,
                         maximumNumberOfConcurrentJobsAllowed,
                         (ushort)jobHeartbeatTimeoutThreshold.TotalSeconds,

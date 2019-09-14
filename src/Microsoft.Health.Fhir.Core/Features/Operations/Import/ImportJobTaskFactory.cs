@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
-using Hl7.Fhir.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Health.Fhir.Core.Configs;
@@ -26,7 +25,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
         private readonly IEnumerable<IImportProvider> _importProviders;
         private readonly IResourceWrapperFactory _resourceWrapperFactory;
         private readonly IFhirDataStore _fhirDataStore;
-        private readonly FhirJsonParser _fhirJsonParser;
+        private readonly ResourceDeserializer _resourceDeserializer;
         private readonly ILoggerFactory _loggerFactory;
 
         public ImportJobTaskFactory(
@@ -35,7 +34,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             IEnumerable<IImportProvider> importProviders,
             IResourceWrapperFactory resourceWrapperFactory,
             IFhirDataStore fhirDataStore,
-            FhirJsonParser fhirParser,
+            ResourceDeserializer resourceDeserializer,
             ILoggerFactory loggerFactory)
         {
             EnsureArg.IsNotNull(importJobConfiguration?.Value, nameof(importJobConfiguration));
@@ -44,14 +43,14 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             EnsureArg.IsNotNull(importProviders, nameof(importProviders));
             EnsureArg.IsNotNull(resourceWrapperFactory, nameof(resourceWrapperFactory));
             EnsureArg.IsNotNull(fhirDataStore, nameof(fhirDataStore));
-            EnsureArg.IsNotNull(fhirParser, nameof(fhirParser));
+            EnsureArg.IsNotNull(resourceDeserializer, nameof(resourceDeserializer));
 
             _importJobConfiguration = importJobConfiguration.Value;
             _fhirOperationDataStore = fhirOperationDataStore;
             _importProviders = importProviders;
             _resourceWrapperFactory = resourceWrapperFactory;
             _fhirDataStore = fhirDataStore;
-            _fhirJsonParser = fhirParser;
+            _resourceDeserializer = resourceDeserializer;
             _loggerFactory = loggerFactory;
         }
 
@@ -68,7 +67,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                 _importProviders,
                 _resourceWrapperFactory,
                 _fhirDataStore,
-                _fhirJsonParser,
+                _resourceDeserializer,
                 _loggerFactory.CreateLogger<ImportJobTask>());
 
             using (ExecutionContext.SuppressFlow())

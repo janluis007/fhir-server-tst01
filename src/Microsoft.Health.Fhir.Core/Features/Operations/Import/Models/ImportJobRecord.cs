@@ -4,10 +4,8 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using EnsureThat;
-using Hl7.Fhir.Model;
 using Newtonsoft.Json;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations.Import.Models
@@ -58,8 +56,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import.Models
         ////[JsonProperty(JobRecordProperties.Output)]
         ////public List<ImportFileInfo> Output { get; private set; } = new List<ImportFileInfo>();
 
-        [JsonProperty(JobRecordProperties.Error)]
-        public IProducerConsumerCollection<OperationOutcome> Errors { get; private set; } = new ConcurrentBag<OperationOutcome>();
+        // [JsonProperty(JobRecordProperties.Error)]
+        // public IProducerConsumerCollection<OperationOutcome> Errors { get; private set; } = new ConcurrentBag<OperationOutcome>();
 
         [JsonProperty(JobRecordProperties.Status)]
         public OperationStatus Status { get; set; }
@@ -70,14 +68,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import.Models
         [JsonProperty(JobRecordProperties.EndTime)]
         public DateTimeOffset? EndTime { get; set; }
 
-        [JsonProperty(JobRecordProperties.CancelledTime)]
-        public DateTimeOffset? CancelledTime { get; set; }
-
-        [JsonProperty(JobRecordProperties.NumberOfConsecutiveFailures)]
-        public int NumberOfConsecutiveFailures { get; set; }
-
-        [JsonProperty(JobRecordProperties.TotalNumberOfFailures)]
-        public int TotalNumberOfFailures { get; set; }
+        [JsonProperty(JobRecordProperties.CanceledTime)]
+        public DateTimeOffset? CanceledTime { get; set; }
 
         [JsonProperty(JobRecordProperties.Progress)]
         public IList<ImportJobProgress> Progress { get; } = new List<ImportJobProgress>();

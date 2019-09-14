@@ -77,7 +77,7 @@ namespace Microsoft.Health.Fhir.Api.Controllers
             CreateImportResponse response = await _mediator.ImportAsync(_fhirRequestContextAccessor.FhirRequestContext.Uri, importRequest, HttpContext.RequestAborted);
 
             var importResult = ImportResult.Accepted();
-            importResult.SetContentLocationHeader<ImportResult, ImportJobResult>(_urlResolver, RouteNames.GetImportStatusById, response.JobId);
+            importResult.SetContentLocationHeader(_urlResolver, RouteNames.GetImportStatusById, response.JobId);
 
             return importResult;
         }
@@ -95,7 +95,7 @@ namespace Microsoft.Health.Fhir.Api.Controllers
             if (getImportResult.StatusCode == HttpStatusCode.OK)
             {
                 importActionResult = ImportResult.Ok(getImportResult.JobResult);
-                importActionResult.SetContentTypeHeader<ImportResult, ImportJobResult>(OperationsConstants.ExportContentTypeHeaderValue);
+                importActionResult.SetContentTypeHeader(OperationsConstants.ExportContentTypeHeaderValue);
             }
             else
             {

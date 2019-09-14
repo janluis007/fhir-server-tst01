@@ -8,7 +8,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
 using MediatR;
+using Microsoft.Health.Fhir.Core.Features.Operations.Import.Models;
 using Microsoft.Health.Fhir.Core.Messages.Export;
+using Microsoft.Health.Fhir.Core.Messages.Import;
 
 namespace Microsoft.Health.Fhir.Core.Extensions
 {
@@ -52,6 +54,31 @@ namespace Microsoft.Health.Fhir.Core.Extensions
             var request = new CancelExportRequest(jobId);
 
             return await mediator.Send(request, cancellationToken);
+        }
+
+        public static async Task<CreateImportResponse> ImportAsync(this IMediator mediator, Uri requestUri, ImportRequest importRequest, CancellationToken cancellationToken = default)
+        {
+            EnsureArg.IsNotNull(mediator, nameof(mediator));
+            EnsureArg.IsNotNull(requestUri, nameof(requestUri));
+            EnsureArg.IsNotNull(importRequest, nameof(importRequest));
+
+            var request = new CreateImportRequest(requestUri, importRequest);
+
+            var response = await mediator.Send(request, cancellationToken);
+
+            return response;
+        }
+
+        public static async Task<GetImportResponse> GetImportStatusAsync(this IMediator mediator, Uri requestUri, string jobId, CancellationToken cancellationToken = default)
+        {
+            EnsureArg.IsNotNull(mediator, nameof(mediator));
+            EnsureArg.IsNotNull(requestUri, nameof(requestUri));
+            EnsureArg.IsNotNullOrWhiteSpace(jobId, nameof(jobId));
+
+            var request = new GetImportRequest(requestUri, jobId);
+
+            GetImportResponse response = await mediator.Send(request, cancellationToken);
+            return response;
         }
     }
 }
