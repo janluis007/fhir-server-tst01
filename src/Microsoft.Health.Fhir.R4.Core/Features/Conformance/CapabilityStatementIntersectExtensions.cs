@@ -95,6 +95,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
                     Interaction = systemRest.Interaction?.IntersectList(configuredRest.Interaction, x => x.Code, issues, $"Rest.Interaction"),
                     SearchParam = systemRest.SearchParam?.IntersectList(configuredRest.SearchParam, x => x.Name, issues, $"Rest.SearchParam"),
                     Operation = systemRest.Operation?.IntersectList(configuredRest.Operation, x => x.Name, issues, $"Rest.Operation"),
+                    Extension = systemRest.Extension?.IntersectList(configuredRest.Extension, x => x.Url, issues, "Rest.Extension"),
                 };
 
                 intersecting.Rest.Add(rest);

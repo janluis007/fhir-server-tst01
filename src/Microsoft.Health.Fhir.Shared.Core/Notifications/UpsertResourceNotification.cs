@@ -11,13 +11,17 @@ namespace Microsoft.Health.Fhir.Core.Notifications
 {
     public class UpsertResourceNotification : INotification
     {
-        public UpsertResourceNotification(Resource resource)
+        public UpsertResourceNotification(Resource resource, string interaction)
         {
             EnsureArg.IsNotNull(resource, nameof(resource));
+            EnsureArg.IsNotNullOrWhiteSpace(interaction, nameof(interaction));
 
             Resource = resource;
+            Interaction = interaction;
         }
 
         public Resource Resource { get; }
+
+        public string Interaction { get; }
     }
 }

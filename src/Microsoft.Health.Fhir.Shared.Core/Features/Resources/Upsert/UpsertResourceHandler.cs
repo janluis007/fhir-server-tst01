@@ -66,7 +66,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources.Upsert
 
             await HandleVersionSpecificOperations(resource, cancellationToken);
 
-            await _mediator.Publish(new UpsertResourceNotification(resource), cancellationToken);
+            await _mediator.Publish(new UpsertResourceNotification(resource, "update"), cancellationToken);
 
             return new UpsertResourceResponse(new SaveOutcome(resource.ToResourceElement(), result.OutcomeType));
         }

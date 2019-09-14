@@ -3,6 +3,8 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
+using System;
+using System.Linq;
 using System.Threading;
 using EnsureThat;
 using Hl7.Fhir.Model;
@@ -51,8 +53,12 @@ namespace Microsoft.Health.Fhir.Core.Features.Subscriptions
                 }
 
                 // check method criteria
-                if (topic.ResourceTrigger.MethodCriteria != null)
+                if (topic.ResourceTrigger.MethodCriteria != null && topic.ResourceTrigger.MethodCriteriaElement.Count > 0)
                 {
+                    if (!topic.ResourceTrigger.MethodCriteria.Any(x => upsertResourceNotification.Interaction.Equals(x.Value.ToString(), StringComparison.InvariantCultureIgnoreCase)))
+                    {
+                        continue;
+                    }
                 }
 
                 // Check the current query criteria
@@ -66,6 +72,10 @@ namespace Microsoft.Health.Fhir.Core.Features.Subscriptions
                 }
 
                 if (!string.IsNullOrWhiteSpace(topic.ResourceTrigger.FhirPathCriteria))
+                {
+                }
+
+                foreach (var canFilterBy in topic.CanFilterBy)
                 {
                 }
 

@@ -20,7 +20,10 @@ using Microsoft.Health.Fhir.ValueSets;
 
 namespace Microsoft.Health.Fhir.Core.Features.Resources.Create
 {
-    public class CreateResourceHandler : BaseResourceHandler, IRequestHandler<CreateResourceRequest, UpsertResourceResponse>
+    /// <summary>
+    /// Handles create resource
+    /// </summary>
+    public partial class CreateResourceHandler : BaseResourceHandler, IRequestHandler<CreateResourceRequest, UpsertResourceResponse>
     {
         private readonly IMediator _mediator;
         private readonly ResourceModifierEngine _resourceModifierEngine;
@@ -65,15 +68,9 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources.Create
 
             resource.VersionId = result.Wrapper.Version;
 
-            switch (resource)
-            {
-                case Subscription s:
-                    await _mediator.Publish(new UpsertSubscriptionNotification(s), cancellationToken);
-                    break;
-                default:
-                    await _mediator.Publish(new UpsertResourceNotification(resource), cancellationToken);
-                    break;
-            }
+            await HandleVersionSpecificOperations(resource, cancellationToken);
+
+            await _mediator.Publish(new UpsertResourceNotification(resource, "create"), cancellationToken);
 
             return new UpsertResourceResponse(new SaveOutcome(resource.ToResourceElement(), SaveOutcomeType.Created));
         }
