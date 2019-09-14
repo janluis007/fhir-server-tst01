@@ -310,7 +310,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning("Parsing and upserting resource failed", ex);
+                            _logger.LogWarning($"Parsing and upserting resource failed: {ex}");
                             /*
                             _importJobRecord.Errors.TryAdd(new OperationOutcome()
                             {

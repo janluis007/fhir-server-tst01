@@ -63,11 +63,11 @@ namespace Microsoft.Health.Fhir.Core.Features.Persistence
             return new ResourceWrapper(
                 resource,
                 rawResource,
-                new ResourceRequest(fhirRequestContext.Method, fhirRequestContext.Uri),
+                fhirRequestContext == null ? null : new ResourceRequest(fhirRequestContext.Method, fhirRequestContext.Uri),
                 deleted,
                 searchIndices,
                 _compartmentIndexer.Extract(resource.InstanceType, searchIndices),
-                _claimsExtractor.Extract());
+                fhirRequestContext == null ? null : _claimsExtractor.Extract());
         }
     }
 }
