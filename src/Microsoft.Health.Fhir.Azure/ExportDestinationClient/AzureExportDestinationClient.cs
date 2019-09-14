@@ -61,7 +61,7 @@ namespace Microsoft.Health.Fhir.Azure.ExportDestinationClient
                 _blobContainer = _blobClient.GetContainerReference(containerId);
             }
 
-            await _blobContainer.CreateIfNotExistsAsync();
+            await _blobContainer.CreateIfNotExistsAsync(BlobContainerPublicAccessType.Container, null, null, cancellationToken);
         }
 
         public Task<Uri> CreateFileAsync(string fileName, CancellationToken cancellationToken)
