@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using EnsureThat;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Health.Extensions.DependencyInjection;
 using Microsoft.Health.Fhir.Core.Configs;
 using Microsoft.Health.Fhir.Core.Features.Operations.Import.Models;
 
@@ -21,19 +22,19 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
     /// </summary>
     public class ImportJobWorker
     {
-        private readonly IFhirOperationDataStore _fhirOperationDataStore;
+        private readonly Func<IScoped<IFhirOperationDataStore>> _fhirOperationDataStoreFactory;
         private readonly ImportJobConfiguration _importJobConfiguration;
         private readonly IImportJobTaskFactory _importJobTaskFactory;
         private readonly ILogger _logger;
 
-        public ImportJobWorker(IFhirOperationDataStore fhirOperationDataStore, IOptions<ImportJobConfiguration> importJobConfiguration, IImportJobTaskFactory importJobTaskFactory, ILogger<ImportJobWorker> logger)
+        public ImportJobWorker(Func<IScoped<IFhirOperationDataStore>> fhirOperationDataStoreFactory, IOptions<ImportJobConfiguration> importJobConfiguration, IImportJobTaskFactory importJobTaskFactory, ILogger<ImportJobWorker> logger)
         {
-            EnsureArg.IsNotNull(fhirOperationDataStore, nameof(fhirOperationDataStore));
+            EnsureArg.IsNotNull(fhirOperationDataStoreFactory, nameof(fhirOperationDataStoreFactory));
             EnsureArg.IsNotNull(importJobConfiguration?.Value, nameof(importJobConfiguration));
             EnsureArg.IsNotNull(importJobTaskFactory, nameof(importJobTaskFactory));
             EnsureArg.IsNotNull(logger, nameof(logger));
 
-            _fhirOperationDataStore = fhirOperationDataStore;
+            _fhirOperationDataStoreFactory = fhirOperationDataStoreFactory;
             _importJobConfiguration = importJobConfiguration.Value;
             _importJobTaskFactory = importJobTaskFactory;
             _logger = logger;
@@ -53,12 +54,15 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                     // Get list of available jobs.
                     if (runningTasks.Count < _importJobConfiguration.MaximumNumberOfConcurrentJobsAllowed)
                     {
-                        IReadOnlyCollection<ImportJobOutcome> jobs = await _fhirOperationDataStore.AcquireImportJobsAsync(
-                            _importJobConfiguration.MaximumNumberOfConcurrentJobsAllowed,
-                            _importJobConfiguration.JobHeartbeatTimeoutThreshold,
-                            cancellationToken);
+                        using (IScoped<IFhirOperationDataStore> store = _fhirOperationDataStoreFactory())
+                        {
+                            IReadOnlyCollection<ImportJobOutcome> jobs = await store.Value.AcquireImportJobsAsync(
+                                _importJobConfiguration.MaximumNumberOfConcurrentJobsAllowed,
+                                _importJobConfiguration.JobHeartbeatTimeoutThreshold,
+                                cancellationToken);
 
-                        runningTasks.AddRange(jobs.Select(job => _importJobTaskFactory.Create(job.JobRecord, job.ETag, cancellationToken)));
+                            runningTasks.AddRange(jobs.Select(job => _importJobTaskFactory.Create(job.JobRecord, job.ETag, cancellationToken)));
+                        }
                     }
 
                     await Task.Delay(_importJobConfiguration.JobPollingFrequency, cancellationToken);

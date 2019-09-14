@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
 using Microsoft.Extensions.Logging;
+using Microsoft.Health.Extensions.DependencyInjection;
 using Microsoft.Health.Fhir.Core.Configs;
 using Microsoft.Health.Fhir.Core.Features.Operations.Import.Models;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
@@ -26,9 +27,9 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
 
         private readonly ImportJobRecord _importJobRecord;
         private readonly ImportJobConfiguration _importJobConfiguration;
-        private readonly IFhirOperationDataStore _fhirOperationDataStore;
+        private readonly Func<IScoped<IFhirOperationDataStore>> _fhirOperationDataStoreFactory;
         private readonly IResourceWrapperFactory _resourceWrapperFactory;
-        private readonly IFhirDataStore _fhirDataStore;
+        private readonly Func<IScoped<IFhirDataStore>> _fhirDataStoreFactory;
         private readonly ResourceDeserializer _resourceDeserializer;
         private readonly ILogger _logger;
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
@@ -42,28 +43,28 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             ImportJobRecord importJobRecord,
             WeakETag weakETag,
             ImportJobConfiguration importJobConfiguration,
-            IFhirOperationDataStore fhirOperationDataStore,
+            Func<IScoped<IFhirOperationDataStore>> fhirOperationDataStoreFactory,
             IEnumerable<IImportProvider> importProviders,
             IResourceWrapperFactory resourceWrapperFactory,
-            IFhirDataStore fhirDataStore,
+            Func<IScoped<IFhirDataStore>> fhirDataStoreFactory,
             ResourceDeserializer resourceDeserializer,
             ILogger<ImportJobTask> logger)
         {
             EnsureArg.IsNotNull(importJobRecord, nameof(importJobRecord));
             EnsureArg.IsNotNull(weakETag, nameof(weakETag));
             EnsureArg.IsNotNull(importJobConfiguration, nameof(importJobConfiguration));
-            EnsureArg.IsNotNull(fhirOperationDataStore, nameof(fhirOperationDataStore));
+            EnsureArg.IsNotNull(fhirOperationDataStoreFactory, nameof(fhirOperationDataStoreFactory));
             EnsureArg.IsNotNull(importProviders, nameof(importProviders));
             EnsureArg.IsNotNull(resourceWrapperFactory, nameof(resourceWrapperFactory));
-            EnsureArg.IsNotNull(fhirDataStore, nameof(fhirDataStore));
+            EnsureArg.IsNotNull(fhirDataStoreFactory, nameof(fhirDataStoreFactory));
             EnsureArg.IsNotNull(resourceDeserializer, nameof(resourceDeserializer));
             EnsureArg.IsNotNull(logger, nameof(logger));
 
             _importJobRecord = importJobRecord;
             _importJobConfiguration = importJobConfiguration;
-            _fhirOperationDataStore = fhirOperationDataStore;
+            _fhirOperationDataStoreFactory = fhirOperationDataStoreFactory;
             _resourceWrapperFactory = resourceWrapperFactory;
-            _fhirDataStore = fhirDataStore;
+            _fhirDataStoreFactory = fhirDataStoreFactory;
             _resourceDeserializer = resourceDeserializer;
             _logger = logger;
 
@@ -185,7 +186,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             {
                 _importJobRecord.Status = operationStatus;
 
-                ImportJobOutcome updatedImportJobOutcome = await _fhirOperationDataStore.UpdateImportJobAsync(_importJobRecord, _weakETag, cancellationToken);
+                ImportJobOutcome updatedImportJobOutcome = await UpdateImportJobOutcomeAsync(cancellationToken);
 
                 _weakETag = updatedImportJobOutcome.ETag;
             }
@@ -298,9 +299,12 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
 
                             stopwatch.Restart();
 
-                            Task upsertTask = _fhirDataStore.UpsertAsync(wrapper, null, true, true, cancellationToken);
+                            using (IScoped<IFhirDataStore> fhirDataStore = _fhirDataStoreFactory())
+                            {
+                                Task upsertTask = fhirDataStore.Value.UpsertAsync(wrapper, null, true, true, cancellationToken);
 
-                            tasks.Add(upsertTask);
+                                tasks.Add(upsertTask);
+                            }
 
                             _logger.LogInformation("Upsert took {Duration}.", stopwatch.ElapsedMilliseconds);
                         }
@@ -356,6 +360,14 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             while (!isComplete);
 
             progress.IsComplete = true;
+        }
+
+        private async Task<ImportJobOutcome> UpdateImportJobOutcomeAsync(CancellationToken cancellationToken)
+        {
+            using (IScoped<IFhirOperationDataStore> fhirOperationDataStore = _fhirOperationDataStoreFactory())
+            {
+                return await fhirOperationDataStore.Value.UpdateImportJobAsync(_importJobRecord, _weakETag, cancellationToken);
+            }
         }
     }
 }
