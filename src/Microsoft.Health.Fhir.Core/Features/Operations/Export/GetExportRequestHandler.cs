@@ -35,8 +35,13 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export
             // We have an existing job. We will determine the response based on the status of the export operation.
             GetExportResponse exportResponse;
 
-            if (outcome.JobRecord.Status == OperationStatus.Completed)
+            if (outcome.JobRecord.Status == OperationStatus.Completed ||
+                outcome.JobRecord.Status == OperationStatus.Canceled)
             {
+                string failureReason = outcome.JobRecord.FailureDetails != null ? outcome.JobRecord.FailureDetails.FailureReason : Resources.UnknownError;
+
+                HttpStatusCode statusCode = outcome.JobRecord.Status == OperationStatus.Completed ? HttpStatusCode.OK : HttpStatusCode.PartialContent;
+
                 var jobResult = new ExportJobResult(
                     outcome.JobRecord.QueuedTime,
                     outcome.JobRecord.RequestUri,
@@ -44,9 +49,9 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export
                     outcome.JobRecord.Output.Values.OrderBy(x => x.Type, StringComparer.Ordinal).ToList(),
                     outcome.JobRecord.Error);
 
-                exportResponse = new GetExportResponse(HttpStatusCode.OK, jobResult);
+                exportResponse = new GetExportResponse(statusCode, jobResult);
             }
-            else if (outcome.JobRecord.Status == OperationStatus.Failed || outcome.JobRecord.Status == OperationStatus.Canceled)
+            else if (outcome.JobRecord.Status == OperationStatus.Failed)
             {
                 string failureReason = outcome.JobRecord.FailureDetails != null ? outcome.JobRecord.FailureDetails.FailureReason : Resources.UnknownError;
                 HttpStatusCode failureStatusCode = outcome.JobRecord.FailureDetails != null ? outcome.JobRecord.FailureDetails.FailureStatusCode : HttpStatusCode.InternalServerError;

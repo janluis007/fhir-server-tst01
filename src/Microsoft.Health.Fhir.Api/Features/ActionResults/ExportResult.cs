@@ -41,5 +41,10 @@ namespace Microsoft.Health.Fhir.Api.Features.ActionResults
         {
             return new ExportResult(jobResult, HttpStatusCode.OK);
         }
+
+        public static ExportResult PartialContent(ExportJobResult jobResult)
+        {
+            return new ExportResult(jobResult, HttpStatusCode.PartialContent);
+        }
     }
 }

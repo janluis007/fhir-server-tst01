@@ -143,6 +143,10 @@ namespace Microsoft.Health.Fhir.Api.Controllers
                 exportActionResult = ExportResult.Ok(getExportResult.JobResult);
                 exportActionResult.SetContentTypeHeader(OperationsConstants.ExportContentTypeHeaderValue);
             }
+            else if (getExportResult.StatusCode == HttpStatusCode.PartialContent)
+            {
+                exportActionResult = ExportResult.PartialContent(getExportResult.JobResult);
+            }
             else
             {
                 exportActionResult = ExportResult.Accepted();
