@@ -45,6 +45,15 @@ namespace Microsoft.Health.Fhir.Core.Features.Subscriptions
                 // Kick stuff out that needs to be filtered
                 if (subscription.FilterBy.Count > 0)
                 {
+                    bool isMatch = true;
+                    foreach (var filterBy in subscription.FilterBy)
+                    {
+                    }
+
+                    if (!isMatch)
+                    {
+                        continue;
+                    }
                 }
 
                 switch (subscription.Channel.Type.TextElement.ToString().ToUpperInvariant())

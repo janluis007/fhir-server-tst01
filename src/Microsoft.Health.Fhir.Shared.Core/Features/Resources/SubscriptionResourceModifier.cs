@@ -4,12 +4,23 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
+using EnsureThat;
 using Hl7.Fhir.Model;
+using Microsoft.Health.Fhir.Core.Features.Subscriptions;
 
 namespace Microsoft.Health.Fhir.Core.Features.Resources
 {
     public class SubscriptionResourceModifier : IResourceModifier
     {
+        public SubscriptionResourceModifier(IRestSubscriptionNotifier restSubscriptionNotifier)
+        {
+            EnsureArg.IsNotNull(restSubscriptionNotifier, nameof(restSubscriptionNotifier));
+
+            RestSubscriptionNotifier = restSubscriptionNotifier;
+        }
+
+        public IRestSubscriptionNotifier RestSubscriptionNotifier { get; set; }
+
         public Type TargetType => typeof(Subscription);
 
         public void Modify(Resource resource)

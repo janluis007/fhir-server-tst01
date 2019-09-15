@@ -70,7 +70,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources.Create
 
             await HandleVersionSpecificOperations(resource, cancellationToken);
 
-            await _mediator.Publish(new UpsertResourceNotification(resource, "create"), cancellationToken);
+            await _mediator.Publish(new UpsertResourceNotification(resource, resourceWrapper, "create"), cancellationToken);
 
             return new UpsertResourceResponse(new SaveOutcome(resource.ToResourceElement(), SaveOutcomeType.Created));
         }

@@ -4,12 +4,14 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using EnsureThat;
 using Hl7.Fhir.Model;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Microsoft.Health.Fhir.Core.Features.Search;
 using Microsoft.Health.Fhir.Core.Notifications;
 using Microsoft.Health.Fhir.Shared.Core.Features.Subscriptions;
 using Task = System.Threading.Tasks.Task;
@@ -45,7 +47,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Subscriptions
                 _topicStore.Start(_mediator);
             }
 
-            foreach (var topic in _topicStore.GetForResourceType(notificationResource.TypeName))
+            foreach (var topic in _topicStore.GetForResourceType(upsertResourceNotification.ResourceWrapper.ResourceTypeName))
             {
                 if (topic.Status != PublicationStatus.Active)
                 {
@@ -75,11 +77,13 @@ namespace Microsoft.Health.Fhir.Core.Features.Subscriptions
                 {
                 }
 
+                var filterCriteria = new List<SearchIndexEntry>();
                 foreach (var canFilterBy in topic.CanFilterBy)
                 {
+                    filterCriteria.AddRange(upsertResourceNotification.ResourceWrapper.SearchIndices.Where(x => x.SearchParameter.Name == canFilterBy.Name));
                 }
 
-                await _mediator.Publish(new TopicHitNotification($"Topic/{topic.Id}", notificationResource), cancellationToken);
+                await _mediator.Publish(new TopicHitNotification(topic, notificationResource, filterCriteria), cancellationToken);
             }
         }
     }
