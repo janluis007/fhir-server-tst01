@@ -16,6 +16,9 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import.Models
         [JsonProperty("inputSource")]
         public string InputSource { get; set; }
 
+        [JsonProperty("storageDetail")]
+        public ImportRequestStorageDetail StorageDetail { get; set; }
+
         [JsonProperty("input")]
         public IList<ImportRequestEntry> Input { get; } = new List<ImportRequestEntry>();
     }

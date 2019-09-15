@@ -104,6 +104,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                 while (i < _importJobRecord.Request.Input.Count)
                 {
                     ImportRequestEntry input = _importJobRecord.Request.Input[i];
+                    ImportRequestStorageDetail storageDetail = _importJobRecord.Request.StorageDetail;
 
                     // Get the current progress. If there is none, create one.
                     ImportJobProgress progress = null;
@@ -124,7 +125,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                         }
                     }
 
-                    var task = Task.Run(() => ProcessInput(input, progress, cancellationToken));
+                    var task = Task.Run(() => ProcessInput(input, progress, storageDetail, cancellationToken));
 
                     tasks.Add(task);
                     i++;
@@ -196,7 +197,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             }
         }
 
-        private async Task ProcessInput(ImportRequestEntry input, ImportJobProgress progress, CancellationToken cancellationToken)
+        private async Task ProcessInput(ImportRequestEntry input, ImportJobProgress progress, ImportRequestStorageDetail storageDetail, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -208,7 +209,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             var stopwatch = new Stopwatch();
             var overallStopwatch = new Stopwatch();
 
-            IImportProvider provider = _importProviderDictionary[input.StorageDetail.Type];
+            IImportProvider provider = _importProviderDictionary[storageDetail.Type];
 
             Task<StreamReader> downloadTask = provider.DownloadRangeToStreamReaderAsync(blobUrl, progress.BytesProcessed, _bufferSize, cancellationToken);
             StreamReader streamReader = null;

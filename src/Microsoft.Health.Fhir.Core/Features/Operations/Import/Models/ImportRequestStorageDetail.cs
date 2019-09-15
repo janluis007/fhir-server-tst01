@@ -8,9 +8,9 @@ using Newtonsoft.Json;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations.Import.Models
 {
-    public class ImportRequestEntryStorageDetail
+    public class ImportRequestStorageDetail
     {
-        public ImportRequestEntryStorageDetail(string type)
+        public ImportRequestStorageDetail(string type)
         {
             EnsureArg.IsNotNullOrWhiteSpace(type, nameof(type));
 
@@ -18,7 +18,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import.Models
         }
 
         [JsonConstructor]
-        protected ImportRequestEntryStorageDetail()
+        protected ImportRequestStorageDetail()
         {
         }
 

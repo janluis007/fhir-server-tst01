@@ -22,8 +22,5 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import.Models
 
         [JsonProperty("correlationId")]
         public string CorrelationId { get; set; }
-
-        [JsonProperty("storageDetail")]
-        public ImportRequestEntryStorageDetail StorageDetail { get; set; }
     }
 }
