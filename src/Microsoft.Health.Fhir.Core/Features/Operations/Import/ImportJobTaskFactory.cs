@@ -27,7 +27,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
         private readonly IEnumerable<IImportProvider> _importProviders;
         private readonly IResourceWrapperFactory _resourceWrapperFactory;
         private readonly Func<IScoped<IFhirDataStore>> _fhirDataStoreFactory;
-        private readonly ResourceDeserializer _resourceDeserializer;
+        private readonly IJsonToResourceDeserializer _resourceDeserializer;
         private readonly ILoggerFactory _loggerFactory;
 
         public ImportJobTaskFactory(
@@ -36,7 +36,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             IEnumerable<IImportProvider> importProviders,
             IResourceWrapperFactory resourceWrapperFactory,
             Func<IScoped<IFhirDataStore>> fhirDataStoreFactory,
-            ResourceDeserializer resourceDeserializer,
+            IJsonToResourceDeserializer resourceDeserializer,
             ILoggerFactory loggerFactory)
         {
             EnsureArg.IsNotNull(importJobConfiguration?.Value, nameof(importJobConfiguration));

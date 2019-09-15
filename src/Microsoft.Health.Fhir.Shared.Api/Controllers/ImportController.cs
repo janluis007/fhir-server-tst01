@@ -54,7 +54,7 @@ namespace Microsoft.Health.Fhir.Api.Controllers
             EnsureArg.IsNotNull(mediator, nameof(mediator));
             EnsureArg.IsNotNull(fhirRequestContextAccessor, nameof(fhirRequestContextAccessor));
             EnsureArg.IsNotNull(urlResolver, nameof(urlResolver));
-            EnsureArg.IsNotNull(operationsConfig?.Value?.Export, nameof(operationsConfig));
+            EnsureArg.IsNotNull(operationsConfig?.Value?.Import, nameof(operationsConfig));
             EnsureArg.IsNotNull(logger, nameof(logger));
 
             _mediator = mediator;

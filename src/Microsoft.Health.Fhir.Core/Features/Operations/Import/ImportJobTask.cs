@@ -17,6 +17,7 @@ using Microsoft.Health.Extensions.DependencyInjection;
 using Microsoft.Health.Fhir.Core.Configs;
 using Microsoft.Health.Fhir.Core.Features.Operations.Import.Models;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
+using Microsoft.Health.Fhir.Core.Models;
 using Task = System.Threading.Tasks.Task;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
@@ -30,7 +31,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
         private readonly Func<IScoped<IFhirOperationDataStore>> _fhirOperationDataStoreFactory;
         private readonly IResourceWrapperFactory _resourceWrapperFactory;
         private readonly Func<IScoped<IFhirDataStore>> _fhirDataStoreFactory;
-        private readonly ResourceDeserializer _resourceDeserializer;
+        private readonly IJsonToResourceDeserializer _resourceDeserializer;
         private readonly ILogger _logger;
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
@@ -47,7 +48,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
             IEnumerable<IImportProvider> importProviders,
             IResourceWrapperFactory resourceWrapperFactory,
             Func<IScoped<IFhirDataStore>> fhirDataStoreFactory,
-            ResourceDeserializer resourceDeserializer,
+            IJsonToResourceDeserializer resourceDeserializer,
             ILogger<ImportJobTask> logger)
         {
             EnsureArg.IsNotNull(importJobRecord, nameof(importJobRecord));
@@ -276,27 +277,14 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                         {
                             stopwatch.Restart();
 
-                            var rawResource = new RawResource(line, Core.Models.FhirResourceFormat.Json);
-                            Core.Models.ResourceElement deserializedResource = _resourceDeserializer.DeserializeRaw(rawResource, "1.0", DateTime.UtcNow);
-
-                            /*
-                            Resource resource = _fhirJsonParser.Parse<Resource>(line);
-
-                            if (resource.Meta == null)
-                            {
-                                resource.Meta = new Meta();
-                            }
-
-                            resource.Meta.LastUpdated = Clock.UtcNow;
-                            */
-
-                            _logger.LogInformation("Parsing took {Duration}.", stopwatch.ElapsedMilliseconds);
+                            ResourceElement resourceElement = _resourceDeserializer.Deserialize(line);
+                            _logger.LogInformation("Parsing took {Duration} ms.", stopwatch.ElapsedMilliseconds);
 
                             stopwatch.Restart();
 
-                            ResourceWrapper wrapper = _resourceWrapperFactory.Create(deserializedResource, false);
+                            ResourceWrapper wrapper = _resourceWrapperFactory.Create(resourceElement, false);
 
-                            _logger.LogInformation("Creating took {Duration}.", stopwatch.ElapsedMilliseconds);
+                            _logger.LogInformation("Creating took {Duration} ms.", stopwatch.ElapsedMilliseconds);
 
                             stopwatch.Restart();
 
@@ -307,7 +295,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                                 tasks.Add(upsertTask);
                             }
 
-                            _logger.LogInformation("Upsert took {Duration}.", stopwatch.ElapsedMilliseconds);
+                            _logger.LogInformation("Upsert took {Duration} ms.", stopwatch.ElapsedMilliseconds);
                         }
                         catch (Exception ex)
                         {

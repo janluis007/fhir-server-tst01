@@ -70,6 +70,10 @@ namespace Microsoft.Health.Fhir.Api.Modules
                 .Transient()
                 .AsService<IImportProvider>();
 
+            services.Add<JsonToResourceDeserializer>()
+                .Singleton()
+                .AsService<IJsonToResourceDeserializer>();
+
             services.AddHostedService<ImportJobWorkerBackgroundService>();
         }
     }
