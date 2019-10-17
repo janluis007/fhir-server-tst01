@@ -12,9 +12,14 @@ using EnsureThat;
 using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Serialization;
 using Microsoft.Health.Fhir.Core.Features.Conformance.Models;
+using Microsoft.Health.Fhir.Core.Features.Conformance.Schema;
 using Microsoft.Health.Fhir.Core.Features.Conformance.Serialization;
+using Microsoft.Health.Fhir.Core.Features.Specification;
 using Microsoft.Health.Fhir.Core.Models;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Schema;
+using Newtonsoft.Json.Schema.Generation;
 using Newtonsoft.Json.Serialization;
 
 namespace Microsoft.Health.Fhir.Core.Features.Conformance
@@ -124,6 +129,44 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
             // Using a version specific StructureDefinitionSummaryProvider ensures the metadata to be
             // compatible with the current FhirSerializer/output formatter.
             return jsonStatement.ToTypedElement(ModelInfoProvider.GetStructureDefinitionSummaryProvider());
+        }
+
+        public JSchema BuildSchema()
+        {
+            var schema = new JSchema();
+            schema.Type = JSchemaType.Object;
+            schema.AllowAdditionalProperties = true;
+
+            AddSchemaProperties(_statement, schema);
+
+            return schema;
+        }
+
+        private void AddSchemaProperties(object obj, JSchema schema)
+        {
+            var generator = new JSchemaGenerator();
+            generator.ContractResolver = new CamelCasePropertyNamesContractResolver();
+            generator.SchemaIdGenerationHandling = SchemaIdGenerationHandling.TypeName;
+
+            foreach (var prop in obj.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            {
+                var val = prop.GetValue(obj);
+                var single = prop.GetCustomAttribute<SelectSingleAttribute>();
+                var constValue = prop.GetCustomAttribute<SchemaConstAttribute>();
+                var options = prop.GetCustomAttribute<SchemaOptionsAttribute>();
+
+                if (constValue != null)
+                {
+                    var sub = generator.Generate(prop.PropertyType);
+                    sub.Const = JToken.FromObject(val);
+                    schema.Properties.Add(prop.Name, sub);
+                }
+            }
+        }
+
+        public static JSchema SpecificationSchema()
+        {
+            return SpecificationLoader.FhirSchema(FhirSpecification.R4);
         }
     }
 }

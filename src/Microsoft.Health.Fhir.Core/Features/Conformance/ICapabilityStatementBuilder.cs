@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using Hl7.Fhir.ElementModel;
 using Microsoft.Health.Fhir.Core.Features.Conformance.Models;
+using Newtonsoft.Json.Schema;
 
 namespace Microsoft.Health.Fhir.Core.Features.Conformance
 {
@@ -23,5 +24,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
         ICapabilityStatementBuilder Update(Action<ListedCapabilityStatement> action);
 
         ITypedElement Build();
+
+        JSchema BuildSchema();
     }
 }
