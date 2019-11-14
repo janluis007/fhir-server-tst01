@@ -24,6 +24,22 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations
                 message));
         }
 
+        public OperationFailedException(string message, HttpStatusCode statusCode, OperationOutcomeIssue[] issues)
+            : base(message)
+        {
+            EnsureArg.IsNotNullOrWhiteSpace(message, nameof(message));
+
+            ResponseStatusCode = statusCode;
+
+            if (issues != null)
+            {
+                foreach (OperationOutcomeIssue issue in issues)
+                {
+                    Issues.Add(issue);
+                }
+            }
+        }
+
         public HttpStatusCode ResponseStatusCode { get; }
     }
 }

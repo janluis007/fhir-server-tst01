@@ -135,19 +135,13 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                     {
                         Task completedTask = await Task.WhenAny(tasks);
 
-                        /*if (completedTask.IsFaulted)
+                        if (completedTask.IsFaulted)
                         {
-                            _importJobRecord.Errors.TryAdd(new OperationOutcome()
-                            {
-                                Issue = new System.Collections.Generic.List<OperationOutcome.IssueComponent>()
-                                    {
-                                        new OperationOutcome.IssueComponent()
-                                        {
-                                            Diagnostics = completedTask.Exception.ToString(),
-                                        },
-                                    },
-                            });
-                        }*/
+                            _importJobRecord.Errors.TryAdd(new OperationOutcomeIssue(
+                                OperationOutcomeConstants.IssueSeverity.Error,
+                                OperationOutcomeConstants.IssueType.Processing,
+                                completedTask.Exception.ToString()));
+                        }
 
                         await UpdateJobStatus(OperationStatus.Running, cancellationToken);
 
@@ -246,22 +240,16 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
 
                         await Task.WhenAll(tasks);
 
-                        /*foreach (Task task in tasks)
+                        foreach (Task task in tasks)
                         {
                             if (task.IsFaulted)
                             {
-                                _importJobRecord.Errors.TryAdd(new OperationOutcome()
-                                {
-                                    Issue = new System.Collections.Generic.List<OperationOutcome.IssueComponent>()
-                                {
-                                    new OperationOutcome.IssueComponent()
-                                    {
-                                        Diagnostics = task.Exception.ToString(),
-                                    },
-                                },
-                                });
+                                _importJobRecord.Errors.TryAdd(new OperationOutcomeIssue(
+                                    OperationOutcomeConstants.IssueSeverity.Error,
+                                    OperationOutcomeConstants.IssueType.Processing,
+                                    task.Exception.ToString()));
                             }
-                        }*/
+                        }
 
                         tasks.Clear();
 
@@ -300,46 +288,34 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
                         catch (Exception ex)
                         {
                             _logger.LogWarning($"Parsing and upserting resource failed: {ex}");
-                            /*
-                            _importJobRecord.Errors.TryAdd(new OperationOutcome()
-                            {
-                                Issue = new System.Collections.Generic.List<OperationOutcome.IssueComponent>()
-                                    {
-                                        new OperationOutcome.IssueComponent()
-                                        {
-                                            Diagnostics = ex.ToString(),
-                                        },
-                                    },
-                            });*/
+
+                            _importJobRecord.Errors.TryAdd(new OperationOutcomeIssue(
+                                OperationOutcomeConstants.IssueSeverity.Error,
+                                OperationOutcomeConstants.IssueType.Processing,
+                                ex.ToString()));
                         }
+                    }
 
-                        progress.Count++;
+                    progress.Count++;
 
-                        _logger.LogInformation($"Processed {progress.Count}");
+                    _logger.LogInformation($"Processed {progress.Count}");
 
-                        // Increment the number of bytes processed (including the new line).
-                        progress.BytesProcessed += Encoding.UTF8.GetBytes(line).Length + NewLineLength;
+                    // Increment the number of bytes processed (including the new line).
+                    progress.BytesProcessed += Encoding.UTF8.GetBytes(line).Length + NewLineLength;
 
-                        if (tasks.Count >= 10)
+                    if (tasks.Count >= 10)
+                    {
+                        Task completedTask = await Task.WhenAny(tasks);
+
+                        if (completedTask.IsFaulted)
                         {
-                            Task completedTask = await Task.WhenAny(tasks);
-
-                            /*if (completedTask.IsFaulted)
-                            {
-                                _importJobRecord.Errors.TryAdd(new OperationOutcome()
-                                {
-                                    Issue = new System.Collections.Generic.List<OperationOutcome.IssueComponent>()
-                                    {
-                                        new OperationOutcome.IssueComponent()
-                                        {
-                                            Diagnostics = completedTask.Exception.ToString(),
-                                        },
-                                    },
-                                });
-                            }*/
-
-                            tasks.Remove(completedTask);
+                            _importJobRecord.Errors.TryAdd(new OperationOutcomeIssue(
+                                OperationOutcomeConstants.IssueSeverity.Error,
+                                OperationOutcomeConstants.IssueType.Processing,
+                                completedTask.Exception.ToString()));
                         }
+
+                        tasks.Remove(completedTask);
                     }
 
                     _logger.LogInformation("Overall took {Duration}.", overallStopwatch.ElapsedMilliseconds);

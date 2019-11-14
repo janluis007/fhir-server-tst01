@@ -4,8 +4,10 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using EnsureThat;
+using Microsoft.Health.Fhir.Core.Models;
 using Newtonsoft.Json;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations.Import.Models
@@ -53,11 +55,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import.Models
         [JsonProperty(JobRecordProperties.SchemaVersion)]
         public int SchemaVersion { get; private set; }
 
-        ////[JsonProperty(JobRecordProperties.Output)]
-        ////public List<ImportFileInfo> Output { get; private set; } = new List<ImportFileInfo>();
-
-        // [JsonProperty(JobRecordProperties.Error)]
-        // public IProducerConsumerCollection<OperationOutcome> Errors { get; private set; } = new ConcurrentBag<OperationOutcome>();
+        [JsonProperty(JobRecordProperties.Error)]
+        public IProducerConsumerCollection<OperationOutcomeIssue> Errors { get; private set; } = new ConcurrentBag<OperationOutcomeIssue>();
 
         [JsonProperty(JobRecordProperties.Status)]
         public OperationStatus Status { get; set; }

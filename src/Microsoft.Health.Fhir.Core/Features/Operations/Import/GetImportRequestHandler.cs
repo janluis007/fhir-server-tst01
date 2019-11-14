@@ -44,6 +44,21 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Import
 
                 exportResponse = new GetImportResponse(HttpStatusCode.OK, jobResult);
             }
+            else if (outcome.JobRecord.Status == OperationStatus.Failed || outcome.JobRecord.Status == OperationStatus.Canceled)
+            {
+                HttpStatusCode failureStatusCode = HttpStatusCode.InternalServerError;
+
+                if (outcome.JobRecord.Errors != null && outcome.JobRecord.Errors.Any())
+                {
+                    throw new OperationFailedException(
+                        string.Format(Resources.OperationFailed, OperationsConstants.Import, outcome.JobRecord.Errors), failureStatusCode);
+                }
+                else
+                {
+                    throw new OperationFailedException(
+                        string.Format(Resources.OperationFailed, OperationsConstants.Import, "Failed to process the job."), failureStatusCode);
+                }
+            }
             else
             {
                 exportResponse = new GetImportResponse(HttpStatusCode.Accepted);
