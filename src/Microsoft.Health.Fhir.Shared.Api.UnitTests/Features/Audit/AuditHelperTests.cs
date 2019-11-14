@@ -38,6 +38,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Audit
 
         private readonly HttpContext _httpContext = new DefaultHttpContext();
         private readonly IClaimsExtractor _claimsExtractor = Substitute.For<IClaimsExtractor>();
+        private readonly IAuditHeaderReader _auditHeaderReader = Substitute.For<IAuditHeaderReader>();
 
         public AuditHelperTests()
         {
@@ -53,7 +54,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Audit
 
             _claimsExtractor.Extract().Returns(Claims);
 
-            _auditHelper = new AuditHelper(_fhirRequestContextAccessor, _auditEventTypeMapping, _auditLogger, NullLogger<AuditHelper>.Instance);
+            _auditHelper = new AuditHelper(_fhirRequestContextAccessor, _auditEventTypeMapping, _auditLogger, NullLogger<AuditHelper>.Instance, _auditHeaderReader);
         }
 
         [Fact]
@@ -85,7 +86,8 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Audit
                 statusCode: null,
                 correlationId: CorrelationId,
                 callerIpAddress: CallerIpAddressInString,
-                callerClaims: Claims);
+                callerClaims: Claims,
+                customHeaders: _auditHeaderReader.Read(_httpContext));
         }
 
         [Fact]
@@ -123,7 +125,29 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Audit
                 expectedStatusCode,
                 CorrelationId,
                 CallerIpAddressInString,
-                Claims);
+                Claims,
+                customHeaders: _auditHeaderReader.Read(_httpContext));
+        }
+
+        [Fact]
+        public void GivenAnActionHasAuditEventTypeAttribute_WhenFhirRequestContextHasAuditValue_ThenAuditLogShouldBeLoggedWithFhirRequestValue()
+        {
+            string otherAuditEventType = "other-audit";
+
+            _fhirRequestContext.AuditEventType.Returns(otherAuditEventType);
+
+            _auditHelper.LogExecuting(ControllerName, NonAnonymousActionName, _httpContext, _claimsExtractor);
+
+            _auditLogger.Received(1).LogAudit(
+                AuditAction.Executing,
+                otherAuditEventType,
+                resourceType: null,
+                requestUri: Uri,
+                statusCode: null,
+                correlationId: CorrelationId,
+                callerIpAddress: CallerIpAddressInString,
+                callerClaims: Claims,
+                customHeaders: _auditHeaderReader.Read(_httpContext));
         }
     }
 }

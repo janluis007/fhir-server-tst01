@@ -15,11 +15,13 @@ using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features.Conformance;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Messages.Upsert;
-using Microsoft.Health.Fhir.ValueSets;
 
 namespace Microsoft.Health.Fhir.Core.Features.Resources.Upsert
 {
-    public class UpsertResourceHandler : BaseResourceHandler, IRequestHandler<UpsertResourceRequest, UpsertResourceResponse>
+    /// <summary>
+    /// Handles upserting a resource
+    /// </summary>
+    public partial class UpsertResourceHandler : BaseResourceHandler, IRequestHandler<UpsertResourceRequest, UpsertResourceResponse>
     {
         public UpsertResourceHandler(
             IFhirDataStore fhirDataStore,
@@ -44,15 +46,11 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources.Upsert
             bool keepHistory = await ConformanceProvider.Value.CanKeepHistory(resource.TypeName, cancellationToken);
 
             ResourceWrapper resourceWrapper = CreateResourceWrapper(resource, deleted: false);
-            UpsertOutcome result = await FhirDataStore.UpsertAsync(resourceWrapper, message.WeakETag, allowCreate, keepHistory, cancellationToken);
+            UpsertOutcome result = await UpsertAsync(message, resourceWrapper, allowCreate, keepHistory, cancellationToken);
+
             resource.VersionId = result.Wrapper.Version;
 
             return new UpsertResourceResponse(new SaveOutcome(resource.ToResourceElement(), result.OutcomeType));
-        }
-
-        protected override void AddResourceCapability(IListedCapabilityStatement statement, string resourceType)
-        {
-            statement.TryAddRestInteraction(resourceType, TypeRestfulInteraction.Update);
         }
     }
 }

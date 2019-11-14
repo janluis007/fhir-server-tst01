@@ -15,6 +15,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Microsoft.Health.Fhir.Core.Configs;
 using Microsoft.Health.Fhir.Core.Exceptions;
 using Microsoft.Health.Fhir.Core.Features.Conformance;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
@@ -40,25 +42,30 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Storage
         private readonly V1.UpsertResourceTvpGenerator<ResourceMetadata> _upsertResourceTvpGenerator;
         private readonly RecyclableMemoryStreamManager _memoryStreamManager;
         private readonly ILogger<SqlServerFhirDataStore> _logger;
+        private readonly CoreFeatureConfiguration _coreFeatures;
 
         public SqlServerFhirDataStore(
             SqlServerDataStoreConfiguration configuration,
             SqlServerFhirModel model,
             SearchParameterToSearchValueTypeMap searchParameterTypeMap,
             V1.UpsertResourceTvpGenerator<ResourceMetadata> upsertResourceTvpGenerator,
-            ILogger<SqlServerFhirDataStore> logger)
+            ILogger<SqlServerFhirDataStore> logger,
+            IOptions<CoreFeatureConfiguration> coreFeatures)
         {
             EnsureArg.IsNotNull(configuration, nameof(configuration));
             EnsureArg.IsNotNull(model, nameof(model));
             EnsureArg.IsNotNull(searchParameterTypeMap, nameof(searchParameterTypeMap));
             EnsureArg.IsNotNull(upsertResourceTvpGenerator, nameof(upsertResourceTvpGenerator));
             EnsureArg.IsNotNull(logger, nameof(logger));
+            EnsureArg.IsNotNull(coreFeatures, nameof(coreFeatures));
+
             _configuration = configuration;
             _model = model;
             _searchParameterTypeMap = searchParameterTypeMap;
             _upsertResourceTvpGenerator = upsertResourceTvpGenerator;
             _logger = logger;
             _memoryStreamManager = new RecyclableMemoryStreamManager();
+            _coreFeatures = coreFeatures.Value;
         }
 
         public async Task<UpsertOutcome> UpsertAsync(ResourceWrapper resource, WeakETag weakETag, bool allowCreate, bool keepHistory, CancellationToken cancellationToken)
@@ -68,7 +75,8 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Storage
             int etag = 0;
             if (weakETag != null && !int.TryParse(weakETag.VersionId, out etag))
             {
-                throw new ResourceConflictException(weakETag);
+                // Set the etag to a sentinel value to enable expected failure paths when updating with both existing and nonexistent resources.
+                etag = -1;
             }
 
             var resourceMetadata = new ResourceMetadata(
@@ -120,10 +128,17 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Storage
                     {
                         switch (e.Number)
                         {
-                            case SqlErrorCodes.NotFound:
-                                throw new MethodNotAllowedException(Core.Resources.ResourceCreationNotAllowed);
                             case SqlErrorCodes.PreconditionFailed:
-                                throw new ResourceConflictException(weakETag);
+                                throw new PreconditionFailedException(string.Format(Core.Resources.ResourceVersionConflict, weakETag?.VersionId));
+                            case SqlErrorCodes.NotFound:
+                                if (weakETag != null)
+                                {
+                                    throw new ResourceNotFoundException(string.Format(Core.Resources.ResourceNotFoundByIdAndVersion, resource.ResourceTypeName, resource.ResourceId, weakETag.VersionId));
+                                }
+
+                                goto default;
+                            case SqlErrorCodes.MethodNotAllowed:
+                                throw new MethodNotAllowedException(Core.Resources.ResourceCreationNotAllowed);
                             default:
                                 _logger.LogError(e, "Error from SQL database on upsert");
                                 throw;
@@ -221,23 +236,29 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Storage
             }
         }
 
-        public void Build(IListedCapabilityStatement statement)
+        public void Build(ICapabilityStatementBuilder builder)
         {
-            EnsureArg.IsNotNull(statement, nameof(statement));
+            EnsureArg.IsNotNull(builder, nameof(builder));
 
-            statement.SupportsInclude = true;
+            builder.AddDefaultResourceInteractions()
+                   .AddDefaultSearchParameters();
 
-            foreach (var resource in ModelInfoProvider.GetResourceTypeNames())
+            if (_coreFeatures.SupportsBatch)
             {
-                statement.BuildRestResourceComponent(resource, builder =>
-                {
-                    builder.AddResourceVersionPolicy(ResourceVersionPolicy.NoVersion);
-                    builder.AddResourceVersionPolicy(ResourceVersionPolicy.Versioned);
-                    builder.AddResourceVersionPolicy(ResourceVersionPolicy.VersionedUpdate);
-                    builder.ReadHistory = true;
-                    builder.UpdateCreate = true;
-                });
+                // Batch supported added in listedCapability
+                builder.AddRestInteraction(SystemRestfulInteraction.Batch);
             }
+
+            if (_coreFeatures.SupportsTransaction)
+            {
+                // Transaction supported added in listedCapability
+                builder.AddRestInteraction(SystemRestfulInteraction.Transaction);
+            }
+        }
+
+        public ITransactionScope BeginTransaction()
+        {
+            return new DefaultTransactionScope();
         }
     }
 }

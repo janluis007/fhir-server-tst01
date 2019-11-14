@@ -100,11 +100,20 @@ namespace Microsoft.Health.Fhir.Api.Features.Filters
                     case AuditException _:
                         operationOutcomeResult.StatusCode = HttpStatusCode.InternalServerError;
                         break;
+                    case AuditHeaderException _:
+                        operationOutcomeResult.StatusCode = HttpStatusCode.RequestHeaderFieldsTooLarge;
+                        break;
                     case OperationFailedException ofe:
                         operationOutcomeResult.StatusCode = ofe.ResponseStatusCode;
                         break;
                     case OperationNotImplementedException _:
                         operationOutcomeResult.StatusCode = HttpStatusCode.NotImplemented;
+                        break;
+                    case NotAcceptableException _:
+                        operationOutcomeResult.StatusCode = HttpStatusCode.NotAcceptable;
+                        break;
+                    case TransactionFailedException tfe:
+                        operationOutcomeResult.StatusCode = tfe.ResponseStatusCode;
                         break;
                 }
 
