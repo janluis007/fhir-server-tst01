@@ -3,10 +3,14 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
+using System;
+using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using EnsureThat;
 using Hl7.Fhir.Model;
+using Hl7.Fhir.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,6 +21,7 @@ using Microsoft.Health.Fhir.Api.Features.Audit;
 using Microsoft.Health.Fhir.Api.Features.Filters;
 using Microsoft.Health.Fhir.Api.Features.Routing;
 using Microsoft.Health.Fhir.Api.Features.Security;
+using Microsoft.Health.Fhir.Core.Exceptions;
 using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features;
 using Microsoft.Health.Fhir.Core.Features.Operations;
@@ -36,15 +41,18 @@ namespace Microsoft.Health.Fhir.Api.Controllers
     {
         private readonly IMediator _mediator;
         private readonly FeatureConfiguration _features;
+        private readonly FhirJsonParser _parser;
 
-        public ValidateController(IMediator mediator, IOptions<FeatureConfiguration> features)
+        public ValidateController(IMediator mediator, IOptions<FeatureConfiguration> features, FhirJsonParser parser)
         {
             EnsureArg.IsNotNull(mediator, nameof(mediator));
             EnsureArg.IsNotNull(features, nameof(features));
             EnsureArg.IsNotNull(features.Value, nameof(features));
+            EnsureArg.IsNotNull(parser, nameof(parser));
 
             _mediator = mediator;
             _features = features.Value;
+            _parser = parser;
         }
 
         [HttpPost]
@@ -72,11 +80,6 @@ namespace Microsoft.Health.Fhir.Api.Controllers
                 throw new OperationNotImplementedException(Resources.ValidationNotSupported);
             }
 
-            if (profile != null)
-            {
-                throw new OperationNotImplementedException(Resources.ValidateWithProfileNotSupported);
-            }
-
             if (resource.ResourceType == ResourceType.Parameters)
             {
                 resource = ParseParameters((Parameters)resource, ref profile, ref mode);
@@ -95,11 +98,41 @@ namespace Microsoft.Health.Fhir.Api.Controllers
                 ValidateResourceIdFilterAttribute.ValidateId(resource, idParameter);
             }
 
+            OperationOutcome profileOutcome = null;
+            if (profile != null)
+            {
+                try
+                {
+                    var webRequest = WebRequest.Create(new Uri(profile));
+                    var profileResponse = (HttpWebResponse)webRequest.GetResponse();
+                    StructureDefinition profileResource = null;
+
+                    using (var streamReader = new StreamReader(profileResponse.GetResponseStream()))
+                    {
+                        string jsonText = streamReader.ReadToEnd();
+                        profileResource = _parser.Parse<StructureDefinition>(jsonText);
+                    }
+
+                    var validator = new Hl7.Fhir.Validation.Validator();
+                    profileOutcome = validator.Validate(resource.ToResourceElement().Instance, profileResource);
+                }
+                catch (WebException ex)
+                {
+                    throw new ResourceNotFoundException(ex.Message);
+                }
+            }
+
             var response = await _mediator.Send<ValidateOperationResponse>(new ValidateOperationRequest(resource.ToResourceElement()));
+
+            var issues = response.Issues.Select(x => x.ToPoco()).ToList();
+            if (profileOutcome != null)
+            {
+                issues.AddRange(profileOutcome.Issue);
+            }
 
             return FhirResult.Create(new OperationOutcome
             {
-                Issue = response.Issues.Select(x => x.ToPoco()).ToList(),
+                Issue = issues,
             }.ToResourceElement());
         }
 
