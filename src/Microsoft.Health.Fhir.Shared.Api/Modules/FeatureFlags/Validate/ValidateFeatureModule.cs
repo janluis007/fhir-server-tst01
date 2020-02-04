@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Health.Extensions.DependencyInjection;
+using Microsoft.Health.Fhir.Api.Features.Validate;
 
 namespace Microsoft.Health.Fhir.Api.Modules.FeatureFlags.Validate
 {
@@ -18,6 +19,9 @@ namespace Microsoft.Health.Fhir.Api.Modules.FeatureFlags.Validate
                 .Singleton()
                 .AsSelf()
                 .AsService<IPostConfigureOptions<MvcOptions>>();
+
+            services.AddSingleton<ProfileResolver>();
+            services.AddSingleton<ProfileValidator>();
         }
     }
 }

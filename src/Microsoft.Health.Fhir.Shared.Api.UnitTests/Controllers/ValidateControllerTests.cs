@@ -150,7 +150,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Controllers
 
             IMediator mediator = Substitute.For<IMediator>();
 
-            return new ValidateController(mediator, optionsFeatureConfiguration);
+            return new ValidateController(mediator, optionsFeatureConfiguration, null);
         }
     }
 }
