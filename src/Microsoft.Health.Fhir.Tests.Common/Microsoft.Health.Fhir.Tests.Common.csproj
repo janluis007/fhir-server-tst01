@@ -258,8 +258,6 @@
     <EmbeddedResource Include="TestFiles\R5\ValidCompartmentDefinition.json" />
     <EmbeddedResource Include="TestFiles\R5\Weight.json" />
     <EmbeddedResource Include="TestFiles\R5\WeightInGrams.json" />
-    <EmbeddedResource Include="TestFiles\R4\AuthConfigWithInvalidEntries.json" />
-    <EmbeddedResource Include="TestFiles\R4\AuthConfigWithValidRoles.json" />
     <EmbeddedResource Include="TestFiles\R4\BasicExampleNarrative.json" />
     <EmbeddedResource Include="TestFiles\R4\BasicExampleNarrative.xml" />
     <EmbeddedResource Include="TestFiles\R4\BloodGlucose.json" />

@@ -15,7 +15,6 @@ using Microsoft.Health.Fhir.Core.Models;
 using EnumerableReturnType=System.Collections.Generic.IEnumerable<Microsoft.Health.Fhir.Core.UnitTests.Features.Search.SearchParameterTypeResult>;
 using Expression = Hl7.FhirPath.Expressions.Expression;
 using Range = Hl7.Fhir.Model.Range;
-using ReturnType=Microsoft.Health.Fhir.Core.UnitTests.Features.Search.SearchParameterTypeResult;
 using SearchParamType = Microsoft.Health.Fhir.ValueSets.SearchParamType;
 
 namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Search
