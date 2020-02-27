@@ -6,10 +6,14 @@
   <PropertyGroup>
     <DefineConstants>R5</DefineConstants>
   </PropertyGroup>
+  <ItemGroup>
+    <None Remove="Features\Definition\unsupported-search-parameters.json" />
+  </ItemGroup>
   
   <ItemGroup>
     <EmbeddedResource Include="Features\Definition\search-parameters.json" />
     <EmbeddedResource Include="Features\Definition\compartment.json" />
+    <EmbeddedResource Include="Features\Definition\unsupported-search-parameters.json" />
   </ItemGroup>
 
   <ItemGroup>
