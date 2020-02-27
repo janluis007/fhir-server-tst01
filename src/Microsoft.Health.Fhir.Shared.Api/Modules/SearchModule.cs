@@ -37,8 +37,27 @@ namespace Microsoft.Health.Fhir.Api.Modules
             services.Add<SearchParameterDefinitionManager>()
                 .Singleton()
                 .AsSelf()
-                .AsService<IStartable>()
-                .AsService<ISearchParameterDefinitionManager>();
+                .AsService<IStartable>();
+
+            services.Add<SearchableSearchParameterDefinitionManager>()
+                .Singleton()
+                .AsSelf();
+
+            services.Add<SupportedSearchParameterDefinitionManager>()
+                .Singleton()
+                .AsSelf();
+
+            services.Add<SearchableSearchParameterDefinitionManagerFactory>(c => c.GetRequiredService<SearchableSearchParameterDefinitionManager>)
+                .Singleton()
+                .AsSelf();
+
+            services.Add<SupportedSearchParameterDefinitionManagerFactory>(c => c.GetRequiredService<SupportedSearchParameterDefinitionManager>)
+                .Singleton()
+                .AsSelf();
+
+            services.Add<SupportedSearchParameterDefinitionManager>()
+                .Singleton()
+                .AsSelf();
 
             services.TypesInSameAssemblyAs<IFhirElementToSearchValueTypeConverter>()
                 .AssignableTo<IFhirElementToSearchValueTypeConverter>()
