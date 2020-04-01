@@ -23,6 +23,8 @@ namespace Microsoft.Health.Fhir.Api.Configs
 
         public CoreFeatureConfiguration CoreFeatures { get; } = new CoreFeatureConfiguration();
 
+        public CapabilityStatementConfiguration CapabilityStatement { get; set; } = new CapabilityStatementConfiguration();
+
         public BundleConfiguration Bundle { get; } = new BundleConfiguration();
     }
 }

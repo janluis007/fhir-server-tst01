@@ -21,13 +21,18 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance.Models
             DefaultOption = defaultOption;
         }
 
-        public T DefaultOption { get; }
+        public T DefaultOption { get; set; }
 
         object IDefaultOption.DefaultOption
         {
             get
             {
                 return DefaultOption;
+            }
+
+            set
+            {
+                DefaultOption = (T)value;
             }
         }
     }

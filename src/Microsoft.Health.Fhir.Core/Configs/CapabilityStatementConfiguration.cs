@@ -3,10 +3,13 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-namespace Microsoft.Health.Fhir.Core.Features.Conformance.Models
+using System.Collections.Generic;
+using Microsoft.Health.Fhir.Core.Features.Operations.Patch;
+
+namespace Microsoft.Health.Fhir.Core.Configs
 {
-    internal interface IDefaultOption
+    public class CapabilityStatementConfiguration
     {
-        object DefaultOption { get; set; }
+        public ICollection<PatchOperation> Operations { get; } = new List<PatchOperation>();
     }
 }

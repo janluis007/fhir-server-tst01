@@ -11,9 +11,11 @@ using System.Reflection;
 using EnsureThat;
 using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Serialization;
+using Microsoft.Health.Fhir.Core.Configs;
 using Microsoft.Health.Fhir.Core.Features.Conformance.Models;
 using Microsoft.Health.Fhir.Core.Features.Conformance.Serialization;
 using Microsoft.Health.Fhir.Core.Features.Definition;
+using Microsoft.Health.Fhir.Core.Features.Operations.Patch;
 using Microsoft.Health.Fhir.Core.Features.Search;
 using Microsoft.Health.Fhir.Core.Models;
 using Microsoft.Health.Fhir.ValueSets;
@@ -27,32 +29,46 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
         private readonly ListedCapabilityStatement _statement;
         private readonly IModelInfoProvider _modelInfoProvider;
         private readonly ISearchParameterDefinitionManager _searchParameterDefinitionManager;
+        private readonly IPatchProcessor _patchProcessor;
+        private readonly CapabilityStatementConfiguration _capabilityStatementConfiguration;
 
-        private CapabilityStatementBuilder(ListedCapabilityStatement statement, IModelInfoProvider modelInfoProvider, ISearchParameterDefinitionManager searchParameterDefinitionManager)
+        private CapabilityStatementBuilder(
+            ListedCapabilityStatement statement,
+            IModelInfoProvider modelInfoProvider,
+            ISearchParameterDefinitionManager searchParameterDefinitionManager,
+            IPatchProcessor patchProcessor,
+            CapabilityStatementConfiguration capabilityStatementConfiguration)
         {
             EnsureArg.IsNotNull(statement, nameof(statement));
             EnsureArg.IsNotNull(modelInfoProvider, nameof(modelInfoProvider));
             EnsureArg.IsNotNull(searchParameterDefinitionManager, nameof(searchParameterDefinitionManager));
+            EnsureArg.IsNotNull(patchProcessor, nameof(patchProcessor));
+            EnsureArg.IsNotNull(capabilityStatementConfiguration, nameof(capabilityStatementConfiguration));
 
             _statement = statement;
             _modelInfoProvider = modelInfoProvider;
             _searchParameterDefinitionManager = searchParameterDefinitionManager;
+            _patchProcessor = patchProcessor;
+            _capabilityStatementConfiguration = capabilityStatementConfiguration;
         }
 
-        public static ICapabilityStatementBuilder Create(IModelInfoProvider modelInfoProvider, ISearchParameterDefinitionManager searchParameterDefinitionManager)
+        public static ICapabilityStatementBuilder Create(
+            IModelInfoProvider modelInfoProvider,
+            ISearchParameterDefinitionManager searchParameterDefinitionManager,
+            IPatchProcessor patchProcessor,
+            CapabilityStatementConfiguration capabilityStatementConfiguration)
         {
             EnsureArg.IsNotNull(modelInfoProvider, nameof(modelInfoProvider));
             EnsureArg.IsNotNull(searchParameterDefinitionManager, nameof(searchParameterDefinitionManager));
+            EnsureArg.IsNotNull(capabilityStatementConfiguration, nameof(capabilityStatementConfiguration));
 
             string manifestName = $"{typeof(CapabilityStatementBuilder).Namespace}.{modelInfoProvider.Version}.BaseCapabilities.json";
 
-            using (Stream resourceStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(manifestName))
-            using (var reader = new StreamReader(resourceStream))
-            {
-                var statement = JsonConvert.DeserializeObject<ListedCapabilityStatement>(reader.ReadToEnd());
+            using Stream resourceStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(manifestName);
+            using var reader = new StreamReader(resourceStream);
+            var statement = JsonConvert.DeserializeObject<ListedCapabilityStatement>(reader.ReadToEnd());
 
-                return new CapabilityStatementBuilder(statement, modelInfoProvider, searchParameterDefinitionManager);
-            }
+            return new CapabilityStatementBuilder(statement, modelInfoProvider, searchParameterDefinitionManager, patchProcessor, capabilityStatementConfiguration);
         }
 
         public ICapabilityStatementBuilder Update(Action<ListedCapabilityStatement> action)
@@ -83,6 +99,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
                         Reference = $"http://hl7.org/fhir/StructureDefinition/{resourceType}",
                     },
                 };
+
                 listedRestComponent.Resource.Add(resourceComponent);
             }
 
@@ -232,7 +249,10 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
                 NullValueHandling = NullValueHandling.Ignore,
             });
 
-            ISourceNode jsonStatement = FhirJsonNode.Parse(json);
+            var jsonStatement = (FhirJsonNode)FhirJsonNode.Parse(json);
+
+            // Apply appsetting config customizations
+            _patchProcessor.Patch(jsonStatement.JsonObject, _capabilityStatementConfiguration.Operations);
 
             // Using a version specific StructureDefinitionSummaryProvider ensures the metadata to be
             // compatible with the current FhirSerializer/output formatter.

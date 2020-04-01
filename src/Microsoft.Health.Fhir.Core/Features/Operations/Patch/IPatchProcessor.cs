@@ -3,10 +3,12 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-namespace Microsoft.Health.Fhir.Core.Features.Conformance.Models
+using System.Collections.Generic;
+
+namespace Microsoft.Health.Fhir.Core.Features.Operations.Patch
 {
-    internal interface IDefaultOption
+    public interface IPatchProcessor
     {
-        object DefaultOption { get; set; }
+        void Patch(object source, IEnumerable<PatchOperation> operations);
     }
 }

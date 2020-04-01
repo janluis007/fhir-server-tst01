@@ -3,10 +3,15 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-namespace Microsoft.Health.Fhir.Core.Features.Conformance.Models
+using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
+
+namespace Microsoft.Health.Fhir.Api.Features.Patch.FhirPatch
 {
-    internal interface IDefaultOption
+    public interface IPathProvider
     {
-        object DefaultOption { get; set; }
+        IEnumerable<JToken> Select(JToken source, string path);
+
+        public void Set(JToken source, string path, JToken value);
     }
 }

@@ -6,8 +6,10 @@
 using System;
 using Hl7.Fhir.ElementModel;
 using Hl7.FhirPath;
+using Microsoft.Health.Fhir.Core.Configs;
 using Microsoft.Health.Fhir.Core.Features.Conformance;
 using Microsoft.Health.Fhir.Core.Features.Definition;
+using Microsoft.Health.Fhir.Core.Features.Operations.Patch;
 using Microsoft.Health.Fhir.Core.Models;
 using Microsoft.Health.Fhir.ValueSets;
 using NSubstitute;
@@ -28,7 +30,9 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Conformance
             _searchParameterDefinitionManager = Substitute.For<ISearchParameterDefinitionManager>();
             _builder = CapabilityStatementBuilder.Create(
                 ModelInfoProvider.Instance,
-                _searchParameterDefinitionManager);
+                _searchParameterDefinitionManager,
+                Substitute.For<IPatchProcessor>(),
+                new CapabilityStatementConfiguration());
         }
 
         [Fact]

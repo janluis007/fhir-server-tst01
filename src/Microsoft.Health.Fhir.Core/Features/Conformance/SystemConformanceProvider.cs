@@ -9,10 +9,13 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
+using Microsoft.Extensions.Options;
 using Microsoft.Health.Extensions.DependencyInjection;
+using Microsoft.Health.Fhir.Core.Configs;
 using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features.Conformance.Models;
 using Microsoft.Health.Fhir.Core.Features.Definition;
+using Microsoft.Health.Fhir.Core.Features.Operations.Patch;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Features.Conformance
@@ -23,6 +26,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
         private readonly IModelInfoProvider _modelInfoProvider;
         private readonly ISearchParameterDefinitionManager _searchParameterDefinitionManager;
         private readonly Func<IScoped<IEnumerable<IProvideCapability>>> _capabilityProviders;
+        private readonly IPatchProcessor _patchProcessor;
+        private readonly CapabilityStatementConfiguration _configuration;
         private ResourceElement _listedCapabilityStatement;
         private SemaphoreSlim _sem = new SemaphoreSlim(1, 1);
         private readonly List<Action<ListedCapabilityStatement>> _configurationUpdates = new List<Action<ListedCapabilityStatement>>();
@@ -30,15 +35,21 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
         public SystemConformanceProvider(
             IModelInfoProvider modelInfoProvider,
             SearchableSearchParameterDefinitionManagerResolver searchParameterDefinitionManagerResolver,
-            Func<IScoped<IEnumerable<IProvideCapability>>> capabilityProviders)
+            Func<IScoped<IEnumerable<IProvideCapability>>> capabilityProviders,
+            IPatchProcessor patchProcessor,
+            IOptions<CapabilityStatementConfiguration> configuration)
         {
             EnsureArg.IsNotNull(modelInfoProvider, nameof(modelInfoProvider));
             EnsureArg.IsNotNull(searchParameterDefinitionManagerResolver, nameof(searchParameterDefinitionManagerResolver));
             EnsureArg.IsNotNull(capabilityProviders, nameof(capabilityProviders));
+            EnsureArg.IsNotNull(patchProcessor, nameof(patchProcessor));
+            EnsureArg.IsNotNull(configuration?.Value, nameof(configuration));
 
             _modelInfoProvider = modelInfoProvider;
             _searchParameterDefinitionManager = searchParameterDefinitionManagerResolver();
             _capabilityProviders = capabilityProviders;
+            _patchProcessor = patchProcessor;
+            _configuration = configuration.Value;
         }
 
         public override async Task<ResourceElement> GetCapabilityStatementAsync(CancellationToken cancellationToken = default(CancellationToken))
@@ -51,7 +62,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
                 {
                     if (_listedCapabilityStatement == null)
                     {
-                        ICapabilityStatementBuilder builder = CapabilityStatementBuilder.Create(_modelInfoProvider, _searchParameterDefinitionManager)
+                        ICapabilityStatementBuilder builder = CapabilityStatementBuilder.Create(_modelInfoProvider, _searchParameterDefinitionManager, _patchProcessor, _configuration)
                             .Update(x =>
                             {
                                 x.FhirVersion = _modelInfoProvider.SupportedVersion.ToString();
