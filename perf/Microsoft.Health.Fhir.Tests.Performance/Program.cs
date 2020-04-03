@@ -3,8 +3,9 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
+using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
-using Microsoft.Health.Fhir.Core.UnitTests.Persistence;
+using Microsoft.Health.Fhir.Api.UnitTests.Performance;
 
 namespace Microsoft.Health.Fhir.Tests.Performance
 {
@@ -15,7 +16,7 @@ namespace Microsoft.Health.Fhir.Tests.Performance
             var assemblies = new[]
             {
                 typeof(Program).Assembly,
-                typeof(RawResourceTests).Assembly,
+                typeof(SerializationPerformanceTests).Assembly,
             };
 
             foreach (var assembly in assemblies)

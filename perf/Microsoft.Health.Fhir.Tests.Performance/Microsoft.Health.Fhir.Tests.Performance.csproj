@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
     <IsPackable>true</IsPackable>
     <CodeAnalysisRuleSet>..\..\CustomAnalysisRules.Test.ruleset</CodeAnalysisRuleSet>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.9.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.3.0" />
     <PackageReference Include="BenchmarkDotNet" Version="0.11.4" />
     <PackageReference Include="xunit" Version="2.4.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.1" />
@@ -26,9 +26,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Microsoft.Health.ControlPlane.Core.UnitTests\Microsoft.Health.ControlPlane.Core.UnitTests.csproj" />
     <ProjectReference Include="..\..\src\Microsoft.Health.CosmosDb.UnitTests\Microsoft.Health.CosmosDb.UnitTests.csproj" />
-    <ProjectReference Include="..\..\src\Microsoft.Health.Fhir.Api.UnitTests\Microsoft.Health.Fhir.Api.UnitTests.csproj" />
+    <ProjectReference Include="..\..\src\Microsoft.Health.Fhir.Api.UnitTests\Microsoft.Health.Fhir.R4.Api.UnitTests.csproj" />
     <ProjectReference Include="..\..\src\Microsoft.Health.Fhir.Api\Microsoft.Health.Fhir.Api.csproj" />
     <ProjectReference Include="..\..\src\Microsoft.Health.Fhir.Core.UnitTests\Microsoft.Health.Fhir.Core.UnitTests.csproj" />
     <ProjectReference Include="..\..\src\Microsoft.Health.Fhir.Core\Microsoft.Health.Fhir.Core.csproj" />

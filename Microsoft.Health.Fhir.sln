@@ -130,6 +130,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Health.Fhir.R5.Te
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Health.Fhir.R5.Tests.Integration", "test\Microsoft.Health.Fhir.R5.Tests.Integration\Microsoft.Health.Fhir.R5.Tests.Integration.csproj", "{E18E488B-EE9C-4735-81B1-65C74DAE83CF}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Perf", "Perf", "{383F94EB-7316-4D19-B9D4-D7C930FE80AD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.Health.Fhir.Tests.Performance", "perf\Microsoft.Health.Fhir.Tests.Performance\Microsoft.Health.Fhir.Tests.Performance.csproj", "{71D273AD-0FAD-497B-B91A-B4A853691771}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		test\Microsoft.Health.Fhir.Shared.Tests.E2E.Common\Microsoft.Health.Fhir.Shared.Tests.E2E.Common.projitems*{0478b687-7105-40f6-a2dc-81057890e944}*SharedItemsImports = 13
@@ -296,6 +300,10 @@ Global
 		{E18E488B-EE9C-4735-81B1-65C74DAE83CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E18E488B-EE9C-4735-81B1-65C74DAE83CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E18E488B-EE9C-4735-81B1-65C74DAE83CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{71D273AD-0FAD-497B-B91A-B4A853691771}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{71D273AD-0FAD-497B-B91A-B4A853691771}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{71D273AD-0FAD-497B-B91A-B4A853691771}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{71D273AD-0FAD-497B-B91A-B4A853691771}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -357,6 +365,8 @@ Global
 		{E8AEC3F3-EFBB-4439-95FF-E45613CC7DA2} = {323F60C6-936A-4C5B-AF6A-F27E93AA7B05}
 		{B956E6F9-92A6-43F2-934B-1EB20FA8BBA3} = {85F39C13-BC62-49A0-9C06-3BBA724D35ED}
 		{E18E488B-EE9C-4735-81B1-65C74DAE83CF} = {FCD51BAF-BFE5-476F-B562-C9AB36AA9839}
+		{383F94EB-7316-4D19-B9D4-D7C930FE80AD} = {BA0D5243-CFC7-4DEB-9836-657C50195DD1}
+		{71D273AD-0FAD-497B-B91A-B4A853691771} = {383F94EB-7316-4D19-B9D4-D7C930FE80AD}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		RESX_SortFileContentOnSave = True
