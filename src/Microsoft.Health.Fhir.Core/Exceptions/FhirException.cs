@@ -24,6 +24,9 @@ namespace Microsoft.Health.Fhir.Core.Exceptions
         protected FhirException(string message, Exception innerException, params OperationOutcomeIssue[] issues)
             : base(message, innerException)
         {
+            // Adding message to Exception.Data so we only expose exception messages that we have written in Audit logs.
+            Data.Add("failureMessage", message);
+
             if (issues != null)
             {
                 foreach (var issue in issues)

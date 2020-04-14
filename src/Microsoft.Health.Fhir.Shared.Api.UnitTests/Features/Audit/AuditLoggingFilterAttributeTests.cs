@@ -45,7 +45,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Audit
 
             _filter.OnActionExecuting(actionExecutingContext);
 
-            _auditHelper.Received(1).LogExecuting(_httpContext, _claimsExtractor);
+            _auditHelper.Received(1).LogExecuting(_httpContext, _claimsExtractor, string.Empty);
         }
 
         [Fact]
@@ -61,7 +61,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Audit
 
             _filter.OnResultExecuted(resultExecutedContext);
 
-            _auditHelper.Received(1).LogExecuted(_httpContext, _claimsExtractor);
+            _auditHelper.Received(1).LogExecuted(_httpContext, _claimsExtractor, string.Empty);
         }
     }
 }

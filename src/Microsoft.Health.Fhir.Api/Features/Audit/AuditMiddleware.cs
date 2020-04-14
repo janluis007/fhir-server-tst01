@@ -49,7 +49,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Audit
                 // This middleware will log any Unauthorized request if it hasn't been logged yet.
                 if (statusCode == HttpStatusCode.Unauthorized)
                 {
-                    _auditHelper.LogExecuted(context, _claimsExtractor);
+                    _auditHelper.LogExecuted(context, _claimsExtractor, Resources.Unauthorized);
                 }
             }
         }

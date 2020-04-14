@@ -18,6 +18,7 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest.Audit
             string resourceType,
             Uri requestUri,
             HttpStatusCode? statusCode,
+            string failureMessage,
             string correlationId,
             string callerIpAddress,
             IReadOnlyCollection<KeyValuePair<string, string>> callerClaims,
@@ -28,6 +29,7 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest.Audit
             ResourceType = resourceType;
             RequestUri = requestUri;
             StatusCode = statusCode;
+            FailureMessage = failureMessage;
             CorrelationId = correlationId;
             CallerIpAddress = callerIpAddress;
             CallerClaims = callerClaims;
@@ -43,6 +45,8 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest.Audit
         public Uri RequestUri { get; }
 
         public HttpStatusCode? StatusCode { get; }
+
+        public string FailureMessage { get; }
 
         public string CorrelationId { get; }
 

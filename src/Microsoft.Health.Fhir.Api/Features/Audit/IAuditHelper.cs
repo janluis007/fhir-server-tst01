@@ -18,13 +18,15 @@ namespace Microsoft.Health.Fhir.Api.Features.Audit
         /// </summary>
         /// <param name="httpContext">The HTTP context.</param>
         /// <param name="claimsExtractor">The extractor used to extract claims.</param>
-        void LogExecuting(HttpContext httpContext, IClaimsExtractor claimsExtractor);
+        /// /// <param name="failuremessage">The failure message providing more context to the http status code for a failed request.</param>
+        void LogExecuting(HttpContext httpContext, IClaimsExtractor claimsExtractor, string failuremessage);
 
         /// <summary>
         /// Logs an executed audit entry for the current operation.
         /// </summary>
         /// <param name="httpContext">The HTTP context.</param>
         /// <param name="claimsExtractor">The extractor used to extract claims.</param>
-        void LogExecuted(HttpContext httpContext, IClaimsExtractor claimsExtractor);
+        /// <param name="failuremessage">The failure message providing more context to the http status code for a failed request.</param>
+        void LogExecuted(HttpContext httpContext, IClaimsExtractor claimsExtractor, string failuremessage);
     }
 }

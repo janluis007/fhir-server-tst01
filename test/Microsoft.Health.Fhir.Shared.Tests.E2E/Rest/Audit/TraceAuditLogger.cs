@@ -22,12 +22,13 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest.Audit
             string resourceType,
             Uri requestUri,
             HttpStatusCode? statusCode,
+            string failureMessage,
             string correlationId,
             string callerIpAddress,
             IReadOnlyCollection<KeyValuePair<string, string>> callerClaims,
             IReadOnlyDictionary<string, string> customHeaders)
         {
-            _auditEntries.Add(new AuditEntry(auditAction, action, resourceType, requestUri, statusCode, correlationId, callerIpAddress, callerClaims, customHeaders));
+            _auditEntries.Add(new AuditEntry(auditAction, action, resourceType, requestUri, statusCode, failureMessage, correlationId, callerIpAddress, callerClaims, customHeaders));
         }
 
         public IReadOnlyList<AuditEntry> GetAuditEntriesByCorrelationId(string correlationId)

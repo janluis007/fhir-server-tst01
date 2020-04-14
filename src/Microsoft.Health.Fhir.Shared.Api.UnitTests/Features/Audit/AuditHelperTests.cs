@@ -53,7 +53,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Audit
         [Fact]
         public void GivenNoAuditEventType_WhenLogExecutingIsCalled_ThenAuditLogShouldNotBeLogged()
         {
-            _auditHelper.LogExecuting(_httpContext, _claimsExtractor);
+            _auditHelper.LogExecuting(_httpContext, _claimsExtractor, string.Empty);
 
             _auditLogger.DidNotReceiveWithAnyArgs().LogAudit(
                 auditAction: default,
@@ -61,6 +61,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Audit
                 resourceType: default,
                 requestUri: default,
                 statusCode: default,
+                failureMessage: default,
                 correlationId: default,
                 callerIpAddress: default,
                 callerClaims: default);
@@ -71,7 +72,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Audit
         {
             _fhirRequestContext.AuditEventType.Returns(AuditEventType);
 
-            _auditHelper.LogExecuting(_httpContext, _claimsExtractor);
+            _auditHelper.LogExecuting(_httpContext, _claimsExtractor, string.Empty);
 
             _auditLogger.Received(1).LogAudit(
                 AuditAction.Executing,
@@ -79,6 +80,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Audit
                 resourceType: "Patient",
                 requestUri: Uri,
                 statusCode: null,
+                failureMessage: string.Empty,
                 correlationId: CorrelationId,
                 callerIpAddress: CallerIpAddressInString,
                 callerClaims: Claims,
@@ -88,7 +90,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Audit
         [Fact]
         public void GivenNoAuditEventType_WhenLogExecutedIsCalled_ThenAuditLogShouldNotBeLogged()
         {
-            _auditHelper.LogExecuted(_httpContext, _claimsExtractor);
+            _auditHelper.LogExecuted(_httpContext, _claimsExtractor, string.Empty);
 
             _auditLogger.DidNotReceiveWithAnyArgs().LogAudit(
                 auditAction: default,
@@ -96,6 +98,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Audit
                 resourceType: default,
                 requestUri: default,
                 statusCode: default,
+                failureMessage: default,
                 correlationId: default,
                 callerIpAddress: default,
                 callerClaims: default);
@@ -112,7 +115,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Audit
 
             _httpContext.Response.StatusCode = (int)expectedStatusCode;
 
-            _auditHelper.LogExecuted(_httpContext, _claimsExtractor);
+            _auditHelper.LogExecuted(_httpContext, _claimsExtractor, string.Empty);
 
             _auditLogger.Received(1).LogAudit(
                 AuditAction.Executed,
@@ -120,6 +123,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Audit
                 expectedResourceType,
                 Uri,
                 expectedStatusCode,
+                string.Empty,
                 CorrelationId,
                 CallerIpAddressInString,
                 Claims,

@@ -30,6 +30,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Audit
             "RequestUri: {ResourceUri}" + Environment.NewLine +
             "Action: {Action}" + Environment.NewLine +
             "StatusCode: {StatusCode}" + Environment.NewLine +
+            "FailureMessage: {FailureMessage}" + Environment.NewLine +
             "CorrelationId: {CorrelationId}" + Environment.NewLine +
             "Claims: {Claims}";
 
@@ -54,6 +55,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Audit
             string resourceType,
             Uri requestUri,
             HttpStatusCode? statusCode,
+            string failuremessage,
             string correlationId,
             string callerIpAddress,
             IReadOnlyCollection<KeyValuePair<string, string>> callerClaims,
@@ -82,6 +84,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Audit
                 requestUri,
                 action,
                 statusCode,
+                failuremessage,
                 correlationId,
                 claimsInString,
                 customerHeadersInString);

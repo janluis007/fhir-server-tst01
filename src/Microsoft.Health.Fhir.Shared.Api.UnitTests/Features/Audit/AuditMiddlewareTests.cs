@@ -39,7 +39,8 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Audit
 
             _auditHelper.DidNotReceiveWithAnyArgs().LogExecuted(
                 httpContext: default,
-                claimsExtractor: default);
+                claimsExtractor: default,
+                failuremessage: default);
         }
 
         [Theory]
@@ -50,7 +51,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Audit
 
             await _auditMiddleware.Invoke(_httpContext);
 
-            _auditHelper.Received(1).LogExecuted(_httpContext, _claimsExtractor);
+            _auditHelper.Received(1).LogExecuted(_httpContext, _claimsExtractor, string.Empty);
         }
     }
 }

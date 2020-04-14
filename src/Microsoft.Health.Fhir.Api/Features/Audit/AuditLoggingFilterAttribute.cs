@@ -31,7 +31,9 @@ namespace Microsoft.Health.Fhir.Api.Features.Audit
         {
             EnsureArg.IsNotNull(context, nameof(context));
 
-            _auditHelper.LogExecuting(context.HttpContext, _claimsExtractor);
+            context.ActionArguments.TryGetValue("failureMessage", out object failureMessage);
+
+            _auditHelper.LogExecuting(context.HttpContext, _claimsExtractor, failureMessage?.ToString() ?? string.Empty);
 
             base.OnActionExecuting(context);
         }
@@ -40,7 +42,14 @@ namespace Microsoft.Health.Fhir.Api.Features.Audit
         {
             EnsureArg.IsNotNull(context, nameof(context));
 
-            _auditHelper.LogExecuted(context.HttpContext, _claimsExtractor);
+            var failureMessage = string.Empty;
+
+            if (context.Exception.Data.Contains("failureMessage"))
+            {
+                failureMessage = context.Exception.Data["failureMessage"].ToString();
+            }
+
+            _auditHelper.LogExecuted(context.HttpContext, _claimsExtractor, failureMessage);
 
             base.OnResultExecuted(context);
         }

@@ -35,24 +35,24 @@ namespace Microsoft.Health.Fhir.Api.Features.Audit
         }
 
         /// <inheritdoc />
-        public void LogExecuting(HttpContext httpContext, IClaimsExtractor claimsExtractor)
+        public void LogExecuting(HttpContext httpContext, IClaimsExtractor claimsExtractor, string failureMessage)
         {
             EnsureArg.IsNotNull(claimsExtractor, nameof(claimsExtractor));
             EnsureArg.IsNotNull(httpContext, nameof(httpContext));
 
-            Log(AuditAction.Executing, statusCode: null, httpContext, claimsExtractor);
+            Log(AuditAction.Executing, statusCode: null, httpContext, claimsExtractor, failureMessage);
         }
 
         /// <inheritdoc />
-        public void LogExecuted(HttpContext httpContext, IClaimsExtractor claimsExtractor)
+        public void LogExecuted(HttpContext httpContext, IClaimsExtractor claimsExtractor, string failureMessage)
         {
             EnsureArg.IsNotNull(claimsExtractor, nameof(claimsExtractor));
             EnsureArg.IsNotNull(httpContext, nameof(httpContext));
 
-            Log(AuditAction.Executed, (HttpStatusCode)httpContext.Response.StatusCode, httpContext, claimsExtractor);
+            Log(AuditAction.Executed, (HttpStatusCode)httpContext.Response.StatusCode, httpContext, claimsExtractor, failureMessage);
         }
 
-        private void Log(AuditAction auditAction, HttpStatusCode? statusCode, HttpContext httpContext, IClaimsExtractor claimsExtractor)
+        private void Log(AuditAction auditAction, HttpStatusCode? statusCode, HttpContext httpContext, IClaimsExtractor claimsExtractor, string failureMessage)
         {
             IFhirRequestContext fhirRequestContext = _fhirRequestContextAccessor.FhirRequestContext;
 
@@ -67,6 +67,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Audit
                     resourceType: fhirRequestContext.ResourceType,
                     requestUri: fhirRequestContext.Uri,
                     statusCode: statusCode,
+                    failureMessage: failureMessage,
                     correlationId: fhirRequestContext.CorrelationId,
                     callerIpAddress: httpContext.Connection?.RemoteIpAddress?.ToString(),
                     callerClaims: claimsExtractor.Extract(),

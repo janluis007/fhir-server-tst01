@@ -22,6 +22,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Audit
         /// <param name="resourceType">The FHIR resource type to audit.</param>
         /// <param name="requestUri">The request URI.</param>
         /// <param name="statusCode">The response status code (if any).</param>
+        /// <param name="failureMessage">The failure message associated with a failed response status code.</param>
         /// <param name="correlationId">The correlation ID.</param>
         /// <param name="callerIpAddress">The caller IP address.</param>
         /// <param name="callerClaims">The claims of the caller.</param>
@@ -32,6 +33,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Audit
             string resourceType,
             Uri requestUri,
             HttpStatusCode? statusCode,
+            string failureMessage,
             string correlationId,
             string callerIpAddress,
             IReadOnlyCollection<KeyValuePair<string, string>> callerClaims,
