@@ -20,5 +20,10 @@ namespace Microsoft.Health.Fhir.Core.Extensions
         {
             return new ResourceElement(typedElement);
         }
+
+        public static ResourceElement ToResourceElement(this ISourceNode sourceNode, IModelInfoProvider modelInfoProvider)
+        {
+            return new ResourceElement(sourceNode, modelInfoProvider);
+        }
     }
 }

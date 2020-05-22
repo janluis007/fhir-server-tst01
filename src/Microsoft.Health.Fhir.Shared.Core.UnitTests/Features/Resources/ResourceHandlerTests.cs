@@ -177,10 +177,11 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Resources
 
             ResourceWrapper CreateWrapper(ResourceWrapper wrapper)
             {
-                var newResource = Samples.GetDefaultObservation().ToPoco();
-                newResource.Id = wrapper.ResourceId;
-                newResource.VersionId = "version1";
-                return CreateResourceWrapper(newResource.ToResourceElement(), false);
+                var newResource = Samples.GetDefaultObservation()
+                    .UpdateId(wrapper.ResourceId)
+                    .UpdateVersion("version1");
+
+                return CreateResourceWrapper(newResource, false);
             }
 
             _fhirDataStore.UpsertAsync(Arg.Any<ResourceWrapper>(), Arg.Any<WeakETag>(), true, true, Arg.Any<CancellationToken>())
@@ -218,10 +219,11 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Resources
 
             ResourceWrapper CreateWrapper(ResourceWrapper wrapper)
             {
-                var newResource = Samples.GetDefaultObservation().ToPoco();
-                newResource.Id = wrapper.ResourceId;
-                newResource.VersionId = "version1";
-                return CreateResourceWrapper(newResource.ToResourceElement(), false);
+                var newResource = Samples.GetDefaultObservation()
+                    .UpdateId(wrapper.ResourceId)
+                    .UpdateVersion("version1");
+
+                return CreateResourceWrapper(newResource, false);
             }
 
             _fhirDataStore.UpsertAsync(Arg.Any<ResourceWrapper>(), Arg.Any<WeakETag>(), true, true, Arg.Any<CancellationToken>())

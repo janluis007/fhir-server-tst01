@@ -48,39 +48,12 @@ namespace Microsoft.Health.Fhir.Core.Extensions
         {
             EnsureArg.IsNotNull(resource, nameof(resource));
 
-            return (T)resource.ResourceInstance ?? resource.Instance.ToPoco<T>();
+            return resource.Instance.ToPoco<T>();
         }
 
         public static Resource ToPoco(this ResourceElement resource)
         {
             return ToPoco<Resource>(resource);
-        }
-
-        public static ResourceElement UpdateId(this ResourceElement resource, string newId)
-        {
-            EnsureArg.IsNotNull(resource, nameof(resource));
-
-            var poco = resource.ToPoco();
-            poco.Id = newId;
-            return poco.ToResourceElement();
-        }
-
-        public static ResourceElement UpdateVersion(this ResourceElement resource, string newVersion)
-        {
-            EnsureArg.IsNotNull(resource, nameof(resource));
-
-            var poco = resource.ToPoco();
-            poco.VersionId = newVersion;
-            return poco.ToResourceElement();
-        }
-
-        public static ResourceElement UpdateLastUpdated(this ResourceElement resource, DateTimeOffset lastUpdated)
-        {
-            EnsureArg.IsNotNull(resource, nameof(resource));
-
-            var poco = resource.ToPoco();
-            poco.Meta.LastUpdated = lastUpdated;
-            return poco.ToResourceElement();
         }
 
         public static SearchParameterInfo ToInfo(this SearchParameter searchParam)

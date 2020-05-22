@@ -9,12 +9,15 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 using EnsureThat;
+using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Health.Fhir.Api.Features.ContentTypes;
+using Microsoft.Health.Fhir.Core.Extensions;
+using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Api.Features.Formatters
 {
@@ -40,7 +43,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Formatters
         {
             EnsureArg.IsNotNull(type, nameof(type));
 
-            return typeof(Resource).IsAssignableFrom(type);
+            return typeof(ResourceElement).IsAssignableFrom(type);
         }
 
         /// <inheritdoc />
@@ -67,8 +70,10 @@ namespace Microsoft.Health.Fhir.Api.Features.Formatters
             {
                 using (var textReader = XmlDictionaryReader.CreateTextReader(request.Body, encoding, XmlDictionaryReaderQuotas.Max, onClose: null))
                 {
-                    var model = _parser.Parse<Resource>(textReader);
-                    return InputFormatterResult.Success(model);
+                    var sourceNode = FhirXmlNode.Read(textReader, FhirXmlParsingSettings.CreateDefault());
+                    var resourceElement = sourceNode.ToResourceElement(ModelInfoProvider.Instance);
+
+                    return InputFormatterResult.Success(resourceElement);
                 }
             }
             catch (Exception ex)

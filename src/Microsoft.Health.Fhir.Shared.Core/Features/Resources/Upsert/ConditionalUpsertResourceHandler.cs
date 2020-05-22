@@ -20,6 +20,7 @@ using Microsoft.Health.Fhir.Core.Features.Security;
 using Microsoft.Health.Fhir.Core.Features.Security.Authorization;
 using Microsoft.Health.Fhir.Core.Messages.Create;
 using Microsoft.Health.Fhir.Core.Messages.Upsert;
+using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Features.Resources.Upsert
 {
@@ -79,14 +80,14 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources.Upsert
             else if (count == 1)
             {
                 ResourceWrapper resourceWrapper = matchedResults.First().Resource;
-                Resource resource = message.Resource.ToPoco();
+                ResourceElement resource = message.Resource;
                 var version = WeakETag.FromVersionId(resourceWrapper.Version);
 
                 // One Match, no resource id provided OR (resource id provided and it matches the found resource): The server performs the update against the matching resource
                 if (string.IsNullOrEmpty(resource.Id) || string.Equals(resource.Id, resourceWrapper.ResourceId, StringComparison.Ordinal))
                 {
-                    resource.Id = resourceWrapper.ResourceId;
-                    return await _mediator.Send<UpsertResourceResponse>(new UpsertResourceRequest(resource.ToResourceElement(), version), cancellationToken);
+                    resource.UpdateId(resourceWrapper.ResourceId);
+                    return await _mediator.Send<UpsertResourceResponse>(new UpsertResourceRequest(resource, version), cancellationToken);
                 }
                 else
                 {

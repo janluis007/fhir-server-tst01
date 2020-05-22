@@ -12,6 +12,7 @@ using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features.Conformance;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Features.Security.Authorization;
+using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Features.Resources
 {
@@ -46,22 +47,17 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources
 
         protected IFhirAuthorizationService AuthorizationService { get; }
 
-        protected ResourceWrapper CreateResourceWrapper(Resource resource, bool deleted)
+        protected ResourceWrapper CreateResourceWrapper(ResourceElement resource, bool deleted)
         {
             if (string.IsNullOrEmpty(resource.Id))
             {
-                resource.Id = _resourceIdProvider.Create();
-            }
-
-            if (resource.Meta == null)
-            {
-                resource.Meta = new Meta();
+                resource.UpdateId(_resourceIdProvider.Create());
             }
 
             // store with millisecond precision
-            resource.Meta.LastUpdated = Clock.UtcNow.UtcDateTime.TruncateToMillisecond();
+            resource.UpdateLastUpdated(Clock.UtcNow.UtcDateTime.TruncateToMillisecond());
 
-            ResourceWrapper resourceWrapper = _resourceWrapperFactory.Create(resource.ToResourceElement(), deleted);
+            ResourceWrapper resourceWrapper = _resourceWrapperFactory.Create(resource, deleted);
 
             return resourceWrapper;
         }

@@ -12,6 +12,7 @@ using Hl7.Fhir.Model;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Health.Fhir.Api.Features.Routing;
 using Microsoft.Health.Fhir.Core.Features.Validation;
+using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Api.Features.Filters
 {
@@ -30,7 +31,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Filters
             if (context.RouteData.Values.TryGetValue(KnownActionParameterNames.Id, out var actionId) &&
                 context.ActionArguments.TryGetValue(KnownActionParameterNames.Resource, out var parsedModel))
             {
-                var resource = ParseResource((Resource)parsedModel);
+                var resource = ParseResource((ResourceElement)parsedModel);
                 ValidateId(resource, (string)actionId);
             }
             else
@@ -42,9 +43,9 @@ namespace Microsoft.Health.Fhir.Api.Features.Filters
             }
         }
 
-        private static void ValidateId(Resource resource, string expectedId)
+        private static void ValidateId(ResourceElement resource, string expectedId)
         {
-            var location = $"{resource.TypeName}.id";
+            var location = $"{resource.InstanceType}.id";
             if (string.IsNullOrWhiteSpace(resource.Id))
             {
                 throw new ResourceNotValidException(new List<ValidationFailure>

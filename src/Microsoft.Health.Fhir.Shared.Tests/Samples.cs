@@ -6,6 +6,7 @@
 using System;
 using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Model;
+using Hl7.Fhir.Serialization;
 using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Models;
 using Newtonsoft.Json;
@@ -80,8 +81,7 @@ namespace Microsoft.Health.Fhir.Tests.Common
         public static ResourceElement GetJsonSample(string fileName)
         {
             var fhirSource = GetJson(fileName);
-            var parser = new Hl7.Fhir.Serialization.FhirJsonParser();
-            return parser.Parse<Resource>(fhirSource).ToTypedElement().ToResourceElement();
+            return FhirJsonNode.Parse(fhirSource).ToResourceElement(ModelInfoProvider.Instance);
         }
 
         /// <summary>

@@ -51,16 +51,17 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources.Create
                 throw new UnauthorizedFhirActionException();
             }
 
-            var resource = message.Resource.ToPoco<Resource>();
+            var resource = message.Resource;
 
             // If an Id is supplied on create it should be removed/ignored
-            resource.Id = null;
+            resource.UpdateId(null);
 
-            await _referenceResolver.ResolveReferencesAsync(resource, _referenceIdDictionary, resource.ResourceType.ToString(), cancellationToken);
+            // TODO: Review how to fix this
+            // await _referenceResolver.ResolveReferencesAsync(resource, _referenceIdDictionary, resource.ResourceType.ToString(), cancellationToken);
 
             ResourceWrapper resourceWrapper = CreateResourceWrapper(resource, deleted: false);
 
-            bool keepHistory = await ConformanceProvider.Value.CanKeepHistory(resource.TypeName, cancellationToken);
+            bool keepHistory = await ConformanceProvider.Value.CanKeepHistory(resource.InstanceType, cancellationToken);
 
             UpsertOutcome result = await FhirDataStore.UpsertAsync(
                 resourceWrapper,
@@ -69,9 +70,9 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources.Create
                 keepHistory: keepHistory,
                 cancellationToken: cancellationToken);
 
-            resource.VersionId = result.Wrapper.Version;
+            resource.UpdateVersion(result.Wrapper.Version);
 
-            return new UpsertResourceResponse(new SaveOutcome(resource.ToResourceElement(), SaveOutcomeType.Created));
+            return new UpsertResourceResponse(new SaveOutcome(resource, SaveOutcomeType.Created));
         }
     }
 }

@@ -6,6 +6,8 @@
 using System.Net;
 using EnsureThat;
 using Hl7.Fhir.Model;
+using Microsoft.Health.Fhir.Core.Extensions;
+using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Api.Features.ActionResults
 {
@@ -13,10 +15,10 @@ namespace Microsoft.Health.Fhir.Api.Features.ActionResults
     /// This action result is specifically used when we want to return an error
     /// to the client with the appropriate OperationOutcome.
     /// </summary>
-    public class OperationOutcomeResult : ResourceActionResult<OperationOutcome>
+    public class OperationOutcomeResult : ResourceActionResult<ResourceElement>
     {
         public OperationOutcomeResult(OperationOutcome outcome, HttpStatusCode statusCode)
-            : base(outcome, statusCode)
+            : base(outcome.ToResourceElement(), statusCode)
         {
             EnsureArg.IsNotNull(outcome, nameof(outcome));
         }

@@ -145,9 +145,9 @@ namespace Microsoft.Health.Fhir.Api.Controllers
         [HttpPost]
         [Route(KnownRoutes.ResourceType)]
         [AuditEventType(AuditEventSubType.Create)]
-        public async Task<IActionResult> Create([FromBody] Resource resource)
+        public async Task<IActionResult> Create([FromBody] ResourceElement resource)
         {
-            ResourceElement response = await _mediator.CreateResourceAsync(resource.ToResourceElement(), HttpContext.RequestAborted);
+            ResourceElement response = await _mediator.CreateResourceAsync(resource, HttpContext.RequestAborted);
 
             return FhirResult.Create(response, HttpStatusCode.Created)
                 .SetETagHeader()
@@ -163,14 +163,14 @@ namespace Microsoft.Health.Fhir.Api.Controllers
         [ConditionalConstraint]
         [Route(KnownRoutes.ResourceType)]
         [AuditEventType(AuditEventSubType.Create)]
-        public async Task<IActionResult> ConditionalCreate([FromBody] Resource resource)
+        public async Task<IActionResult> ConditionalCreate([FromBody] ResourceElement resource)
         {
             StringValues conditionalCreateHeader = HttpContext.Request.Headers[KnownFhirHeaders.IfNoneExist];
 
             Tuple<string, string>[] conditionalParameters = QueryHelpers.ParseQuery(conditionalCreateHeader)
                 .SelectMany(query => query.Value, (query, value) => Tuple.Create(query.Key, value)).ToArray();
 
-            UpsertResourceResponse createResponse = await _mediator.Send<UpsertResourceResponse>(new ConditionalCreateResourceRequest(resource.ToResourceElement(), conditionalParameters), HttpContext.RequestAborted);
+            UpsertResourceResponse createResponse = await _mediator.Send<UpsertResourceResponse>(new ConditionalCreateResourceRequest(resource, conditionalParameters), HttpContext.RequestAborted);
 
             if (createResponse == null)
             {
@@ -194,9 +194,9 @@ namespace Microsoft.Health.Fhir.Api.Controllers
         [ValidateResourceIdFilter]
         [Route(KnownRoutes.ResourceTypeById)]
         [AuditEventType(AuditEventSubType.Update)]
-        public async Task<IActionResult> Update([FromBody] Resource resource, [ModelBinder(typeof(WeakETagBinder))] WeakETag ifMatchHeader)
+        public async Task<IActionResult> Update([FromBody] ResourceElement resource, [ModelBinder(typeof(WeakETagBinder))] WeakETag ifMatchHeader)
         {
-            SaveOutcome response = await _mediator.UpsertResourceAsync(resource.ToResourceElement(), ifMatchHeader, HttpContext.RequestAborted);
+            SaveOutcome response = await _mediator.UpsertResourceAsync(resource, ifMatchHeader, HttpContext.RequestAborted);
 
             return ToSaveOutcomeResult(response);
         }
@@ -208,12 +208,12 @@ namespace Microsoft.Health.Fhir.Api.Controllers
         [HttpPut]
         [Route(KnownRoutes.ResourceType)]
         [AuditEventType(AuditEventSubType.Update)]
-        public async Task<IActionResult> ConditionalUpdate([FromBody] Resource resource)
+        public async Task<IActionResult> ConditionalUpdate([FromBody] ResourceElement resource)
         {
             IReadOnlyList<Tuple<string, string>> conditionalParameters = GetQueriesForSearch();
 
             UpsertResourceResponse response = await _mediator.Send<UpsertResourceResponse>(
-                new ConditionalUpsertResourceRequest(resource.ToResourceElement(), conditionalParameters),
+                new ConditionalUpsertResourceRequest(resource, conditionalParameters),
                 HttpContext.RequestAborted);
 
             SaveOutcome saveOutcome = response.Outcome;

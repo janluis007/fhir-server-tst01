@@ -7,14 +7,19 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
+using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Model;
+using Hl7.Fhir.Serialization;
 using MediatR;
 using Microsoft.Health.Fhir.Core.Exceptions;
+using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features.Conformance;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Features.Security;
 using Microsoft.Health.Fhir.Core.Features.Security.Authorization;
 using Microsoft.Health.Fhir.Core.Messages.Delete;
+using Microsoft.Health.Fhir.Core.Models;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Health.Fhir.Core.Features.Resources.Delete
 {
@@ -55,10 +60,15 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources.Delete
             }
             else
             {
-                var emptyInstance = (Resource)Activator.CreateInstance(ModelInfo.GetTypeForFhirType(message.ResourceKey.ResourceType));
-                emptyInstance.Id = message.ResourceKey.Id;
+                ISourceNode emptyInstance = FhirJsonNode.Create(
+                    JObject.FromObject(
+                        new
+                        {
+                            resourceType = message.ResourceKey.ResourceType,
+                            id = message.ResourceKey.Id,
+                        }));
 
-                ResourceWrapper deletedWrapper = CreateResourceWrapper(emptyInstance, deleted: true);
+                ResourceWrapper deletedWrapper = CreateResourceWrapper(emptyInstance.ToResourceElement(ModelInfoProvider.Instance), deleted: true);
 
                 bool keepHistory = await ConformanceProvider.Value.CanKeepHistory(key.ResourceType, cancellationToken);
 

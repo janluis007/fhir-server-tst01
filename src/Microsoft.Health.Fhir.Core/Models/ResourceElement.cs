@@ -5,11 +5,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using EnsureThat;
 using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Serialization;
 using Hl7.FhirPath;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Health.Fhir.Core.Models
 {
@@ -18,34 +21,55 @@ namespace Microsoft.Health.Fhir.Core.Models
     /// </summary>
     public class ResourceElement
     {
-        private readonly Lazy<EvaluationContext> _context;
+        private readonly FhirJsonNode _sourceNode;
+        private readonly IModelInfoProvider _modelInfoProvider;
+        private readonly bool isReadOnly = false;
+        private readonly Lazy<EvaluationContext> _context = new Lazy<EvaluationContext>(() => new EvaluationContext());
+
         private readonly List<string> _nonDomainTypes = new List<string>
+        {
+            "Bundle",
+            "Parameters",
+            "Binary",
+        };
+
+        private Lazy<ITypedElement> _typedElement;
+        private readonly JsonMergeSettings _jsonMergeSettings = new JsonMergeSettings
+        {
+            PropertyNameComparison = StringComparison.OrdinalIgnoreCase,
+            MergeNullValueHandling = MergeNullValueHandling.Merge,
+            MergeArrayHandling = MergeArrayHandling.Union,
+        };
+
+        public ResourceElement(ITypedElement sourceNode)
+        {
+            EnsureArg.IsNotNull(sourceNode, nameof(sourceNode));
+
+            _typedElement = new Lazy<ITypedElement>(() => sourceNode);
+            isReadOnly = true;
+        }
+
+        public ResourceElement(ISourceNode sourceNode, IModelInfoProvider modelInfoProvider)
+        {
+            EnsureArg.IsNotNull(sourceNode, nameof(sourceNode));
+            EnsureArg.IsNotNull(modelInfoProvider, nameof(modelInfoProvider));
+
+            if (sourceNode is FhirJsonNode node)
             {
-                "Bundle",
-                "Parameters",
-                "Binary",
-            };
+                _sourceNode = node;
+            }
+            else
+            {
+                _sourceNode = (FhirJsonNode)FhirJsonNode.Parse(sourceNode.ToTypedElement(modelInfoProvider.StructureDefinitionSummaryProvider).ToJson());
+            }
 
-        public ResourceElement(ITypedElement instance)
-        {
-            EnsureArg.IsNotNull(instance, nameof(instance));
-
-            Instance = instance;
-            _context = new Lazy<EvaluationContext>(() => new EvaluationContext(instance));
+            _modelInfoProvider = modelInfoProvider;
+            SetupTypedElement();
         }
 
-        internal ResourceElement(ITypedElement instance, object resourceInstance)
-            : this(instance)
-        {
-            EnsureArg.IsNotNull(resourceInstance, nameof(resourceInstance));
-            ResourceInstance = resourceInstance;
-        }
+        public string InstanceType => _sourceNode != null ? _sourceNode.GetResourceTypeIndicator() : _typedElement.Value.InstanceType;
 
-        public string InstanceType => Instance.InstanceType;
-
-        internal object ResourceInstance { get; }
-
-        public ITypedElement Instance { get; }
+        public ITypedElement Instance => _typedElement.Value;
 
         public string Id => Scalar<string>("Resource.id");
 
@@ -57,7 +81,7 @@ namespace Microsoft.Health.Fhir.Core.Models
         {
             get
             {
-                var obj = Instance.Scalar("Resource.meta.lastUpdated", _context.Value);
+                var obj = Instance.Scalar("Resource.meta.lastUpdated");
                 if (obj != null)
                 {
                     return PrimitiveTypeConverter.ConvertTo<DateTimeOffset>(obj.ToString());
@@ -81,6 +105,76 @@ namespace Microsoft.Health.Fhir.Core.Models
         public bool Predicate(string fhirPath)
         {
             return Instance.Predicate(fhirPath, _context.Value);
+        }
+
+        public ResourceElement UpdateId(string id)
+        {
+            if (isReadOnly)
+            {
+                throw new NotSupportedException();
+            }
+
+            _sourceNode.JsonObject.Merge(JObject.FromObject(new { id }), _jsonMergeSettings);
+
+            return this;
+        }
+
+        public ResourceElement UpdateVersion(string version)
+        {
+            if (isReadOnly)
+            {
+                throw new NotSupportedException();
+            }
+
+            _sourceNode.JsonObject.Merge(JObject.FromObject(new { meta = new { versionId = version } }), _jsonMergeSettings);
+
+            return this;
+        }
+
+        public ResourceElement UpdateLastUpdated(DateTimeOffset? lastUpdated)
+        {
+            if (isReadOnly)
+            {
+                throw new NotSupportedException();
+            }
+
+            _sourceNode.JsonObject.Merge(JObject.FromObject(new { meta = new { lastUpdated = lastUpdated?.ToString("o", CultureInfo.InvariantCulture) } }), _jsonMergeSettings);
+
+            return this;
+        }
+
+        public string ToJson(FhirJsonSerializationSettings settings = null)
+        {
+            if (_sourceNode != null)
+            {
+                return _sourceNode.ToJson(settings);
+            }
+            else
+            {
+                return Instance.ToJson(settings);
+            }
+        }
+
+        public void WriteTo(JsonWriter writer, FhirJsonSerializationSettings settings = null)
+        {
+            if (_sourceNode != null)
+            {
+                _sourceNode.WriteTo(writer, settings);
+            }
+            else
+            {
+                Instance.WriteTo(writer, settings);
+            }
+        }
+
+        private void SetupTypedElement()
+        {
+            if (isReadOnly)
+            {
+                throw new NotSupportedException();
+            }
+
+            _typedElement = new Lazy<ITypedElement>(() => _sourceNode.ToTypedElement(_modelInfoProvider.StructureDefinitionSummaryProvider));
         }
     }
 }

@@ -12,7 +12,11 @@ using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Health.Fhir.Api.Features.ContentTypes;
+using Microsoft.Health.Fhir.Core.Extensions;
+using Microsoft.Health.Fhir.Core.Features;
+using Microsoft.Health.Fhir.Core.Models;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Task = System.Threading.Tasks.Task;
 
 namespace Microsoft.Health.Fhir.Api.Features.Formatters
@@ -42,7 +46,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Formatters
         {
             EnsureArg.IsNotNull(type, nameof(type));
 
-            return typeof(Resource).IsAssignableFrom(type);
+            return typeof(ResourceElement).IsAssignableFrom(type);
         }
 
         /// <inheritdoc />
@@ -50,19 +54,18 @@ namespace Microsoft.Health.Fhir.Api.Features.Formatters
         /// Reference implementation: https://github.com/aspnet/Mvc/blob/dev/src/Microsoft.AspNetCore.Mvc.Formatters.Json/JsonInputFormatter.cs
         /// Parsing from a stream: https://github.com/ewoutkramer/fhir-net-api/blob/master/src/Hl7.Fhir.Support/Utility/SerializationUtil.cs#L134
         /// </remarks>
-        public override Task<InputFormatterResult> ReadRequestBodyAsync(InputFormatterContext context, Encoding encoding)
+        public override async Task<InputFormatterResult> ReadRequestBodyAsync(InputFormatterContext context, Encoding encoding)
         {
             EnsureArg.IsNotNull(context, nameof(context));
             EnsureArg.IsNotNull(encoding, nameof(encoding));
 
-            context.HttpContext.AllowSynchronousIO();
             var request = context.HttpContext.Request;
 
             using (var streamReader = context.ReaderFactory(request.Body, encoding))
             using (var jsonReader = new JsonTextReader(streamReader))
             {
                 Exception delayedException = null;
-                Resource model = null;
+                ResourceElement model = null;
 
                 jsonReader.DateParseHandling = DateParseHandling.None;
                 jsonReader.FloatParseHandling = FloatParseHandling.Decimal;
@@ -71,7 +74,10 @@ namespace Microsoft.Health.Fhir.Api.Features.Formatters
 
                 try
                 {
-                    model = _parser.Parse<Resource>(jsonReader);
+                    var obj = (JObject)await JObject.ReadFromAsync(jsonReader, context.HttpContext.RequestAborted);
+                    model = FhirJsonNode.Create(obj, null, settings: DefaultParserSettings.JsonParserSettings).ToResourceElement(ModelInfoProvider.Instance);
+
+                    // model = FhirJsonNode.Read(jsonReader, null, settings: DefaultParserSettings.JsonParserSettings).ToResourceElement(ModelInfoProvider.Instance);
                 }
                 catch (Exception ex)
                 {
@@ -85,12 +91,12 @@ namespace Microsoft.Health.Fhir.Api.Features.Formatters
                 // https://github.com/aspnet/Mvc/blob/ce66e953045d3c3c52bd6c2bd9d5385fb52eccdc/src/Microsoft.AspNetCore.Mvc.Formatters.Json/JsonInputFormatter.cs#L221
                 if (model == null && delayedException == null && !context.TreatEmptyInputAsDefaultValue)
                 {
-                    return Task.FromResult(InputFormatterResult.NoValue());
+                    return await Task.FromResult(InputFormatterResult.NoValue());
                 }
 
                 if (model != null)
                 {
-                    return Task.FromResult(InputFormatterResult.Success(model));
+                    return await Task.FromResult(InputFormatterResult.Success(model));
                 }
 
                 if (delayedException != null)
@@ -102,7 +108,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Formatters
                     context.ModelState.TryAddModelError(string.Empty, errorMessage);
                 }
 
-                return Task.FromResult(InputFormatterResult.Failure());
+                return await Task.FromResult(InputFormatterResult.Failure());
             }
         }
     }

@@ -51,23 +51,23 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources.Upsert
                 throw new UnauthorizedFhirActionException();
             }
 
-            Resource resource = message.Resource.ToPoco<Resource>();
+            var resource = message.Resource;
 
-            if (await ConformanceProvider.Value.RequireETag(resource.TypeName, cancellationToken) && message.WeakETag == null)
+            if (await ConformanceProvider.Value.RequireETag(resource.InstanceType, cancellationToken) && message.WeakETag == null)
             {
-                throw new PreconditionFailedException(string.Format(Core.Resources.IfMatchHeaderRequiredForResource, resource.TypeName));
+                throw new PreconditionFailedException(string.Format(Core.Resources.IfMatchHeaderRequiredForResource, resource.InstanceType));
             }
 
-            bool allowCreate = await ConformanceProvider.Value.CanUpdateCreate(resource.TypeName, cancellationToken);
-            bool keepHistory = await ConformanceProvider.Value.CanKeepHistory(resource.TypeName, cancellationToken);
+            bool allowCreate = await ConformanceProvider.Value.CanUpdateCreate(resource.InstanceType, cancellationToken);
+            bool keepHistory = await ConformanceProvider.Value.CanKeepHistory(resource.InstanceType, cancellationToken);
 
             ResourceWrapper resourceWrapper = CreateResourceWrapper(resource, deleted: false);
 
             UpsertOutcome result = await UpsertAsync(message, resourceWrapper, allowCreate, keepHistory, cancellationToken);
 
-            resource.VersionId = result.Wrapper.Version;
+            resource.UpdateVersion(result.Wrapper.Version);
 
-            return new UpsertResourceResponse(new SaveOutcome(resource.ToResourceElement(), result.OutcomeType));
+            return new UpsertResourceResponse(new SaveOutcome(resource, result.OutcomeType));
         }
 
         private async Task<UpsertOutcome> UpsertAsync(UpsertResourceRequest message, ResourceWrapper resourceWrapper, bool allowCreate, bool keepHistory, CancellationToken cancellationToken)

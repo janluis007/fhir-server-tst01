@@ -81,7 +81,7 @@ namespace Microsoft.Health.Fhir.Api.Features.ActionResults
 
         protected override object GetResultToSerialize()
         {
-            return Result?.ToPoco();
+            return Result;
         }
 
         public override string GetResultTypeName()

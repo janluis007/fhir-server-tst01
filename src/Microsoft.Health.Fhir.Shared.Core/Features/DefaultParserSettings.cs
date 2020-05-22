@@ -10,5 +10,12 @@ namespace Microsoft.Health.Fhir.Core.Features
     public static class DefaultParserSettings
     {
         public static readonly ParserSettings Settings = new ParserSettings { PermissiveParsing = true };
+
+        public static readonly FhirJsonParsingSettings JsonParserSettings = new FhirJsonParsingSettings
+        {
+            PermissiveParsing = true,
+            AllowJsonComments = true,
+            ValidateFhirXhtml = false,
+        };
     }
 }

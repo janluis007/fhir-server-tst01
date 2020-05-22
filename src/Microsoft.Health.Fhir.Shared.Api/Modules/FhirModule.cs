@@ -79,9 +79,12 @@ namespace Microsoft.Health.Fhir.Api.Modules
                     {
                         FhirResourceFormat.Json, (str, version, lastModified) =>
                         {
-                            var resource = jsonParser.Parse<Resource>(str);
+                            var node = FhirJsonNode.Parse(str)
+                                .ToResourceElement(ModelInfoProvider.Instance)
+                                .UpdateVersion(version)
+                                .UpdateLastUpdated(lastModified);
 
-                            return SetMetadata(resource, version, lastModified);
+                            return node;
                         }
                     },
                     {

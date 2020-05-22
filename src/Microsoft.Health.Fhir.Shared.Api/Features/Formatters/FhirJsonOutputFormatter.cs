@@ -8,12 +8,15 @@ using System.Buffers;
 using System.IO;
 using System.Text;
 using EnsureThat;
+using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Model;
+using Hl7.Fhir.Rest;
 using Hl7.Fhir.Serialization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.Logging;
 using Microsoft.Health.Fhir.Api.Features.ContentTypes;
+using Microsoft.Health.Fhir.Core.Models;
 using Newtonsoft.Json;
 using Task = System.Threading.Tasks.Task;
 
@@ -50,7 +53,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Formatters
         {
             EnsureArg.IsNotNull(type, nameof(type));
 
-            return typeof(Resource).IsAssignableFrom(type);
+            return typeof(ResourceElement).IsAssignableFrom(type);
         }
 
         public override async Task WriteResponseBodyAsync(OutputFormatterWriteContext context, Encoding selectedEncoding)
@@ -71,7 +74,18 @@ namespace Microsoft.Health.Fhir.Api.Features.Formatters
                     jsonWriter.Formatting = Formatting.Indented;
                 }
 
-                _fhirJsonSerializer.Serialize((Resource)context.Object, jsonWriter, context.HttpContext.GetSummaryType(_logger));
+                SummaryType summaryType = context.HttpContext.GetSummaryType(_logger);
+                var element = (ResourceElement)context.Object;
+
+                if (summaryType == SummaryType.False)
+                {
+                    element.WriteTo(jsonWriter);
+                }
+                else
+                {
+                    _fhirJsonSerializer.Serialize(element.Instance.ToPoco(), jsonWriter, summaryType);
+                }
+
                 await jsonWriter.FlushAsync();
             }
         }

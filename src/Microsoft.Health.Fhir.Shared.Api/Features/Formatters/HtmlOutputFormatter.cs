@@ -21,7 +21,9 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Health.Fhir.Api.Models;
+using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features.Validation.Narratives;
+using Microsoft.Health.Fhir.Core.Models;
 using Newtonsoft.Json;
 using Task = System.Threading.Tasks.Task;
 
@@ -84,7 +86,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Formatters
                     throw new FileNotFoundException(Api.Resources.ViewNotFound, $"{viewName}.cshtml");
                 }
 
-                var resourceInstance = (Resource)context.Object;
+                var resourceInstance = ((ResourceElement)context.Object).ToPoco();
                 string div = null;
 
                 if (resourceInstance is DomainResource domainResourceInstance && !string.IsNullOrEmpty(domainResourceInstance.Text?.Div))
