@@ -58,7 +58,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Search
 
                 foreach (var result in converters.Where(x => x.hasConverter || !parameterInfo.IsPartiallySupported))
                 {
-                    var found = SearchParameterFixtureData.Manager.TryGetConverter(result.result.FhirNodeType, SearchIndexer.GetSearchValueTypeForSearchParamType(result.result.SearchParamType), out var converter);
+                    var found = SearchParameterFixtureData.Manager.TryGetConverter(result.result.FhirNodeType, TypedElementSearchIndexer.GetSearchValueTypeForSearchParamType(result.result.SearchParamType), out var converter);
 
                     var converterText = found ? converter.GetType().Name : "None";
                     string searchTermMapping = $"Search term '{parameterName}' ({result.result.SearchParamType}) mapped to '{result.result.FhirNodeType}', converter: {converterText}";
@@ -148,7 +148,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Search
                     result,
                     hasConverter: SearchParameterFixtureData.Manager.TryGetConverter(
                         result.FhirNodeType,
-                        SearchIndexer.GetSearchValueTypeForSearchParamType(result.SearchParamType),
+                        TypedElementSearchIndexer.GetSearchValueTypeForSearchParamType(result.SearchParamType),
                         out IFhirNodeToSearchValueTypeConverter converter),
                     converter))
                 .ToArray();

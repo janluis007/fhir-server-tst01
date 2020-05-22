@@ -69,7 +69,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Search.Parameters
                         result,
                         hasConverter: _searchValueTypeConverterManager.TryGetConverter(
                             result.ClassMapping.Name,
-                            SearchIndexer.GetSearchValueTypeForSearchParamType(result.SearchParamType),
+                            TypedElementSearchIndexer.GetSearchValueTypeForSearchParamType(result.SearchParamType),
                             out IFhirNodeToSearchValueTypeConverter converter),
                         converter))
                     .ToArray();
