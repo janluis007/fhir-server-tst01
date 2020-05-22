@@ -4,7 +4,6 @@
 // -------------------------------------------------------------------------------------------------
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using Hl7.Fhir.Validation;
 using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Models;
 

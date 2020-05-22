@@ -15,15 +15,11 @@ namespace Microsoft.Health.Fhir.Tests.Common
 {
     public static class Deserializers
     {
-        private static readonly FhirJsonParser JsonParser = new FhirJsonParser(DefaultParserSettings.Settings);
-
         public static ResourceDeserializer ResourceDeserializer => new ResourceDeserializer(
             (FhirResourceFormat.Json, (str, version, lastModified) =>
-                {
-                    var resource = JsonParser.Parse<Resource>(str);
-                    resource.VersionId = version;
-                    resource.Meta.LastUpdated = lastModified;
-                    return resource.ToTypedElement().ToResourceElement();
-                }));
+                FhirJsonNode.Parse(str, settings: DefaultParserSettings.JsonParserSettings)
+                .ToResourceElement(ModelInfoProvider.Instance)
+                .UpdateVersion(version)
+                .UpdateLastUpdated(lastModified)));
     }
 }

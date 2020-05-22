@@ -42,7 +42,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Search
                 .Returns(x => new SearchOptions());
 
             _searchService = new TestSearchService(_searchOptionsFactory, _fhirDataStore);
-            _rawResourceFactory = new RawResourceFactory(new FhirJsonSerializer());
+            _rawResourceFactory = new RawResourceFactory();
         }
 
         [Fact]

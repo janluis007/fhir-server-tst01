@@ -22,7 +22,7 @@ using Task = System.Threading.Tasks.Task;
 
 namespace Microsoft.Health.Fhir.Core.Features.Resources
 {
-    public class ResourceReferenceResolver
+    public class ResourceReferenceResolver : IResourceReferenceResolver
     {
         private readonly ISearchService _searchService;
         private readonly IQueryStringParser _queryStringParser;
@@ -36,9 +36,9 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources
             _queryStringParser = queryStringParser;
         }
 
-        public async Task ResolveReferencesAsync(Resource resource, Dictionary<string, (string resourceId, string resourceType)> referenceIdDictionary, string requestUrl, CancellationToken cancellationToken)
+        public async Task ResolveReferencesAsync(ResourceElement resource, Dictionary<string, (string resourceId, string resourceType)> referenceIdDictionary, string requestUrl, CancellationToken cancellationToken)
         {
-            IEnumerable<ResourceReference> references = resource.GetAllChildren<ResourceReference>();
+            IEnumerable<ResourceReference> references = resource.ToPoco().GetAllChildren<ResourceReference>();
 
             foreach (ResourceReference reference in references)
             {

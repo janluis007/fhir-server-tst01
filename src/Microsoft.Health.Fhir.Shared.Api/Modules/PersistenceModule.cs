@@ -35,7 +35,7 @@ namespace Microsoft.Health.Fhir.Api.Modules
             services.AddFactory<IScoped<IFhirOperationDataStore>>();
 
             services.AddScoped<TransactionBundleValidator>();
-            services.AddScoped<ResourceReferenceResolver>();
+            services.Add<ResourceReferenceResolver>().Scoped().AsImplementedInterfaces();
         }
     }
 }

@@ -21,7 +21,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Persistence
 
         public ResourceDeserializerTests()
         {
-            _rawResourceFactory = new RawResourceFactory(new FhirJsonSerializer());
+            _rawResourceFactory = new RawResourceFactory();
         }
 
         [Fact]

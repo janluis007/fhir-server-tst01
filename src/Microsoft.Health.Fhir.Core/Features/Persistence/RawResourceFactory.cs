@@ -4,10 +4,7 @@
 // -------------------------------------------------------------------------------------------------
 
 using EnsureThat;
-using Hl7.Fhir.ElementModel;
-using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
-using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Features.Persistence
@@ -17,19 +14,6 @@ namespace Microsoft.Health.Fhir.Core.Features.Persistence
     /// </summary>
     public class RawResourceFactory : IRawResourceFactory
     {
-        private readonly FhirJsonSerializer _fhirJsonSerializer;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="RawResourceFactory"/> class.
-        /// </summary>
-        /// <param name="fhirJsonSerializer">The FhirJsonSerializer to use for serializing the resource.</param>
-        public RawResourceFactory(FhirJsonSerializer fhirJsonSerializer)
-        {
-            EnsureArg.IsNotNull(fhirJsonSerializer, nameof(fhirJsonSerializer));
-
-            _fhirJsonSerializer = fhirJsonSerializer;
-        }
-
         /// <inheritdoc />
         public RawResource Create(ResourceElement resource)
         {

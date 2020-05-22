@@ -51,7 +51,7 @@ namespace Microsoft.Health.Fhir.Api.Modules
         {
             EnsureArg.IsNotNull(services, nameof(services));
 
-            var jsonParser = new FhirJsonParser(DefaultParserSettings.Settings);
+            var jsonParser = new FhirJsonParser();
             var jsonSerializer = new FhirJsonSerializer();
 
             var xmlParser = new FhirXmlParser();

@@ -174,7 +174,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Export
                 // Try to update the job to failed state.
                 _logger.LogError(ex, "Encountered an unhandled exception. The job will be marked as failed.");
 
-                _exportJobRecord.FailureDetails = new ExportJobFailureDetails(Resources.UnknownError, HttpStatusCode.InternalServerError);
+                _exportJobRecord.FailureDetails = new ExportJobFailureDetails(Core.Resources.UnknownError, HttpStatusCode.InternalServerError);
                 await CompleteJobAsync(OperationStatus.Failed, cancellationToken);
             }
         }

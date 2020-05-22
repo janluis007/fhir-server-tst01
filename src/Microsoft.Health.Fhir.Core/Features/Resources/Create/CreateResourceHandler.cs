@@ -8,11 +8,8 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
-using Hl7.Fhir.ElementModel;
-using Hl7.Fhir.Model;
 using MediatR;
 using Microsoft.Health.Fhir.Core.Exceptions;
-using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features.Conformance;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Features.Security;
@@ -24,7 +21,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources.Create
 {
     public class CreateResourceHandler : BaseResourceHandler, IRequestHandler<CreateResourceRequest, UpsertResourceResponse>
     {
-        private readonly ResourceReferenceResolver _referenceResolver;
+        private readonly IResourceReferenceResolver _referenceResolver;
         private readonly Dictionary<string, (string resourceId, string resourceType)> _referenceIdDictionary;
 
         public CreateResourceHandler(
@@ -32,7 +29,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources.Create
             Lazy<IConformanceProvider> conformanceProvider,
             IResourceWrapperFactory resourceWrapperFactory,
             ResourceIdProvider resourceIdProvider,
-            ResourceReferenceResolver referenceResolver,
+            IResourceReferenceResolver referenceResolver,
             IFhirAuthorizationService authorizationService)
             : base(fhirDataStore, conformanceProvider, resourceWrapperFactory, resourceIdProvider, authorizationService)
         {
@@ -56,8 +53,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Resources.Create
             // If an Id is supplied on create it should be removed/ignored
             resource.UpdateId(null);
 
-            // TODO: Review how to fix this
-            // await _referenceResolver.ResolveReferencesAsync(resource, _referenceIdDictionary, resource.ResourceType.ToString(), cancellationToken);
+            await _referenceResolver.ResolveReferencesAsync(resource, _referenceIdDictionary, resource.InstanceType, cancellationToken);
 
             ResourceWrapper resourceWrapper = CreateResourceWrapper(resource, deleted: false);
 

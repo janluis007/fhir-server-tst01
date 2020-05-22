@@ -17,8 +17,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Persistence
         [Fact]
         public void GivenAResource_WhenCreatingARawResource_ThenTheObjectPassInIsNotModified()
         {
-            var serializer = new FhirJsonSerializer();
-            var rawResourceFactory = new RawResourceFactory(serializer);
+            var rawResourceFactory = new RawResourceFactory();
 
             string versionId = Guid.NewGuid().ToString();
             var observation = Samples.GetDefaultObservation()

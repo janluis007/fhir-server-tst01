@@ -64,7 +64,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Resources
                 // Asserting the conditional reference value before resolution
                 Assert.Null(references.First().Reference);
                 var requestUrl = (entry.Request != null) ? entry.Request.Url : null;
-                await _referenceResolver.ResolveReferencesAsync(entry.Resource, referenceIdDictionary, requestUrl, CancellationToken.None);
+                await _referenceResolver.ResolveReferencesAsync(entry.Resource.ToResourceElement(), referenceIdDictionary, requestUrl, CancellationToken.None);
 
                 // Asserting the resolved reference value after resolution
                 Assert.Null(references.First().Reference);
@@ -92,7 +92,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Resources
                 Assert.Equal("Patient?identifier=12345", references.First().Reference);
 
                 var requestUrl = (entry.Request != null) ? entry.Request.Url : null;
-                await _referenceResolver.ResolveReferencesAsync(entry.Resource, referenceIdDictionary, requestUrl, CancellationToken.None);
+                await _referenceResolver.ResolveReferencesAsync(entry.Resource.ToResourceElement(), referenceIdDictionary, requestUrl, CancellationToken.None);
 
                 // Asserting the resolved reference value after resolution
                 Assert.Equal("Patient/123", references.First().Reference);
@@ -117,7 +117,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Resources
             foreach (var entry in bundle.Entry)
             {
                 var requestUrl = (entry.Request != null) ? entry.Request.Url : null;
-                var exception = await Assert.ThrowsAsync<RequestNotValidException>(() => _referenceResolver.ResolveReferencesAsync(entry.Resource, referenceIdDictionary, requestUrl, CancellationToken.None));
+                var exception = await Assert.ThrowsAsync<RequestNotValidException>(() => _referenceResolver.ResolveReferencesAsync(entry.Resource.ToResourceElement(), referenceIdDictionary, requestUrl, CancellationToken.None));
                 Assert.Equal(exception.Message, expectedMessage);
             }
         }
@@ -134,7 +134,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Resources
             foreach (var entry in bundle.Entry)
             {
                 var requestUrl = (entry.Request != null) ? entry.Request.Url : null;
-                var exception = await Assert.ThrowsAsync<RequestNotValidException>(() => _referenceResolver.ResolveReferencesAsync(entry.Resource, referenceIdDictionary, requestUrl, CancellationToken.None));
+                var exception = await Assert.ThrowsAsync<RequestNotValidException>(() => _referenceResolver.ResolveReferencesAsync(entry.Resource.ToResourceElement(), referenceIdDictionary, requestUrl, CancellationToken.None));
                 Assert.Equal(exception.Message, expectedMessage);
             }
         }

@@ -59,7 +59,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
                                 x.FhirVersion = _modelInfoProvider.SupportedVersion.ToString();
                                 x.Software = new SoftwareComponent
                                 {
-                                    Name = Resources.ServerName,
+                                    Name = Core.Resources.ServerName,
                                     Version = Assembly.GetExecutingAssembly().GetName().Version.ToString(),
                                 };
                             });

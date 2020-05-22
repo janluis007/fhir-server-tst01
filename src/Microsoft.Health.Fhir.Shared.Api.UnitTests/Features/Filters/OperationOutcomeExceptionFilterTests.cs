@@ -20,6 +20,7 @@ using Microsoft.Health.Fhir.Api.Features.Exceptions;
 using Microsoft.Health.Fhir.Api.Features.Filters;
 using Microsoft.Health.Fhir.Api.UnitTests.Features.Context;
 using Microsoft.Health.Fhir.Core.Exceptions;
+using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Features.Operations;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
@@ -103,7 +104,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Filters
                     reason)),
                 HttpStatusCode.BadRequest).Result;
 
-            Assert.Equal(reason, operation.Issue[0].Diagnostics);
+            Assert.Equal(reason, operation.ToPoco<OperationOutcome>().Issue[0].Diagnostics);
         }
 
         [Fact]
@@ -117,7 +118,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Filters
                 {
                     new ValidationFailure(propertyName, reason),
                 }),
-                HttpStatusCode.BadRequest).Result;
+                HttpStatusCode.BadRequest).Result.ToPoco<OperationOutcome>();
 
             Assert.Equal(reason, operation.Issue[0].Diagnostics);
         }

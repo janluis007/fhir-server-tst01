@@ -257,7 +257,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Resources.Bundle
                 if (_bundleType == BundleType.Transaction && entry.Resource != null)
                 {
                     var requestUrl = (entry.Request != null) ? entry.Request.Url : null;
-                    await _referenceResolver.ResolveReferencesAsync(entry.Resource, _referenceIdDictionary, requestUrl, cancellationToken);
+                    await _referenceResolver.ResolveReferencesAsync(entry.Resource.ToResourceElement(), _referenceIdDictionary, requestUrl, cancellationToken);
 
                     if (entry.Request.Method == HTTPVerb.POST && !string.IsNullOrWhiteSpace(entry.FullUrl))
                     {
