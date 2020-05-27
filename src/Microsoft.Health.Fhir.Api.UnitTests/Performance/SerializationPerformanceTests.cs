@@ -5,7 +5,9 @@
 
 using System;
 using System.Net.Http;
+using System.Text.Json;
 using BenchmarkDotNet.Attributes;
+using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
 using Microsoft.Health.Fhir.Core;
@@ -27,6 +29,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Performance
         private static readonly ResourceDeserializer ResourceDeserializer;
         private static readonly string ObservationJson;
         private static readonly FhirJsonNode ObservationJsonNode;
+        private static readonly ITypedElement ObservationTypedElement;
 
         static SerializationPerformanceTests()
         {
@@ -43,6 +46,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Performance
 
             ObservationJson = RawResourceFactory.Create(Observation.ToResourceElement()).Data;
             ObservationJsonNode = (FhirJsonNode)FhirJsonNode.Parse(ObservationJson);
+            ObservationTypedElement = FhirJsonNode.Parse(ObservationJson).ToTypedElement(ModelInfoProvider.Instance.StructureDefinitionSummaryProvider);
         }
 
         [Benchmark(Baseline = true)]
@@ -58,6 +62,18 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Performance
         }
 
         [Benchmark]
+        public void SerializingWithTextJson()
+        {
+            System.Text.Json.JsonSerializer.Serialize(Wrapper.RawResource.Data);
+        }
+
+        [Benchmark]
+        public void DeserializingWithTextJson()
+        {
+            JsonDocument.Parse(Wrapper.RawResource.Data);
+        }
+
+        [Benchmark]
         public void SerializingWithFhirSdk()
         {
             RawResourceFactory.Create(Observation.ToResourceElement());
@@ -70,15 +86,21 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Performance
         }
 
         [Benchmark]
+        public void SerializingWithITypedElement()
+        {
+            ObservationJsonNode.ToJson();
+        }
+
+        [Benchmark]
         public void SerializingWithFhirJsonNode()
         {
-            FhirJsonNode.Parse(ObservationJson);
+            ObservationJsonNode.ToJson();
         }
 
         [Benchmark]
         public void DeserializingWithFhirJsonNode()
         {
-            ObservationJsonNode.ToJson();
+            FhirJsonNode.Parse(ObservationJson);
         }
     }
 }
