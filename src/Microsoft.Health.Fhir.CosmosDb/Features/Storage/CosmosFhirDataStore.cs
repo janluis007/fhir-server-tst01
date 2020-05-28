@@ -39,8 +39,8 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
         private readonly ILogger<CosmosFhirDataStore> _logger;
         private readonly IModelInfoProvider _modelInfoProvider;
 
-        private readonly UpsertWithHistory _upsertWithHistoryProc;
-        private readonly HardDelete _hardDelete;
+        private static readonly UpsertWithHistory _upsertWithHistoryProc = new UpsertWithHistory();
+        private static readonly HardDelete _hardDelete = new HardDelete();
         private readonly CoreFeatureConfiguration _coreFeatures;
 
         /// <summary>
@@ -88,9 +88,6 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
             DatabaseId = cosmosDataStoreConfiguration.DatabaseId;
             CollectionId = collectionConfiguration.CollectionId;
             CollectionUri = cosmosDataStoreConfiguration.GetRelativeCollectionUri(collectionConfiguration.CollectionId);
-
-            _upsertWithHistoryProc = new UpsertWithHistory();
-            _hardDelete = new HardDelete();
         }
 
         private string DatabaseId { get; }

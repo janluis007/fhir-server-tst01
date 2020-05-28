@@ -38,7 +38,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage.Operations
         private readonly RetryExceptionPolicyFactory _retryExceptionPolicyFactory;
         private readonly ILogger _logger;
 
-        private readonly AcquireExportJobs _acquireExportJobs = new AcquireExportJobs();
+        private static readonly AcquireExportJobs _acquireExportJobs = new AcquireExportJobs();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CosmosFhirOperationDataStore"/> class.
