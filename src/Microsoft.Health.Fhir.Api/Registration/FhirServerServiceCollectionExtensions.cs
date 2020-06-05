@@ -4,7 +4,9 @@
 // -------------------------------------------------------------------------------------------------
 
 using System.Reflection;
+using AspNetCoreRateLimit;
 using EnsureThat;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Health.Api.Modules;
 using Microsoft.Health.Extensions.DependencyInjection;
 using Microsoft.Health.Fhir.Api.Configs;
@@ -20,6 +22,23 @@ namespace Microsoft.Extensions.DependencyInjection
 
             services.RegisterAssemblyModules(Assembly.GetExecutingAssembly(), fhirServerConfiguration);
             services.RegisterAssemblyModules(typeof(InitializationModule).Assembly, fhirServerConfiguration);
+
+            return services;
+        }
+
+        public static IServiceCollection AddApiThrottling(this IServiceCollection services, FhirServerConfiguration fhirServerConfiguration)
+        {
+            EnsureArg.IsNotNull(services, nameof(services));
+            EnsureArg.IsNotNull(fhirServerConfiguration, nameof(fhirServerConfiguration));
+
+            services.AddMemoryCache();
+
+            services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();
+            services.AddSingleton<IRateLimitCounterStore, MemoryCacheRateLimitCounterStore>();
+
+            services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+
+            services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
 
             return services;
         }
