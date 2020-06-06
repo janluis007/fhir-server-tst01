@@ -11,6 +11,7 @@ using EnsureThat;
 using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Serialization;
 using Hl7.FhirPath;
+using Microsoft.Health.Fhir.Core.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -21,7 +22,7 @@ namespace Microsoft.Health.Fhir.Core.Models
     /// </summary>
     public class ResourceElement
     {
-        private readonly FhirJsonNode _sourceNode;
+        private readonly FhirJsonTextNode _sourceNode;
         private readonly IModelInfoProvider _modelInfoProvider;
         private readonly bool isReadOnly = false;
         private readonly Lazy<EvaluationContext> _context = new Lazy<EvaluationContext>(() => new EvaluationContext());
@@ -34,12 +35,6 @@ namespace Microsoft.Health.Fhir.Core.Models
         };
 
         private Lazy<ITypedElement> _typedElement;
-        private readonly JsonMergeSettings _jsonMergeSettings = new JsonMergeSettings
-        {
-            PropertyNameComparison = StringComparison.OrdinalIgnoreCase,
-            MergeNullValueHandling = MergeNullValueHandling.Merge,
-            MergeArrayHandling = MergeArrayHandling.Union,
-        };
 
         public ResourceElement(ITypedElement sourceNode)
         {
@@ -54,13 +49,13 @@ namespace Microsoft.Health.Fhir.Core.Models
             EnsureArg.IsNotNull(sourceNode, nameof(sourceNode));
             EnsureArg.IsNotNull(modelInfoProvider, nameof(modelInfoProvider));
 
-            if (sourceNode is FhirJsonNode node)
+            if (sourceNode is FhirJsonTextNode node)
             {
                 _sourceNode = node;
             }
             else
             {
-                _sourceNode = (FhirJsonNode)FhirJsonNode.Parse(sourceNode.ToTypedElement(modelInfoProvider.StructureDefinitionSummaryProvider).ToJson());
+                _sourceNode = (FhirJsonTextNode)FhirJsonTextNode.Parse(sourceNode.ToTypedElement(modelInfoProvider.StructureDefinitionSummaryProvider).ToJson());
             }
 
             _modelInfoProvider = modelInfoProvider;
@@ -114,7 +109,9 @@ namespace Microsoft.Health.Fhir.Core.Models
                 throw new NotSupportedException();
             }
 
-            _sourceNode.JsonObject.Merge(JObject.FromObject(new { id }), _jsonMergeSettings);
+            // _sourceNode.JsonObject.Merge(JObject.FromObject(new { id }), _jsonMergeSettings);
+
+            _sourceNode.Merge(new { id });
 
             return this;
         }
@@ -126,7 +123,9 @@ namespace Microsoft.Health.Fhir.Core.Models
                 throw new NotSupportedException();
             }
 
-            _sourceNode.JsonObject.Merge(JObject.FromObject(new { meta = new { versionId = version } }), _jsonMergeSettings);
+            // _sourceNode.JsonObject.Merge(JObject.FromObject(new { meta = new { versionId = version } }), _jsonMergeSettings);
+
+            _sourceNode.Merge(new { meta = new { versionId = version } });
 
             return this;
         }
@@ -138,7 +137,9 @@ namespace Microsoft.Health.Fhir.Core.Models
                 throw new NotSupportedException();
             }
 
-            _sourceNode.JsonObject.Merge(JObject.FromObject(new { meta = new { lastUpdated = lastUpdated?.ToString("o", CultureInfo.InvariantCulture) } }), _jsonMergeSettings);
+            // _sourceNode.JsonObject.Merge(JObject.FromObject(new { meta = new { lastUpdated = lastUpdated?.ToString("o", CultureInfo.InvariantCulture) } }), _jsonMergeSettings);
+
+            _sourceNode.Merge(new { meta = new { lastUpdated = lastUpdated?.ToString("o", CultureInfo.InvariantCulture) } });
 
             return this;
         }
@@ -147,7 +148,7 @@ namespace Microsoft.Health.Fhir.Core.Models
         {
             if (_sourceNode != null)
             {
-                return _sourceNode.ToJson(settings);
+                return _sourceNode.ToRawJson();
             }
             else
             {
@@ -159,7 +160,8 @@ namespace Microsoft.Health.Fhir.Core.Models
         {
             if (_sourceNode != null)
             {
-                _sourceNode.WriteTo(writer, settings);
+                // _sourceNode.WriteTo(writer, settings);
+                writer.WriteRaw(ToJson(settings));
             }
             else
             {

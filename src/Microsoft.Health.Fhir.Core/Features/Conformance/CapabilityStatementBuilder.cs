@@ -16,6 +16,7 @@ using Microsoft.Health.Fhir.Core.Features.Conformance.Serialization;
 using Microsoft.Health.Fhir.Core.Features.Definition;
 using Microsoft.Health.Fhir.Core.Features.Search;
 using Microsoft.Health.Fhir.Core.Models;
+using Microsoft.Health.Fhir.Core.Serialization;
 using Microsoft.Health.Fhir.ValueSets;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
@@ -228,7 +229,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
                 NullValueHandling = NullValueHandling.Ignore,
             });
 
-            ISourceNode jsonStatement = FhirJsonNode.Parse(json);
+            ISourceNode jsonStatement = FhirJsonTextNode.Parse(json);
 
             // Using a version specific StructureDefinitionSummaryProvider ensures the metadata to be
             // compatible with the current FhirSerializer/output formatter.

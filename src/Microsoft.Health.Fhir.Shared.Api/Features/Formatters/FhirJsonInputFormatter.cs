@@ -6,6 +6,8 @@
 using System;
 using System.Buffers;
 using System.Text;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
 using Hl7.Fhir.Model;
@@ -15,8 +17,10 @@ using Microsoft.Health.Fhir.Api.Features.ContentTypes;
 using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features;
 using Microsoft.Health.Fhir.Core.Models;
+using Microsoft.Health.Fhir.Core.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 using Task = System.Threading.Tasks.Task;
 
 namespace Microsoft.Health.Fhir.Api.Features.Formatters
@@ -74,10 +78,11 @@ namespace Microsoft.Health.Fhir.Api.Features.Formatters
 
                 try
                 {
-                    var obj = (JObject)await JObject.ReadFromAsync(jsonReader, context.HttpContext.RequestAborted);
-                    model = FhirJsonNode.Create(obj, null, settings: DefaultParserSettings.JsonParserSettings).ToResourceElement(ModelInfoProvider.Instance);
+                    var obj = await JsonDocument.ParseAsync(request.Body, cancellationToken: context.HttpContext.RequestAborted);
+                    model = FhirJsonTextNode.Create(obj).ToResourceElement(ModelInfoProvider.Instance);
 
-                    // model = FhirJsonNode.Read(jsonReader, null, settings: DefaultParserSettings.JsonParserSettings).ToResourceElement(ModelInfoProvider.Instance);
+                    // var obj = (JObject)await JObject.ReadFromAsync(jsonReader, context.HttpContext.RequestAborted);
+                    // model = FhirJsonNode.Create(obj, null, settings: DefaultParserSettings.JsonParserSettings).ToResourceElement(ModelInfoProvider.Instance);
                 }
                 catch (Exception ex)
                 {
