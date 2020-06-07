@@ -80,7 +80,7 @@ namespace Microsoft.Health.Fhir.Api.Modules
                     {
                         FhirResourceFormat.Json, (str, version, lastModified) =>
                         {
-                            var node = FhirJsonTextNode.Parse(str)
+                            var node = FhirJsonTextNode2.Parse(str)
                                 .ToResourceElement(ModelInfoProvider.Instance)
                                 .UpdateVersion(version)
                                 .UpdateLastUpdated(lastModified);

@@ -229,7 +229,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Conformance
                 NullValueHandling = NullValueHandling.Ignore,
             });
 
-            ISourceNode jsonStatement = FhirJsonTextNode.Parse(json);
+            ISourceNode jsonStatement = FhirJsonTextNode2.Parse(json);
 
             // Using a version specific StructureDefinitionSummaryProvider ensures the metadata to be
             // compatible with the current FhirSerializer/output formatter.

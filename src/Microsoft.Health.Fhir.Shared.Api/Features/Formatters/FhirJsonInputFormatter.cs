@@ -78,11 +78,10 @@ namespace Microsoft.Health.Fhir.Api.Features.Formatters
 
                 try
                 {
-                    var obj = await JsonDocument.ParseAsync(request.Body, cancellationToken: context.HttpContext.RequestAborted);
-                    model = FhirJsonTextNode.Create(obj).ToResourceElement(ModelInfoProvider.Instance);
+                    // var obj = (JObject)await JToken.ReadFromAsync(jsonReader, context.HttpContext.RequestAborted).ConfigureAwait(false);
+                    // model = LazyFhirJsonNode.Create(obj, null).ToResourceElement(ModelInfoProvider.Instance);
 
-                    // var obj = (JObject)await JObject.ReadFromAsync(jsonReader, context.HttpContext.RequestAborted);
-                    // model = FhirJsonNode.Create(obj, null, settings: DefaultParserSettings.JsonParserSettings).ToResourceElement(ModelInfoProvider.Instance);
+                    model = (await FhirJsonTextNode2.Parse(request.Body)).ToResourceElement(ModelInfoProvider.Instance);
                 }
                 catch (Exception ex)
                 {

@@ -20,7 +20,7 @@ namespace Microsoft.Health.Fhir.R4.Core.UnitTests.Features.Serilization
             ResourceElement resourceElement = Samples.GetDefaultPatient();
             var json = resourceElement.ToJson();
 
-            var node = FhirJsonTextNode.Parse(json);
+            var node = FhirJsonTextNode2.Parse(json);
 
             var el = node.ToTypedElement(ModelInfoProvider.StructureDefinitionSummaryProvider);
 
@@ -31,6 +31,8 @@ namespace Microsoft.Health.Fhir.R4.Core.UnitTests.Features.Serilization
             var name = el.Scalar("Resource.name[0].family");
 
             Assert.Equal("Patient", type);
+
+            var poco = el.ToPoco();
         }
 
         [Fact]

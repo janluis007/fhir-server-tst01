@@ -12,8 +12,8 @@ using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Serialization;
 using Hl7.FhirPath;
 using Microsoft.Health.Fhir.Core.Serialization;
+using Microsoft.Health.Fhir.Core.Serialization.SourceNodes;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Health.Fhir.Core.Models
 {
@@ -22,7 +22,7 @@ namespace Microsoft.Health.Fhir.Core.Models
     /// </summary>
     public class ResourceElement
     {
-        private readonly FhirJsonTextNode _sourceNode;
+        private readonly FhirJsonTextNode2 _sourceNode;
         private readonly IModelInfoProvider _modelInfoProvider;
         private readonly bool isReadOnly = false;
         private readonly Lazy<EvaluationContext> _context = new Lazy<EvaluationContext>(() => new EvaluationContext());
@@ -49,13 +49,13 @@ namespace Microsoft.Health.Fhir.Core.Models
             EnsureArg.IsNotNull(sourceNode, nameof(sourceNode));
             EnsureArg.IsNotNull(modelInfoProvider, nameof(modelInfoProvider));
 
-            if (sourceNode is FhirJsonTextNode node)
+            if (sourceNode is FhirJsonTextNode2 node)
             {
                 _sourceNode = node;
             }
             else
             {
-                _sourceNode = (FhirJsonTextNode)FhirJsonTextNode.Parse(sourceNode.ToTypedElement(modelInfoProvider.StructureDefinitionSummaryProvider).ToJson());
+                _sourceNode = (FhirJsonTextNode2)FhirJsonTextNode2.Parse(sourceNode.ToTypedElement(modelInfoProvider.StructureDefinitionSummaryProvider).ToJson());
             }
 
             _modelInfoProvider = modelInfoProvider;
@@ -111,7 +111,9 @@ namespace Microsoft.Health.Fhir.Core.Models
 
             // _sourceNode.JsonObject.Merge(JObject.FromObject(new { id }), _jsonMergeSettings);
 
-            _sourceNode.Merge(new { id });
+            // _sourceNode.Merge(new { id });
+
+            _sourceNode.Resource.Id = id;
 
             return this;
         }
@@ -125,7 +127,9 @@ namespace Microsoft.Health.Fhir.Core.Models
 
             // _sourceNode.JsonObject.Merge(JObject.FromObject(new { meta = new { versionId = version } }), _jsonMergeSettings);
 
-            _sourceNode.Merge(new { meta = new { versionId = version } });
+            // _sourceNode.Merge(new { meta = new { versionId = version } });
+
+            _sourceNode.Resource.Meta.VersionId = version;
 
             return this;
         }
@@ -139,7 +143,9 @@ namespace Microsoft.Health.Fhir.Core.Models
 
             // _sourceNode.JsonObject.Merge(JObject.FromObject(new { meta = new { lastUpdated = lastUpdated?.ToString("o", CultureInfo.InvariantCulture) } }), _jsonMergeSettings);
 
-            _sourceNode.Merge(new { meta = new { lastUpdated = lastUpdated?.ToString("o", CultureInfo.InvariantCulture) } });
+            // _sourceNode.Merge(new { meta = new { lastUpdated = lastUpdated?.ToString("o", CultureInfo.InvariantCulture) } });
+
+            _sourceNode.Resource.Meta.VersionId = lastUpdated?.ToString("o", CultureInfo.InvariantCulture);
 
             return this;
         }
