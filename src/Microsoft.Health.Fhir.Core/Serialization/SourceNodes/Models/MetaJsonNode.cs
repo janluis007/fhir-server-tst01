@@ -8,19 +8,16 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes
+namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes.Models
 {
     [SuppressMessage("Design", "CA2227", Justification = "POCO style model")]
-    public class ResourceBase : IExtensionData
+    public class MetaJsonNode : IExtensionData
     {
-        [JsonPropertyName("id")]
-        public string Id { get; set; }
+        [JsonPropertyName("versionId")]
+        public string VersionId { get; set; }
 
-        [JsonPropertyName("resourceType")]
-        public string ResourceType { get; set; }
-
-        [JsonPropertyName("meta")]
-        public MetaBase Meta { get; set; } = new MetaBase();
+        [JsonPropertyName("lastUpdated")]
+        public string LastUpdated { get; set; }
 
         [JsonExtensionData]
         public IDictionary<string, JsonElement> ExtensionData { get; set; }

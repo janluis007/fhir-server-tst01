@@ -10,6 +10,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Hl7.Fhir.ElementModel;
 using Microsoft.Health.Fhir.Core.Serialization.SourceNodes;
+using Microsoft.Health.Fhir.Core.Serialization.SourceNodes.Models;
 
 namespace Microsoft.Health.Fhir.Core.Serialization
 {
@@ -18,6 +19,13 @@ namespace Microsoft.Health.Fhir.Core.Serialization
         private const string _idProperty = "id";
         private const string _metaProperty = "meta";
         private readonly string _name;
+
+        private static readonly JsonSerializerOptions _jsonSerializerOptions = new JsonSerializerOptions
+        {
+            AllowTrailingCommas = false,
+            PropertyNameCaseInsensitive = true,
+            ReadCommentHandling = JsonCommentHandling.Disallow,
+        };
 
         private FhirJsonTextNode2(ResourceBase resource, string name)
             : base(resource)
@@ -35,19 +43,37 @@ namespace Microsoft.Health.Fhir.Core.Serialization
 
         public static ISourceNode Parse(string json, string name = null)
         {
-            ResourceBase resource = JsonSerializer.Deserialize<ResourceBase>(json);
+            ResourceBase resource = JsonSerializer.Deserialize<ResourceBase>(json, _jsonSerializerOptions);
             return new FhirJsonTextNode2(resource, name);
         }
 
         public static async ValueTask<ISourceNode> Parse(Stream jsonReader, string name = null)
         {
-            ResourceBase resource = await JsonSerializer.DeserializeAsync<ResourceBase>(jsonReader);
+            ResourceBase resource = await JsonSerializer.DeserializeAsync<ResourceBase>(jsonReader, _jsonSerializerOptions);
             return new FhirJsonTextNode2(resource, name);
         }
 
-        public string ToRawJson()
+        public static ISourceNode Create(ResourceBase resource)
         {
-            return JsonSerializer.Serialize(Resource);
+            return new FhirJsonTextNode2(resource, null);
+        }
+
+        public string SerializeToJson(bool writeIndented = false)
+        {
+            return JsonSerializer.Serialize(Resource, Resource.GetType(), new JsonSerializerOptions
+            {
+                IgnoreNullValues = true,
+                WriteIndented = writeIndented,
+            });
+        }
+
+        public async Task SerializeToJson(Stream stream, bool writeIndented = false)
+        {
+            await JsonSerializer.SerializeAsync(stream, Resource, Resource.GetType(), new JsonSerializerOptions
+            {
+                IgnoreNullValues = true,
+                WriteIndented = writeIndented,
+            });
         }
 
         protected override IEnumerable<(string Name, Lazy<IEnumerable<ISourceNode>> Node)> PropertySourceNodes()

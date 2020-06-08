@@ -6,15 +6,16 @@
 using System;
 using System.Collections.Generic;
 using Hl7.Fhir.ElementModel;
+using Microsoft.Health.Fhir.Core.Serialization.SourceNodes.Models;
 
 namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes
 {
-    internal class MetaSourceNode : BaseSourceNode<MetaBase>
+    internal class MetaSourceNode : BaseSourceNode<MetaJsonNode>
     {
         private readonly string _name;
         private readonly string _location;
 
-        public MetaSourceNode(MetaBase resource, string name, string location)
+        public MetaSourceNode(MetaJsonNode resource, string name, string location)
             : base(resource)
         {
             _name = name;

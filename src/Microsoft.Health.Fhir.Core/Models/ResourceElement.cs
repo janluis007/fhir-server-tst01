@@ -13,6 +13,7 @@ using Hl7.Fhir.Serialization;
 using Hl7.FhirPath;
 using Microsoft.Health.Fhir.Core.Serialization;
 using Microsoft.Health.Fhir.Core.Serialization.SourceNodes;
+using Microsoft.Health.Fhir.Core.Serialization.SourceNodes.Models;
 using Newtonsoft.Json;
 
 namespace Microsoft.Health.Fhir.Core.Models
@@ -66,9 +67,11 @@ namespace Microsoft.Health.Fhir.Core.Models
 
         public ITypedElement Instance => _typedElement.Value;
 
-        public string Id => Scalar<string>("Resource.id");
+        public ResourceBase Resource => _sourceNode.Resource;
 
-        public string VersionId => Scalar<string>("Resource.meta.versionId");
+        public string Id => Resource.Id;
+
+        public string VersionId => Resource.Meta?.VersionId;
 
         public bool IsDomainResource => !_nonDomainTypes.Contains(InstanceType, StringComparer.OrdinalIgnoreCase);
 
@@ -76,10 +79,10 @@ namespace Microsoft.Health.Fhir.Core.Models
         {
             get
             {
-                var obj = Instance.Scalar("Resource.meta.lastUpdated");
+                var obj = Resource.Meta?.LastUpdated;
                 if (obj != null)
                 {
-                    return PrimitiveTypeConverter.ConvertTo<DateTimeOffset>(obj.ToString());
+                    return PrimitiveTypeConverter.ConvertTo<DateTimeOffset>(obj);
                 }
 
                 return null;
@@ -154,7 +157,7 @@ namespace Microsoft.Health.Fhir.Core.Models
         {
             if (_sourceNode != null)
             {
-                return _sourceNode.ToRawJson();
+                return _sourceNode.SerializeToJson();
             }
             else
             {

@@ -7,14 +7,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using EnsureThat;
-using Hl7.Fhir.ElementModel;
-using Hl7.Fhir.Model;
 using Microsoft.Health.Core;
 using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Features.Routing;
 using Microsoft.Health.Fhir.Core.Models;
+using Microsoft.Health.Fhir.Core.Serialization;
+using Microsoft.Health.Fhir.Core.Serialization.SourceNodes.Models;
 using Microsoft.Health.Fhir.ValueSets;
 
 namespace Microsoft.Health.Fhir.Core.Features.Search
@@ -38,17 +38,17 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
 
         public ResourceElement CreateSearchBundle(SearchResult result)
         {
-            return CreateBundle(result, Bundle.BundleType.Searchset, r =>
+            return CreateBundle(result, "searchset", r =>
             {
                 ResourceElement resource = _deserializer.Deserialize(r.Resource);
 
-                return new Bundle.EntryComponent
+                return new BundleComponentJsonNode
                 {
-                    FullUrlElement = new FhirUri(_urlResolver.ResolveResourceUrl(resource)),
-                    Resource = resource.ToPoco<Resource>(),
-                    Search = new Bundle.SearchComponent
+                    FullUrl = _urlResolver.ResolveResourceUrl(resource).ToString(),
+                    Resource = resource.Resource,
+                    Search = new BundleComponentSearchJsonNode
                     {
-                        Mode = r.SearchEntryMode == SearchEntryMode.Match ? Bundle.SearchEntryMode.Match : Bundle.SearchEntryMode.Include,
+                        Mode = r.SearchEntryMode == SearchEntryMode.Match ? "match" : "include",
                     },
                 };
             });
@@ -56,64 +56,73 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
 
         public ResourceElement CreateHistoryBundle(SearchResult result)
         {
-            return CreateBundle(result, Bundle.BundleType.History, r =>
+            return CreateBundle(result, "history", r =>
             {
                 var resource = _deserializer.Deserialize(r.Resource);
-                var hasVerb = Enum.TryParse(r.Resource.Request?.Method, true, out Bundle.HTTPVerb httpVerb);
+                var isPost = string.Equals("post", r.Resource.Request?.Method, StringComparison.OrdinalIgnoreCase);
 
-                return new Bundle.EntryComponent
+                return new BundleComponentJsonNode
                 {
-                    FullUrlElement = new FhirUri(_urlResolver.ResolveResourceUrl(resource, true)),
-                    Resource = resource.ToPoco<Resource>(),
-                    Request = new Bundle.RequestComponent
+                    FullUrl = _urlResolver.ResolveResourceUrl(resource, true).ToString(),
+                    Resource = resource.Resource,
+                    Request = new BundleComponentRequestJsonNode
                     {
-                        Method = hasVerb ? (Bundle.HTTPVerb?)httpVerb : null,
-                        Url = hasVerb ? $"{resource.InstanceType}/{(httpVerb == Bundle.HTTPVerb.POST ? null : resource.Id)}" : null,
+                        Method = r.Resource.Request?.Method,
+                        Url = !string.IsNullOrWhiteSpace(r.Resource.Request?.Method) ? $"{resource.InstanceType}/{(isPost ? null : resource.Id)}" : null,
                     },
-                    Response = new Bundle.ResponseComponent
+                    Response = new BundleComponentResponseJsonNode
                     {
-                        LastModified = r.Resource.LastModified,
+                        LastModified = r.Resource.LastModified.ToString("o"),
                         Etag = WeakETag.FromVersionId(r.Resource.Version).ToString(),
                     },
                 };
             });
         }
 
-        private ResourceElement CreateBundle(SearchResult result, Bundle.BundleType type, Func<SearchResultEntry, Bundle.EntryComponent> selectionFunction)
+        private ResourceElement CreateBundle(SearchResult result, string type, Func<SearchResultEntry, BundleComponentJsonNode> selectionFunction)
         {
             EnsureArg.IsNotNull(result, nameof(result));
 
             // Create the bundle from the result.
-            var bundle = new Bundle();
+            var bundle = new BundleJsonNode();
 
             if (result != null)
             {
-                IEnumerable<Bundle.EntryComponent> entries = result.Results.Select(selectionFunction);
+                IEnumerable<BundleComponentJsonNode> entries = result.Results.Select(selectionFunction);
 
-                bundle.Entry.AddRange(entries);
+                bundle.Entry = entries.ToArray();
+                bundle.Link = new List<BundleLinkJsonNode>();
 
                 if (result.ContinuationToken != null)
                 {
-                    bundle.NextLink = _urlResolver.ResolveRouteUrl(
+                    bundle.Link.Add(new BundleLinkJsonNode
+                    {
+                        Relation = "next",
+                        Url = _urlResolver.ResolveRouteUrl(
                         result.UnsupportedSearchParameters,
                         result.UnsupportedSortingParameters,
                         Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(result.ContinuationToken)),
-                        true);
+                        true).ToString(),
+                    });
                 }
             }
 
             // Add the self link to indicate which search parameters were used.
-            bundle.SelfLink = _urlResolver.ResolveRouteUrl(result.UnsupportedSearchParameters, result.UnsupportedSortingParameters);
+            bundle.Link.Add(new BundleLinkJsonNode
+            {
+                Relation = "self",
+                Url = _urlResolver.ResolveRouteUrl(result.UnsupportedSearchParameters, result.UnsupportedSortingParameters).ToString(),
+            });
 
             bundle.Id = _fhirRequestContextAccessor.FhirRequestContext.CorrelationId;
             bundle.Type = type;
             bundle.Total = result?.TotalCount;
-            bundle.Meta = new Meta
+            bundle.Meta = new MetaJsonNode
             {
-                LastUpdated = Clock.UtcNow,
+                LastUpdated = Clock.UtcNow.ToString("o"),
             };
 
-            return bundle.ToResourceElement();
+            return FhirJsonTextNode2.Create(bundle).ToResourceElement(ModelInfoProvider.Instance);
         }
     }
 }
