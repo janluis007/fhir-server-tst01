@@ -6,25 +6,16 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 
-namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes.Models
+namespace Microsoft.Health.Fhir.Core.Features.Serialization.SourceNodes.Models
 {
     [SuppressMessage("Design", "CA2227", Justification = "POCO style model")]
     [SuppressMessage("Design", "CA1056", Justification = "POCO style model")]
-    public class BundleComponentJsonNode
+    public class BundleComponentRequestJsonNode
     {
-        [JsonPropertyName("fullUrl")]
-        public string FullUrl { get; set; }
+        [JsonPropertyName("method")]
+        public string Method { get; set; }
 
-        [JsonPropertyName("resource")]
-        public ResourceBase Resource { get; set; }
-
-        [JsonPropertyName("request")]
-        public BundleComponentRequestJsonNode Request { get; set; }
-
-        [JsonPropertyName("response")]
-        public BundleComponentResponseJsonNode Response { get; set; }
-
-        [JsonPropertyName("search")]
-        public BundleComponentSearchJsonNode Search { get; set; }
+        [JsonPropertyName("url")]
+        public string Url { get; set; }
     }
 }

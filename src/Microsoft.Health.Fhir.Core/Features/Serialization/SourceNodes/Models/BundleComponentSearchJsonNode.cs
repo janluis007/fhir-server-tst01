@@ -3,13 +3,13 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-using System.Collections.Generic;
-using System.Text.Json;
+using System.Text.Json.Serialization;
 
-namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes
+namespace Microsoft.Health.Fhir.Core.Features.Serialization.SourceNodes.Models
 {
-    public interface IExtensionData
+    public class BundleComponentSearchJsonNode
     {
-        IDictionary<string, JsonElement> ExtensionData { get; }
+        [JsonPropertyName("mode")]
+        public string Mode { get; set; }
     }
 }

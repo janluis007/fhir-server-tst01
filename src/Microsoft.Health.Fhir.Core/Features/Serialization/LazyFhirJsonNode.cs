@@ -12,7 +12,7 @@ using Hl7.Fhir.Utility;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Health.Fhir.Core.Serialization
+namespace Microsoft.Health.Fhir.Core.Features.Serialization
 {
     public class LazyFhirJsonNode : ISourceNode, IResourceTypeSupplier, IAnnotated, IExceptionSource
     {

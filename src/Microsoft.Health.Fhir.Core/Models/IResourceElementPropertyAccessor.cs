@@ -3,16 +3,18 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-using System.Text.Json.Serialization;
+using System;
 
-namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes.Models
+namespace Microsoft.Health.Fhir.Core.Models
 {
-    public class BundleComponentResponseJsonNode
+    internal interface IResourceElementPropertyAccessor
     {
-        [JsonPropertyName("lastModified")]
-        public string LastModified { get; set; }
+        string Id { get; }
 
-        [JsonPropertyName("etag")]
-        public string Etag { get; set; }
+        string LastUpdated { get; }
+
+        string VersionId { get; }
+
+        string InstanceType { get; }
     }
 }

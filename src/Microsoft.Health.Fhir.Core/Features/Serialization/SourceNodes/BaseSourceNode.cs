@@ -10,7 +10,7 @@ using System.Text.Json;
 using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Utility;
 
-namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes
+namespace Microsoft.Health.Fhir.Core.Features.Serialization.SourceNodes
 {
     public abstract class BaseSourceNode<T> : ISourceNode, IResourceTypeSupplier, IAnnotated
         where T : IExtensionData
@@ -49,7 +49,7 @@ namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes
                 _cachedNodes = PropertySourceNodes().Concat(ExtensionSourceNodes()).ToList();
             }
 
-            if (name == null)
+            if (string.IsNullOrWhiteSpace(name))
             {
                 return _cachedNodes.SelectMany(x => x.Node.Value);
             }

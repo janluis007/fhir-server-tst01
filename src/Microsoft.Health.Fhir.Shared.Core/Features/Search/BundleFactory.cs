@@ -12,9 +12,9 @@ using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Features.Routing;
+using Microsoft.Health.Fhir.Core.Features.Serialization;
+using Microsoft.Health.Fhir.Core.Features.Serialization.SourceNodes.Models;
 using Microsoft.Health.Fhir.Core.Models;
-using Microsoft.Health.Fhir.Core.Serialization;
-using Microsoft.Health.Fhir.Core.Serialization.SourceNodes.Models;
 using Microsoft.Health.Fhir.ValueSets;
 
 namespace Microsoft.Health.Fhir.Core.Features.Search
@@ -122,7 +122,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
                 LastUpdated = Clock.UtcNow.ToString("o"),
             };
 
-            return FhirJsonTextNode2.Create(bundle).ToResourceElement(ModelInfoProvider.Instance);
+            return JsonSourceNodeFactory.Create(bundle).ToResourceElement(ModelInfoProvider.Instance);
         }
     }
 }

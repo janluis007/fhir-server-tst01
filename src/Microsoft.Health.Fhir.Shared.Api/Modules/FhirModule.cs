@@ -29,8 +29,8 @@ using Microsoft.Health.Fhir.Core.Features.Conformance;
 using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Features.Security;
+using Microsoft.Health.Fhir.Core.Features.Serialization;
 using Microsoft.Health.Fhir.Core.Models;
-using Microsoft.Health.Fhir.Core.Serialization;
 
 namespace Microsoft.Health.Fhir.Api.Modules
 {
@@ -80,7 +80,7 @@ namespace Microsoft.Health.Fhir.Api.Modules
                     {
                         FhirResourceFormat.Json, (str, version, lastModified) =>
                         {
-                            var node = FhirJsonTextNode2.Parse(str)
+                            var node = JsonSourceNodeFactory.Parse(str)
                                 .ToResourceElement(ModelInfoProvider.Instance)
                                 .UpdateVersion(version)
                                 .UpdateLastUpdated(lastModified);

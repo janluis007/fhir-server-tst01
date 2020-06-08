@@ -6,12 +6,14 @@
 using System;
 using System.Collections.Generic;
 using Hl7.Fhir.ElementModel;
-using Microsoft.Health.Fhir.Core.Serialization.SourceNodes.Models;
+using Microsoft.Health.Fhir.Core.Features.Serialization.SourceNodes.Models;
 
-namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes
+namespace Microsoft.Health.Fhir.Core.Features.Serialization.SourceNodes
 {
     internal class MetaSourceNode : BaseSourceNode<MetaJsonNode>
     {
+        private const string _versionIdProperty = "versionId";
+        private const string _lastUpdatedProperty = "lastUpdated";
         private readonly string _name;
         private readonly string _location;
 
@@ -32,8 +34,8 @@ namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes
 
         protected override IEnumerable<(string Name, Lazy<IEnumerable<ISourceNode>> Node)> PropertySourceNodes()
         {
-            yield return ("versionId", new Lazy<IEnumerable<ISourceNode>>(() => new[] { new FhirStringSourceNode(() => Resource.VersionId, "versionId", $"{_location}.versionId") }));
-            yield return ("lastUpdated", new Lazy<IEnumerable<ISourceNode>>(() => new[] { new FhirStringSourceNode(() => Resource.LastUpdated, "lastUpdated", $"{_location}.lastUpdated") }));
+            yield return (_versionIdProperty, new Lazy<IEnumerable<ISourceNode>>(() => new[] { new FhirStringSourceNode(() => Resource.VersionId, _versionIdProperty, $"{_location}.{_versionIdProperty}") }));
+            yield return (_lastUpdatedProperty, new Lazy<IEnumerable<ISourceNode>>(() => new[] { new FhirStringSourceNode(() => Resource.LastUpdated, _lastUpdatedProperty, $"{_location}.{_lastUpdatedProperty}") }));
         }
     }
 }

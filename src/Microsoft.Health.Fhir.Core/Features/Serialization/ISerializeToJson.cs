@@ -3,13 +3,15 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-using System.Text.Json.Serialization;
+using System.IO;
+using System.Threading.Tasks;
 
-namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes.Models
+namespace Microsoft.Health.Fhir.Core.Features.Serialization
 {
-    public class BundleComponentSearchJsonNode
+    public interface ISerializeToJson
     {
-        [JsonPropertyName("mode")]
-        public string Mode { get; set; }
+        string SerializeToJson(bool writeIndented = false);
+
+        Task SerializeToJson(Stream stream, bool writeIndented = false);
     }
 }

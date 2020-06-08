@@ -7,11 +7,11 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 
-namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes.Models
+namespace Microsoft.Health.Fhir.Core.Features.Serialization.SourceNodes.Models
 {
     [SuppressMessage("Design", "CA2227", Justification = "POCO style model")]
     [SuppressMessage("Design", "CA1819", Justification = "POCO style model")]
-    public class BundleJsonNode : ResourceBase
+    public class BundleJsonNode : ResourceJsonNode
     {
         public BundleJsonNode()
         {

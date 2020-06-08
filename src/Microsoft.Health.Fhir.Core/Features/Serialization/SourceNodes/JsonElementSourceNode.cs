@@ -11,10 +11,12 @@ using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Serialization;
 using Hl7.Fhir.Utility;
 
-namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes
+namespace Microsoft.Health.Fhir.Core.Features.Serialization.SourceNodes
 {
     internal class JsonElementSourceNode : ISourceNode, IResourceTypeSupplier, IAnnotated
     {
+        private const string _resourceType = "resourceType";
+        private const char _shadowNodePrefix = '_';
         private readonly JsonElement? _valueElement;
         private readonly JsonElement? _contentElement;
         private readonly string _name;
@@ -22,7 +24,7 @@ namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes
         private readonly string _location;
         private IList<(string Name, Lazy<IEnumerable<ISourceNode>> Node)> _cachedNodes;
 
-        public JsonElementSourceNode(JsonElement? valueElement, JsonElement? contentElement, string name, int? arrayIndex, string location)
+        private JsonElementSourceNode(JsonElement? valueElement, JsonElement? contentElement, string name, int? arrayIndex, string location)
         {
             _valueElement = valueElement;
             _contentElement = contentElement;
@@ -39,9 +41,10 @@ namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes
             {
                 if (_valueElement?.ValueKind == JsonValueKind.String)
                 {
-                    if (_valueElement?.GetString() != null)
+                    string stringValue = _valueElement?.GetString();
+                    if (stringValue != null)
                     {
-                        return _valueElement?.GetString().Trim();
+                        return stringValue?.Trim();
                     }
                 }
 
@@ -65,11 +68,18 @@ namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes
 
         public string Location => _location;
 
-        public string ResourceType => _contentElement != null ? GetResourceTypePropertyFromObject(_contentElement.Value, _name)?.GetString() : null;
+        public string ResourceType
+        {
+            get
+            {
+                // Root or "contained" resources can have their own ResourceType
+                return _contentElement?.ValueKind == JsonValueKind.Object ? GetResourceTypePropertyFromObject(_contentElement.Value, _name)?.GetString() : null;
+            }
+        }
 
         public IEnumerable<object> Annotations(Type type)
         {
-            if (type == typeof(FhirJsonTextNode2) || type == typeof(ISourceNode) || type == typeof(IResourceTypeSupplier))
+            if (type == GetType() || type == typeof(ISourceNode) || type == typeof(IResourceTypeSupplier))
             {
                 return new[] { this };
             }
@@ -94,7 +104,7 @@ namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes
                 _cachedNodes = list;
             }
 
-            if (name == null)
+            if (string.IsNullOrWhiteSpace(name))
             {
                 return _cachedNodes.SelectMany(x => x.Node.Value);
             }
@@ -108,9 +118,9 @@ namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes
         {
             var list = new List<(string, Lazy<IEnumerable<ISourceNode>>)>();
 
-            foreach (var item in objectEnumerator
-                .GroupBy(x => x.Name.TrimStart('_'))
-                .Where(x => !string.Equals(x.Key, "resourceType", StringComparison.OrdinalIgnoreCase)))
+            foreach (IGrouping<string, (string Name, JsonElement Value)> item in objectEnumerator
+                .GroupBy(x => x.Name.TrimStart(_shadowNodePrefix))
+                .Where(x => !string.Equals(x.Key, _resourceType, StringComparison.OrdinalIgnoreCase)))
             {
                 if (item.Count() == 1)
                 {
@@ -120,30 +130,35 @@ namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes
                 }
                 else if (item.Count() == 2)
                 {
-                    var fistInnerItem = item.SingleOrDefault(x => !x.Name.Contains("_", StringComparison.Ordinal));
-                    var lastInnerItem = item.SingleOrDefault(x => x.Name.Contains("_", StringComparison.Ordinal));
-                    var values = (fistInnerItem.Name, new Lazy<IEnumerable<ISourceNode>>(() => JsonElementToSourceNodes(fistInnerItem.Name, location, fistInnerItem.Value, lastInnerItem.Value)));
+                    // Occurs when there is a shadow node, for example:
+                    // birthDate: "2000-..."
+                    // _birthDate: { extension: ... }
+                    var innerItem = item.SingleOrDefault(x => !x.Name.StartsWith(_shadowNodePrefix));
+                    var shadowItem = item.SingleOrDefault(x => x.Name.StartsWith(_shadowNodePrefix));
+                    var values = (innerItem.Name, new Lazy<IEnumerable<ISourceNode>>(() => JsonElementToSourceNodes(innerItem.Name, location, innerItem.Value, shadowItem.Value)));
                     list.Add(values);
                 }
                 else
                 {
-                    throw new Exception($"Expected 1 or two nodes with name '{item.Key}'");
+                    throw new Exception($"Expected 1 or 2 nodes with name '{item.Key}'");
                 }
             }
 
             return list;
         }
 
-        internal static IEnumerable<ISourceNode> JsonElementToSourceNodes(string name, string location, JsonElement item, JsonElement? shadowItem = null)
+        private static IEnumerable<ISourceNode> JsonElementToSourceNodes(string name, string location, JsonElement item, JsonElement? shadowItem = null)
         {
-            (IReadOnlyList<JsonElement> List, bool ArrayProperty) itemList = ToList(item);
-            (IReadOnlyList<JsonElement> List, bool ArrayProperty)? shadowItemList = shadowItem != null ? ((IReadOnlyList<JsonElement> List, bool ArrayProperty)?)ToList(shadowItem.Value) : (Array.Empty<JsonElement>(), false);
+            (IReadOnlyList<JsonElement> List, bool ArrayProperty) itemList = ExpandArray(item);
+            (IReadOnlyList<JsonElement> List, bool ArrayProperty)? shadowItemList = shadowItem != null ?
+                ((IReadOnlyList<JsonElement> List, bool ArrayProperty)?)ExpandArray(shadowItem.Value) : (Array.Empty<JsonElement>(), false);
 
             var isArray = itemList.ArrayProperty | shadowItemList?.ArrayProperty ?? false;
             for (int i = 0; i < Math.Max(itemList.List.Count, shadowItemList?.List.Count ?? 0); i++)
             {
-                var first = At(itemList.List, i);
-                var shadow = At(shadowItemList?.List, i);
+                JsonElement? first = ItemAt(itemList.List, i);
+                JsonElement? shadow = ItemAt(shadowItemList?.List, i);
+
                 JsonElement? content = null;
                 JsonElement? value = null;
 
@@ -169,7 +184,7 @@ namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes
                     itemLocation);
             }
 
-            (IReadOnlyList<JsonElement> List, bool ArrayProperty) ToList(JsonElement prop)
+            (IReadOnlyList<JsonElement> List, bool ArrayProperty) ExpandArray(JsonElement prop)
             {
                 if (prop.ValueKind == JsonValueKind.Null)
                 {
@@ -184,12 +199,12 @@ namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes
                 return (new[] { prop }, false);
             }
 
-            JsonElement? At(IReadOnlyList<JsonElement> list, int i) => list?.Count > i ? (JsonElement?)list[i] : null;
+            JsonElement? ItemAt(IReadOnlyList<JsonElement> list, int i) => list?.Count > i ? (JsonElement?)list[i] : null;
         }
 
         private static JsonElement? GetResourceTypePropertyFromObject(JsonElement o, string name)
         {
-            return !o.TryGetProperty(JsonSerializationDetails.RESOURCETYPE_MEMBER_NAME, out var type) ? null
+            return !o.TryGetProperty(_resourceType, out JsonElement type) ? null
                 : type.ValueKind == JsonValueKind.String && name != "instance" ? (JsonElement?)type : null;
         }
     }

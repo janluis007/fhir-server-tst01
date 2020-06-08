@@ -12,12 +12,12 @@ using Hl7.Fhir.Serialization;
 using Hl7.Fhir.Utility;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Health.Fhir.Core.Serialization
+namespace Microsoft.Health.Fhir.Core.Features.Serialization
 {
     /// <summary>
     /// An JSON implementation of ISourceNode based on System.Text.Json
     /// </summary>
-    public class FhirJsonTextNode : ISourceNode, IResourceTypeSupplier, IAnnotated, IDisposable
+    public class DynamicFhirJsonTextNode : ISourceNode, IResourceTypeSupplier, IAnnotated, IDisposable
     {
         private readonly JsonMergeSettings _jsonMergeSettings = new JsonMergeSettings
         {
@@ -36,12 +36,12 @@ namespace Microsoft.Health.Fhir.Core.Serialization
         private Lazy<string> _location;
         private JObject _modifyObject;
 
-        private FhirJsonTextNode(JsonDocument jsonDocument, string nodeName)
+        private DynamicFhirJsonTextNode(JsonDocument jsonDocument, string nodeName)
         {
             Initialize(jsonDocument, nodeName);
         }
 
-        private FhirJsonTextNode(string name, JsonElement? value, JsonElement? content, bool usesShadow, int? arrayIndex, string location)
+        private DynamicFhirJsonTextNode(string name, JsonElement? value, JsonElement? content, bool usesShadow, int? arrayIndex, string location)
         {
             _name = new Lazy<string>(() => name);
             _location = new Lazy<string>(() => location);
@@ -107,7 +107,7 @@ namespace Microsoft.Health.Fhir.Core.Serialization
 
         public static ISourceNode Create(JsonDocument document, string nodeName = null)
         {
-            return new FhirJsonTextNode(document, nodeName);
+            return new DynamicFhirJsonTextNode(document, nodeName);
         }
 
         public void Merge(params object[] replacements)
@@ -185,7 +185,7 @@ namespace Microsoft.Health.Fhir.Core.Serialization
             return main.Name[0] != '_' ? (main, shadow) : (shadow, main);
         }
 
-        private IEnumerable<FhirJsonTextNode> GivenEnumerateElement(string name, JsonProperty main, JsonProperty shadow)
+        private IEnumerable<DynamicFhirJsonTextNode> GivenEnumerateElement(string name, JsonProperty main, JsonProperty shadow)
         {
             // Even if main/shadow has errors (i.e. not both are an array, number of items are not the same
             // we should be getting some kind of minimal useable list from the next two statements and
@@ -232,7 +232,7 @@ namespace Microsoft.Health.Fhir.Core.Serialization
             ExceptionNotification.Error(Error.Format("Parser: " + message));
         }
 
-        private FhirJsonTextNode BuildNode(string name, JsonElement? main, JsonElement? shadow, bool isArrayElement, int index)
+        private DynamicFhirJsonTextNode BuildNode(string name, JsonElement? main, JsonElement? shadow, bool isArrayElement, int index)
         {
             JsonElement? value = null;
             JsonElement? contents = null;
@@ -304,7 +304,7 @@ namespace Microsoft.Health.Fhir.Core.Serialization
             }
 
             var location = $"{Location}.{name}[{index}]";
-            return new FhirJsonTextNode(
+            return new DynamicFhirJsonTextNode(
                 name,
                 value,
                 contents,
@@ -329,7 +329,7 @@ namespace Microsoft.Health.Fhir.Core.Serialization
 
         public IEnumerable<object> Annotations(Type type)
         {
-            if (type == typeof(FhirJsonTextNode) || type == typeof(FhirJsonNode) || type == typeof(ISourceNode) || type == typeof(IResourceTypeSupplier))
+            if (type == typeof(DynamicFhirJsonTextNode) || type == typeof(FhirJsonNode) || type == typeof(ISourceNode) || type == typeof(IResourceTypeSupplier))
             {
                 return new[] { this };
             }

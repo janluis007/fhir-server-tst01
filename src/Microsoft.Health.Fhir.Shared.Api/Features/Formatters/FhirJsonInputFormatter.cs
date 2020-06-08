@@ -16,8 +16,8 @@ using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Health.Fhir.Api.Features.ContentTypes;
 using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features;
+using Microsoft.Health.Fhir.Core.Features.Serialization;
 using Microsoft.Health.Fhir.Core.Models;
-using Microsoft.Health.Fhir.Core.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using JsonSerializer = System.Text.Json.JsonSerializer;
@@ -81,7 +81,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Formatters
                     // var obj = (JObject)await JToken.ReadFromAsync(jsonReader, context.HttpContext.RequestAborted).ConfigureAwait(false);
                     // model = LazyFhirJsonNode.Create(obj, null).ToResourceElement(ModelInfoProvider.Instance);
 
-                    model = (await FhirJsonTextNode2.Parse(request.Body)).ToResourceElement(ModelInfoProvider.Instance);
+                    model = (await JsonSourceNodeFactory.Parse(request.Body)).ToResourceElement(ModelInfoProvider.Instance);
                 }
                 catch (Exception ex)
                 {

@@ -11,9 +11,8 @@ using EnsureThat;
 using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Serialization;
 using Hl7.FhirPath;
-using Microsoft.Health.Fhir.Core.Serialization;
-using Microsoft.Health.Fhir.Core.Serialization.SourceNodes;
-using Microsoft.Health.Fhir.Core.Serialization.SourceNodes.Models;
+using Microsoft.Health.Fhir.Core.Features.Serialization;
+using Microsoft.Health.Fhir.Core.Features.Serialization.SourceNodes.Models;
 using Newtonsoft.Json;
 
 namespace Microsoft.Health.Fhir.Core.Models
@@ -23,10 +22,11 @@ namespace Microsoft.Health.Fhir.Core.Models
     /// </summary>
     public class ResourceElement
     {
-        private readonly FhirJsonTextNode2 _sourceNode;
-        private readonly IModelInfoProvider _modelInfoProvider;
-        private readonly bool isReadOnly = false;
+        private readonly FhirJsonTextNode _sourceNode;
+        private readonly bool _isReadOnly = false;
         private readonly Lazy<EvaluationContext> _context = new Lazy<EvaluationContext>(() => new EvaluationContext());
+        private readonly Lazy<ITypedElement> _typedElement;
+        private readonly IResourceElementPropertyAccessor _propertyAccessor;
 
         private readonly List<string> _nonDomainTypes = new List<string>
         {
@@ -35,14 +35,13 @@ namespace Microsoft.Health.Fhir.Core.Models
             "Binary",
         };
 
-        private Lazy<ITypedElement> _typedElement;
-
         public ResourceElement(ITypedElement sourceNode)
         {
             EnsureArg.IsNotNull(sourceNode, nameof(sourceNode));
 
             _typedElement = new Lazy<ITypedElement>(() => sourceNode);
-            isReadOnly = true;
+            _propertyAccessor = new FhirPathPropertyAccessor(sourceNode, _context);
+            _isReadOnly = true;
         }
 
         public ResourceElement(ISourceNode sourceNode, IModelInfoProvider modelInfoProvider)
@@ -50,28 +49,28 @@ namespace Microsoft.Health.Fhir.Core.Models
             EnsureArg.IsNotNull(sourceNode, nameof(sourceNode));
             EnsureArg.IsNotNull(modelInfoProvider, nameof(modelInfoProvider));
 
-            if (sourceNode is FhirJsonTextNode2 node)
+            if (sourceNode is FhirJsonTextNode node)
             {
                 _sourceNode = node;
             }
             else
             {
-                _sourceNode = (FhirJsonTextNode2)FhirJsonTextNode2.Parse(sourceNode.ToTypedElement(modelInfoProvider.StructureDefinitionSummaryProvider).ToJson());
+                _sourceNode = (FhirJsonTextNode)JsonSourceNodeFactory.Parse(sourceNode.ToTypedElement(modelInfoProvider.StructureDefinitionSummaryProvider).ToJson());
             }
 
-            _modelInfoProvider = modelInfoProvider;
-            SetupTypedElement();
+            _propertyAccessor = new ResourceJsonNodePropertyAccessor(_sourceNode.Resource);
+            _typedElement = new Lazy<ITypedElement>(() => _sourceNode.ToTypedElement(modelInfoProvider.StructureDefinitionSummaryProvider));
         }
 
-        public string InstanceType => _sourceNode != null ? _sourceNode.GetResourceTypeIndicator() : _typedElement.Value.InstanceType;
+        public string InstanceType => _propertyAccessor.InstanceType;
 
         public ITypedElement Instance => _typedElement.Value;
 
-        public ResourceBase Resource => _sourceNode.Resource;
+        public ResourceJsonNode Resource => _sourceNode?.Resource;
 
-        public string Id => Resource.Id;
+        public string Id => _propertyAccessor.Id;
 
-        public string VersionId => Resource.Meta?.VersionId;
+        public string VersionId => _propertyAccessor.VersionId;
 
         public bool IsDomainResource => !_nonDomainTypes.Contains(InstanceType, StringComparer.OrdinalIgnoreCase);
 
@@ -79,7 +78,7 @@ namespace Microsoft.Health.Fhir.Core.Models
         {
             get
             {
-                var obj = Resource.Meta?.LastUpdated;
+                var obj = _propertyAccessor.LastUpdated;
                 if (obj != null)
                 {
                     return PrimitiveTypeConverter.ConvertTo<DateTimeOffset>(obj);
@@ -107,14 +106,10 @@ namespace Microsoft.Health.Fhir.Core.Models
 
         public ResourceElement UpdateId(string id)
         {
-            if (isReadOnly)
+            if (_isReadOnly)
             {
                 throw new NotSupportedException();
             }
-
-            // _sourceNode.JsonObject.Merge(JObject.FromObject(new { id }), _jsonMergeSettings);
-
-            // _sourceNode.Merge(new { id });
 
             _sourceNode.Resource.Id = id;
 
@@ -123,14 +118,10 @@ namespace Microsoft.Health.Fhir.Core.Models
 
         public ResourceElement UpdateVersion(string version)
         {
-            if (isReadOnly)
+            if (_isReadOnly)
             {
                 throw new NotSupportedException();
             }
-
-            // _sourceNode.JsonObject.Merge(JObject.FromObject(new { meta = new { versionId = version } }), _jsonMergeSettings);
-
-            // _sourceNode.Merge(new { meta = new { versionId = version } });
 
             _sourceNode.Resource.Meta.VersionId = version;
 
@@ -139,14 +130,10 @@ namespace Microsoft.Health.Fhir.Core.Models
 
         public ResourceElement UpdateLastUpdated(DateTimeOffset? lastUpdated)
         {
-            if (isReadOnly)
+            if (_isReadOnly)
             {
                 throw new NotSupportedException();
             }
-
-            // _sourceNode.JsonObject.Merge(JObject.FromObject(new { meta = new { lastUpdated = lastUpdated?.ToString("o", CultureInfo.InvariantCulture) } }), _jsonMergeSettings);
-
-            // _sourceNode.Merge(new { meta = new { lastUpdated = lastUpdated?.ToString("o", CultureInfo.InvariantCulture) } });
 
             _sourceNode.Resource.Meta.VersionId = lastUpdated?.ToString("o", CultureInfo.InvariantCulture);
 
@@ -157,7 +144,7 @@ namespace Microsoft.Health.Fhir.Core.Models
         {
             if (_sourceNode != null)
             {
-                return _sourceNode.SerializeToJson();
+                return _sourceNode.SerializeToJson(settings?.Pretty ?? false);
             }
             else
             {
@@ -178,14 +165,46 @@ namespace Microsoft.Health.Fhir.Core.Models
             }
         }
 
-        private void SetupTypedElement()
+        private class FhirPathPropertyAccessor : IResourceElementPropertyAccessor
         {
-            if (isReadOnly)
+            private readonly ITypedElement _typedElement;
+            private readonly Lazy<EvaluationContext> _evaluationContext;
+
+            public FhirPathPropertyAccessor(ITypedElement typedElement, Lazy<EvaluationContext> evaluationContext)
             {
-                throw new NotSupportedException();
+                EnsureArg.IsNotNull(typedElement, nameof(typedElement));
+
+                _typedElement = typedElement;
+                _evaluationContext = evaluationContext;
             }
 
-            _typedElement = new Lazy<ITypedElement>(() => _sourceNode.ToTypedElement(_modelInfoProvider.StructureDefinitionSummaryProvider));
+            public string Id => (string)_typedElement.Scalar("Resource.id", _evaluationContext.Value);
+
+            public string LastUpdated => _typedElement.Scalar("Resource.meta.lastUpdated", _evaluationContext.Value)?.ToString();
+
+            public string VersionId => (string)_typedElement.Scalar("Resource.meta.versionId", _evaluationContext.Value);
+
+            public string InstanceType => _typedElement.InstanceType;
+        }
+
+        private class ResourceJsonNodePropertyAccessor : IResourceElementPropertyAccessor
+        {
+            private readonly ResourceJsonNode _element;
+
+            public ResourceJsonNodePropertyAccessor(ResourceJsonNode element)
+            {
+                EnsureArg.IsNotNull(element, nameof(element));
+
+                _element = element;
+            }
+
+            public string Id => _element.Id;
+
+            public string LastUpdated => _element.Meta?.LastUpdated;
+
+            public string VersionId => _element.Meta?.VersionId;
+
+            public string InstanceType => _element.ResourceType;
         }
     }
 }

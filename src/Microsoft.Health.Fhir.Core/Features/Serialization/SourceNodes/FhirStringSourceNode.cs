@@ -9,7 +9,7 @@ using System.Linq;
 using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Utility;
 
-namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes
+namespace Microsoft.Health.Fhir.Core.Features.Serialization.SourceNodes
 {
     internal class FhirStringSourceNode : ISourceNode, IResourceTypeSupplier, IAnnotated
     {
@@ -34,7 +34,7 @@ namespace Microsoft.Health.Fhir.Core.Serialization.SourceNodes
 
         public IEnumerable<object> Annotations(Type type)
         {
-            if (type == typeof(FhirJsonTextNode2) || type == typeof(ISourceNode) || type == typeof(IResourceTypeSupplier))
+            if (type == typeof(FhirJsonTextNode) || type == typeof(ISourceNode) || type == typeof(IResourceTypeSupplier))
             {
                 return new[] { this };
             }
