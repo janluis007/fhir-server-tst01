@@ -10,11 +10,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
 using MediatR;
-using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.Cosmos;
+using Microsoft.Azure.Cosmos.Scripts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Health.Abstractions.Exceptions;
+using Microsoft.Health.CosmosDb.Features.Queries;
 using Microsoft.Health.CosmosDb.Features.Storage;
 using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.CosmosDb.Features.Metrics;
@@ -52,7 +53,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
 
             EnsureArg.IsNotNull(ex, nameof(ex));
 
-            if (ex is DocumentClientException dce)
+            if (ex is CosmosException dce)
             {
                 await ProcessResponse(sessionToken: null, dce.RequestCharge, dce.StatusCode);
 
@@ -79,20 +80,22 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
             }
         }
 
-        public async Task ProcessResponse<T>(T resourceResponseBase)
-            where T : IResourceResponseBase
+        public async Task<ItemResponse<T>> ProcessResponse<T>(ItemResponse<T> feedResponse)
         {
-            await ProcessResponse(resourceResponseBase.SessionToken, resourceResponseBase.RequestCharge, resourceResponseBase.StatusCode);
+            await ProcessResponse(feedResponse.Headers.Session, feedResponse.RequestCharge, statusCode: null);
+            return feedResponse;
         }
 
-        public async Task ProcessResponse<T>(IFeedResponse<T> feedResponse)
+        public async Task<FeedResponse<T>> ProcessResponse<T>(FeedResponse<T> feedResponse)
         {
-            await ProcessResponse(feedResponse.SessionToken, feedResponse.RequestCharge, statusCode: null);
+            await ProcessResponse(feedResponse.Headers.Session, feedResponse.RequestCharge, statusCode: null);
+            return feedResponse;
         }
 
-        public async Task ProcessResponse<T>(IStoredProcedureResponse<T> storedProcedureResponse)
+        public async Task<StoredProcedureExecuteResponse<T>> ProcessResponse<T>(StoredProcedureExecuteResponse<T> storedProcedureResponse)
         {
             await ProcessResponse(storedProcedureResponse.SessionToken, storedProcedureResponse.RequestCharge, storedProcedureResponse.StatusCode);
+            return storedProcedureResponse;
         }
 
         /// <summary>

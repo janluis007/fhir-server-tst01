@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Health.CosmosDb.Configs;
+using Microsoft.Health.CosmosDb.Features.Queries;
 using Microsoft.Health.CosmosDb.Features.Storage;
 using Microsoft.Health.CosmosDb.Features.Storage.StoredProcedures;
 using Microsoft.Health.CosmosDb.Features.Storage.Versioning;
@@ -80,9 +81,9 @@ namespace Microsoft.Extensions.DependencyInjection
                 .AsSelf()
                 .AsService<IUpgradeManager>();
 
-            services.Add<FhirDocumentQueryLogger>()
+            services.Add<DocumentQueryLogger>()
                 .Singleton()
-                .AsService<IFhirDocumentQueryLogger>();
+                .AsService<IDocumentQueryLogger>();
 
             services.Add<CollectionInitializer>(sp =>
                 {
@@ -120,7 +121,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 .AsSelf()
                 .AsService<IFhirStoredProcedure>();
 
-            services.Add<FhirCosmosDocumentQueryFactory>()
+            services.Add<CosmosQueryFactory>()
                 .Singleton()
                 .AsSelf();
 

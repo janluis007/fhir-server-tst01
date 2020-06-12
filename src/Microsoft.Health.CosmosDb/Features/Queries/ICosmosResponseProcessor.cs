@@ -6,20 +6,20 @@
 using System;
 using System.Net;
 using System.Threading.Tasks;
-using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.Cosmos;
+using Microsoft.Azure.Cosmos.Scripts;
 
-namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
+namespace Microsoft.Health.CosmosDb.Features.Queries
 {
     public interface ICosmosResponseProcessor
     {
         Task ProcessException(Exception ex);
 
-        Task ProcessResponse<T>(T resourceResponseBase)
-            where T : IResourceResponseBase;
+        Task<ItemResponse<T>> ProcessResponse<T>(ItemResponse<T> feedResponse);
 
-        Task ProcessResponse<T>(IFeedResponse<T> feedResponse);
+        Task<FeedResponse<T>> ProcessResponse<T>(FeedResponse<T> feedResponse);
 
-        Task ProcessResponse<T>(IStoredProcedureResponse<T> storedProcedureResponse);
+        Task<StoredProcedureExecuteResponse<T>> ProcessResponse<T>(StoredProcedureExecuteResponse<T> storedProcedureResponse);
 
         Task ProcessResponse(string sessionToken, double responseRequestCharge, HttpStatusCode? statusCode);
     }
