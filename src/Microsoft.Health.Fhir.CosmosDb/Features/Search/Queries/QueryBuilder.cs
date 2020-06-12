@@ -107,7 +107,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search.Queries
                 return query;
             }
 
-            private void AppendSelectFromRoot(string selectList = SearchValueConstants.RootAliasName)
+            private void AppendSelectFromRoot(string selectList = SearchValueConstants.SelectedFields)
             {
                 _queryHelper.AppendSelectFromRoot(selectList);
             }

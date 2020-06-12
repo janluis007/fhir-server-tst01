@@ -106,10 +106,10 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
                     searchOptions.UnsupportedSearchParams);
             }
 
-            FeedResponse<Document> fetchedResults = await _fhirDataStore.ExecuteDocumentQueryAsync<Document>(sqlQuerySpec, feedOptions, cancellationToken);
+            FeedResponse<FhirCosmosResourceWrapper> fetchedResults = await _fhirDataStore.ExecuteDocumentQueryAsync<FhirCosmosResourceWrapper>(sqlQuerySpec, feedOptions, cancellationToken);
 
             SearchResultEntry[] wrappers = fetchedResults
-                .Select(r => new SearchResultEntry(r.GetPropertyValue<FhirCosmosResourceWrapper>(SearchValueConstants.RootAliasName))).ToArray();
+                .Select(r => new SearchResultEntry(r)).ToArray();
 
             IReadOnlyList<(string parameterName, string reason)> unsupportedSortingParameters;
             if (searchOptions.Sort?.Count > 0)

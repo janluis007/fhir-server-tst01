@@ -24,6 +24,7 @@ using Microsoft.Health.Fhir.Core.Exceptions;
 using Microsoft.Health.Fhir.Core.Features.Conformance;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Models;
+using Microsoft.Health.Fhir.CosmosDb.Features.Search;
 using Microsoft.Health.Fhir.CosmosDb.Features.Storage.StoredProcedures.HardDelete;
 using Microsoft.Health.Fhir.CosmosDb.Features.Storage.StoredProcedures.Upsert;
 using Microsoft.Health.Fhir.ValueSets;
@@ -171,7 +172,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
                     new SqlParameter("@version", key.VersionId),
                 });
 
-                var sqlQuerySpec = new SqlQuerySpec("select * from root r where r.resourceId = @resourceId and r.version = @version", sqlParameterCollection);
+                var sqlQuerySpec = new SqlQuerySpec($"select {SearchValueConstants.SelectedFields} from root r where r.resourceId = @resourceId and r.version = @version", sqlParameterCollection);
 
                 var result = await ExecuteDocumentQueryAsync<FhirCosmosResourceWrapper>(
                     sqlQuerySpec,
