@@ -5,15 +5,18 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using EnsureThat;
-using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.Cosmos;
+using Microsoft.Azure.Cosmos.Fluent;
 using Microsoft.Extensions.Logging;
 using Microsoft.Health.CosmosDb.Configs;
+using Microsoft.Health.CosmosDb.Features.Queries;
 using Microsoft.Health.CosmosDb.Features.Storage;
 using Microsoft.Health.Fhir.Core.Features.Context;
+using Microsoft.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
@@ -40,83 +43,71 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
         }
 
         /// <inheritdoc />
-        public IDocumentClient CreateDocumentClient(CosmosDataStoreConfiguration configuration)
+        public CosmosClient CreateDocumentClient(CosmosDataStoreConfiguration configuration)
         {
             EnsureArg.IsNotNull(configuration, nameof(configuration));
 
-            _logger.LogInformation("Creating DocumentClient instance for {DatabaseUrl}", configuration.RelativeDatabaseUri);
+            _logger.LogInformation("Creating DocumentClient instance for {DatabaseId}", configuration.DatabaseId);
 
-            var connectionPolicy = new ConnectionPolicy
+            var host = configuration.Host;
+            var key = configuration.Key;
+
+            if (string.IsNullOrWhiteSpace(host) && string.IsNullOrWhiteSpace(key))
             {
-                ConnectionMode = configuration.ConnectionMode,
-                ConnectionProtocol = configuration.ConnectionProtocol,
-                RetryOptions = new RetryOptions
-                {
-                    MaxRetryAttemptsOnThrottledRequests = configuration.RetryOptions.MaxNumberOfRetries,
-                    MaxRetryWaitTimeInSeconds = configuration.RetryOptions.MaxWaitTimeInSeconds,
-                },
-            };
-
-            if (configuration.PreferredLocations != null && configuration.PreferredLocations.Any())
-            {
-                _logger.LogInformation("Setting DocumentClient PreferredLocations to {PreferredLocations}", string.Join(";", configuration.PreferredLocations));
-
-                foreach (var preferredLocation in configuration.PreferredLocations)
-                {
-                    connectionPolicy.PreferredLocations.Add(preferredLocation);
-                }
+                host = CosmosDbLocalEmulator.Host;
+                key = CosmosDbLocalEmulator.Key;
             }
 
-            // Setting TypeNameHandling to any value other than 'None' will be flagged
-            // as causing potential security issues
-            var serializerSettings = new JsonSerializerSettings
+            var builder = new CosmosClientBuilder(host, key)
+                .WithConnectionModeDirect()
+                .WithCustomSerializer(new NewtonsoftSerializer())
+                .WithThrottlingRetryOptions(TimeSpan.FromSeconds(configuration.RetryOptions.MaxWaitTimeInSeconds), configuration.RetryOptions.MaxNumberOfRetries);
+
+            if (configuration.PreferredLocations?.Any() == true)
             {
-                NullValueHandling = NullValueHandling.Ignore,
-                DateFormatHandling = DateFormatHandling.IsoDateFormat,
-                DateParseHandling = DateParseHandling.DateTimeOffset,
-                DateTimeZoneHandling = DateTimeZoneHandling.RoundtripKind,
-                TypeNameHandling = TypeNameHandling.None,
-            };
+                builder.WithApplicationPreferredRegions(configuration.PreferredLocations?.ToArray());
+            }
 
-            serializerSettings.Converters.Add(new StringEnumConverter());
+            if (configuration.DefaultConsistencyLevel != null)
+            {
+                builder.WithConsistencyLevel(configuration.DefaultConsistencyLevel.Value);
+            }
 
-            // By default, the Json.NET serializer uses 'F' instead of 'f' for fractions.
-            // 'F' will omit the trailing digits if they are 0. You might end up getting something like '2018-02-07T20:04:49.97114+00:00'
-            // where the fraction is actually 971140. Because the ordering is done as string,
-            // if the values don't always have complete 7 digits, the comparison might not work properly.
-            serializerSettings.Converters.Add(new IsoDateTimeConverter { DateTimeFormat = "o" });
+            return builder.Build();
+        }
 
-            return new FhirDocumentClient(
-                new DocumentClient(new Uri(configuration.Host), configuration.Key, serializerSettings, connectionPolicy, configuration.DefaultConsistencyLevel),
+        public Container CreateFhirContainer(CosmosClient client, string databaseId, string collectionId, int? continuationTokenSizeLimitInKb)
+        {
+            return new FhirContainer(
+                client,
+                client.GetContainer(databaseId, collectionId),
                 _fhirRequestContextAccessor,
-                configuration.ContinuationTokenSizeLimitInKb,
+                continuationTokenSizeLimitInKb,
                 _cosmosResponseProcessor);
         }
 
         /// <inheritdoc />
-        public async Task OpenDocumentClient(IDocumentClient client, CosmosDataStoreConfiguration configuration, CosmosCollectionConfiguration cosmosCollectionConfiguration)
+        public async Task OpenDocumentClient(CosmosClient client, CosmosDataStoreConfiguration configuration, CosmosCollectionConfiguration cosmosCollectionConfiguration)
         {
             EnsureArg.IsNotNull(client, nameof(client));
             EnsureArg.IsNotNull(configuration, nameof(configuration));
 
-            Uri absoluteCollectionUri = configuration.GetAbsoluteCollectionUri(cosmosCollectionConfiguration.CollectionId);
-
-            _logger.LogInformation("Opening DocumentClient connection to {CollectionUri}", absoluteCollectionUri);
+            _logger.LogInformation("Opening DocumentClient connection to {CollectionId}", cosmosCollectionConfiguration.CollectionId);
             try
             {
-                await _testProvider.PerformTest(client, configuration, cosmosCollectionConfiguration);
+                await _testProvider.PerformTest(client.GetContainer(configuration.DatabaseId, cosmosCollectionConfiguration.CollectionId), configuration, cosmosCollectionConfiguration);
 
-                _logger.LogInformation("Established DocumentClient connection to {CollectionUri}", absoluteCollectionUri);
+                _logger.LogInformation("Established DocumentClient connection to {CollectionId}", cosmosCollectionConfiguration.CollectionId);
             }
             catch (Exception e)
             {
-                _logger.LogCritical(e, "Failed to connect to DocumentClient collection {CollectionUri}", absoluteCollectionUri);
+                _logger.LogCritical(e, "Failed to connect to DocumentClient collection {CollectionId}", cosmosCollectionConfiguration.CollectionId);
                 throw;
             }
         }
 
         /// <inheritdoc />
-        public async Task InitializeDataStore(IDocumentClient documentClient, CosmosDataStoreConfiguration cosmosDataStoreConfiguration, IEnumerable<ICollectionInitializer> collectionInitializers)
+        public async Task InitializeDataStore(CosmosClient documentClient, CosmosDataStoreConfiguration cosmosDataStoreConfiguration, IEnumerable<ICollectionInitializer> collectionInitializers)
         {
             EnsureArg.IsNotNull(documentClient, nameof(documentClient));
             EnsureArg.IsNotNull(cosmosDataStoreConfiguration, nameof(cosmosDataStoreConfiguration));
@@ -130,13 +121,9 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
                 {
                     _logger.LogDebug("CreateDatabaseIfNotExists {DatabaseId})", cosmosDataStoreConfiguration.DatabaseId);
 
-                    var options = new RequestOptions { OfferThroughput = cosmosDataStoreConfiguration.InitialDatabaseThroughput };
                     await documentClient.CreateDatabaseIfNotExistsAsync(
-                        new Database
-                        {
-                            Id = cosmosDataStoreConfiguration.DatabaseId,
-                        },
-                        options);
+                        cosmosDataStoreConfiguration.DatabaseId,
+                        cosmosDataStoreConfiguration.InitialDatabaseThroughput.HasValue ? ThroughputProperties.CreateManualThroughput(cosmosDataStoreConfiguration.InitialDatabaseThroughput.Value) : null);
                 }
 
                 foreach (var collectionInitializer in collectionInitializers)
@@ -150,6 +137,55 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
             {
                 _logger.LogCritical(ex, "Cosmos DB Database {DatabaseId} and collections initialization failed", cosmosDataStoreConfiguration.DatabaseId);
                 throw;
+            }
+        }
+
+        private class NewtonsoftSerializer : CosmosSerializer
+        {
+            private readonly JsonSerializer _serializer;
+            private RecyclableMemoryStreamManager _manager = new RecyclableMemoryStreamManager();
+
+            public NewtonsoftSerializer()
+            {
+                // Setting TypeNameHandling to any value other than 'None' will be flagged
+                // as causing potential security issues
+                var serializerSettings = new JsonSerializerSettings
+                {
+                    NullValueHandling = NullValueHandling.Ignore,
+                    DateFormatHandling = DateFormatHandling.IsoDateFormat,
+                    DateParseHandling = DateParseHandling.DateTimeOffset,
+                    DateTimeZoneHandling = DateTimeZoneHandling.RoundtripKind,
+                    TypeNameHandling = TypeNameHandling.None,
+                };
+
+                serializerSettings.Converters.Add(new StringEnumConverter());
+
+                // By default, the Json.NET serializer uses 'F' instead of 'f' for fractions.
+                // 'F' will omit the trailing digits if they are 0. You might end up getting something like '2018-02-07T20:04:49.97114+00:00'
+                // where the fraction is actually 971140. Because the ordering is done as string,
+                // if the values don't always have complete 7 digits, the comparison might not work properly.
+                serializerSettings.Converters.Add(new IsoDateTimeConverter { DateTimeFormat = "o" });
+
+                _serializer = JsonSerializer.Create(serializerSettings);
+            }
+
+            public override T FromStream<T>(Stream stream)
+            {
+                using var textReader = new StreamReader(stream);
+                using var reader = new JsonTextReader(textReader);
+                return _serializer.Deserialize<T>(reader);
+            }
+
+            public override Stream ToStream<T>(T input)
+            {
+                MemoryStream stream = _manager.GetStream();
+                var writer = new StreamWriter(stream);
+                var jsonWriter = new JsonTextWriter(writer);
+                _serializer.Serialize(jsonWriter, input);
+                jsonWriter.Flush();
+                writer.Flush();
+                stream.Seek(0, 0);
+                return stream;
             }
         }
     }
