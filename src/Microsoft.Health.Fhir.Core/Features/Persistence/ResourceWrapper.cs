@@ -5,6 +5,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 using EnsureThat;
 using Microsoft.Health.Core;
 using Microsoft.Health.Fhir.Core.Features.Search;
@@ -71,36 +72,47 @@ namespace Microsoft.Health.Fhir.Core.Features.Persistence
         }
 
         [JsonProperty(KnownResourceWrapperProperties.LastModified)]
+        [JsonPropertyName(KnownResourceWrapperProperties.LastModified)]
         public DateTimeOffset LastModified { get; protected set; }
 
         [JsonProperty(KnownResourceWrapperProperties.RawResource)]
+        [JsonPropertyName(KnownResourceWrapperProperties.RawResource)]
         public RawResource RawResource { get; protected set; }
 
         [JsonProperty(KnownResourceWrapperProperties.Request)]
+        [JsonPropertyName(KnownResourceWrapperProperties.Request)]
         public ResourceRequest Request { get; protected set; }
 
         [JsonProperty(KnownResourceWrapperProperties.IsDeleted)]
+        [JsonPropertyName(KnownResourceWrapperProperties.IsDeleted)]
         public bool IsDeleted { get; protected set; }
 
         [JsonProperty(KnownResourceWrapperProperties.ResourceId)]
+        [JsonPropertyName(KnownResourceWrapperProperties.ResourceId)]
         public string ResourceId { get; protected set; }
 
         [JsonProperty(KnownResourceWrapperProperties.ResourceTypeName)]
+        [JsonPropertyName(KnownResourceWrapperProperties.ResourceTypeName)]
         public string ResourceTypeName { get; protected set; }
 
         [JsonProperty(KnownResourceWrapperProperties.Version)]
+        [JsonPropertyName(KnownResourceWrapperProperties.Version)]
         public virtual string Version { get; set; }
 
         [JsonProperty(KnownResourceWrapperProperties.IsHistory)]
+        [JsonPropertyName(KnownResourceWrapperProperties.IsHistory)]
         public virtual bool IsHistory { get; set; }
 
         [JsonProperty(KnownResourceWrapperProperties.SearchIndices)]
+        [JsonPropertyName(KnownResourceWrapperProperties.SearchIndices)]
         public virtual IReadOnlyCollection<SearchIndexEntry> SearchIndices { get; protected set; }
 
         [JsonProperty(KnownResourceWrapperProperties.LastModifiedClaims)]
+        [JsonPropertyName(KnownResourceWrapperProperties.LastModifiedClaims)]
         public IReadOnlyCollection<KeyValuePair<string, string>> LastModifiedClaims { get; protected set; }
 
         [JsonProperty(KnownResourceWrapperProperties.CompartmentIndices)]
+        [JsonPropertyName(KnownResourceWrapperProperties.CompartmentIndices)]
         public CompartmentIndices CompartmentIndices { get; protected set; }
 
         public ResourceKey ToResourceKey()

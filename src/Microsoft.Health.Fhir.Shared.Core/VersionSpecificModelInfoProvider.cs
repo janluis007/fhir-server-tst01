@@ -24,6 +24,8 @@ namespace Microsoft.Health.Fhir.Core
     /// </summary>
     public partial class VersionSpecificModelInfoProvider : IModelInfoProvider
     {
+        private static readonly ISet<string> _knownResources = new HashSet<string>(ModelInfo.SupportedResources);
+
         public Version SupportedVersion { get; } = new Version(ModelInfo.Version);
 
         public IStructureDefinitionSummaryProvider StructureDefinitionSummaryProvider { get; } = new PocoStructureDefinitionSummaryProvider();
@@ -35,7 +37,7 @@ namespace Microsoft.Health.Fhir.Core
 
         public bool IsKnownResource(string name)
         {
-            return ModelInfo.IsKnownResource(name);
+            return _knownResources.Contains(name);
         }
 
         public bool IsKnownCompartmentType(string compartmentType)

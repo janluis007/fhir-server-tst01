@@ -22,7 +22,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Serialization.SourceNodes
         private readonly string _name;
         private readonly int? _arrayIndex;
         private readonly string _location;
-        private IList<(string Name, Lazy<IEnumerable<ISourceNode>> Node)> _cachedNodes;
+        private IDictionary<string, Lazy<IEnumerable<ISourceNode>>> _cachedNodes;
 
         private JsonElementSourceNode(JsonElement? valueElement, JsonElement? contentElement, string name, int? arrayIndex, string location)
         {
@@ -91,14 +91,17 @@ namespace Microsoft.Health.Fhir.Core.Features.Serialization.SourceNodes
         {
             if (_cachedNodes == null)
             {
-                var list = new List<(string, Lazy<IEnumerable<ISourceNode>>)>();
+                var list = new Dictionary<string, Lazy<IEnumerable<ISourceNode>>>();
 
                 if (!(_contentElement == null ||
                       _contentElement?.ValueKind != JsonValueKind.Object
                       || _contentElement?.EnumerateObject().Any() == false))
                 {
                     var objectEnumerator = _contentElement.GetValueOrDefault().EnumerateObject().Select(x => (x.Name, x.Value));
-                    list.AddRange(ProcessObjectProperties(objectEnumerator, _location));
+                    foreach (var item in ProcessObjectProperties(objectEnumerator, _location))
+                    {
+                        list.Add(item.Item1, item.Item2);
+                    }
                 }
 
                 _cachedNodes = list;
@@ -106,12 +109,10 @@ namespace Microsoft.Health.Fhir.Core.Features.Serialization.SourceNodes
 
             if (string.IsNullOrWhiteSpace(name))
             {
-                return _cachedNodes.SelectMany(x => x.Node.Value);
+                return _cachedNodes.SelectMany(x => x.Value.Value);
             }
 
-            return _cachedNodes
-                .Where(x => string.Equals(name, x.Name, StringComparison.Ordinal))
-                .SelectMany(x => x.Node.Value);
+            return _cachedNodes.TryGetValue(name, out var nodes) ? nodes.Value : Enumerable.Empty<ISourceNode>();
         }
 
         internal static List<(string, Lazy<IEnumerable<ISourceNode>>)> ProcessObjectProperties(IEnumerable<(string Name, JsonElement Value)> objectEnumerator, string location)
@@ -125,7 +126,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Serialization.SourceNodes
                 if (item.Count() == 1)
                 {
                     var innerItem = item.First();
-                    var values = (innerItem.Name, new Lazy<IEnumerable<ISourceNode>>(() => JsonElementToSourceNodes(innerItem.Name, location, innerItem.Value)));
+                    var values = (innerItem.Name, new Lazy<IEnumerable<ISourceNode>>(() => JsonElementToSourceNodes(innerItem.Name, location, innerItem.Value).ToList()));
                     list.Add(values);
                 }
                 else if (item.Count() == 2)
@@ -135,7 +136,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Serialization.SourceNodes
                     // _birthDate: { extension: ... }
                     var innerItem = item.SingleOrDefault(x => !x.Name.StartsWith(_shadowNodePrefix));
                     var shadowItem = item.SingleOrDefault(x => x.Name.StartsWith(_shadowNodePrefix));
-                    var values = (innerItem.Name, new Lazy<IEnumerable<ISourceNode>>(() => JsonElementToSourceNodes(innerItem.Name, location, innerItem.Value, shadowItem.Value)));
+                    var values = (innerItem.Name, new Lazy<IEnumerable<ISourceNode>>(() => JsonElementToSourceNodes(innerItem.Name, location, innerItem.Value, shadowItem.Value).ToList()));
                     list.Add(values);
                 }
                 else
@@ -151,7 +152,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Serialization.SourceNodes
         {
             (IReadOnlyList<JsonElement> List, bool ArrayProperty) itemList = ExpandArray(item);
             (IReadOnlyList<JsonElement> List, bool ArrayProperty)? shadowItemList = shadowItem != null ?
-                ((IReadOnlyList<JsonElement> List, bool ArrayProperty)?)ExpandArray(shadowItem.Value) : (Array.Empty<JsonElement>(), false);
+                ExpandArray(shadowItem.Value) : (Array.Empty<JsonElement>(), false);
 
             var isArray = itemList.ArrayProperty | shadowItemList?.ArrayProperty ?? false;
             for (int i = 0; i < Math.Max(itemList.List.Count, shadowItemList?.List.Count ?? 0); i++)

@@ -5,6 +5,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 using EnsureThat;
 using Microsoft.Health.CosmosDb.Features.Storage;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
@@ -55,6 +56,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
         }
 
         [JsonProperty(KnownDocumentProperties.Id)]
+        [JsonPropertyName(KnownDocumentProperties.Id)]
         public string Id
         {
             get
@@ -69,12 +71,15 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
         }
 
         [JsonProperty(KnownDocumentProperties.ETag)]
+        [JsonPropertyName(KnownDocumentProperties.ETag)]
         public string ETag { get; protected set; }
 
         [JsonProperty(KnownDocumentProperties.IsSystem)]
+        [JsonPropertyName(KnownDocumentProperties.IsSystem)]
         public bool IsSystem { get; } = false;
 
         [JsonProperty("version")]
+        [JsonPropertyName("version")]
         public override string Version
         {
             get => GetETagOrVersion();
@@ -82,9 +87,11 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
         }
 
         [JsonProperty(KnownResourceWrapperProperties.SearchIndices, ItemConverterType = typeof(SearchIndexEntryConverter))]
+        [JsonPropertyName(KnownResourceWrapperProperties.SearchIndices)]
         public override IReadOnlyCollection<SearchIndexEntry> SearchIndices { get; protected set; }
 
         [JsonProperty(KnownDocumentProperties.PartitionKey)]
+        [JsonPropertyName(KnownDocumentProperties.PartitionKey)]
         public string PartitionKey => ToResourceKey().ToPartitionKey();
 
         internal string GetETagOrVersion()

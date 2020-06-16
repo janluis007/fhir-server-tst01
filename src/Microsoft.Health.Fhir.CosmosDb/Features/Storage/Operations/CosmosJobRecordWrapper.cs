@@ -3,6 +3,7 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
+using System.Text.Json.Serialization;
 using Microsoft.Health.CosmosDb.Features.Storage;
 using Newtonsoft.Json;
 
@@ -19,6 +20,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage.Operations
         }
 
         [JsonProperty(KnownDocumentProperties.PartitionKey)]
+        [JsonPropertyName(KnownDocumentProperties.PartitionKey)]
         public abstract string PartitionKey { get; }
     }
 }

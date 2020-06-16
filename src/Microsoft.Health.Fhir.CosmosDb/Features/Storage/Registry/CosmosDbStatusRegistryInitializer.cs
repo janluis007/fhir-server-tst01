@@ -57,7 +57,8 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage.Registry
                         transaction.CreateItem(status);
                     }
 
-                    await transaction.ExecuteAsync();
+                    var response = await transaction.ExecuteAsync();
+                    Debug.Assert(response.IsSuccessStatusCode, "Registry batch did not succeed.");
                 }
             }
         }

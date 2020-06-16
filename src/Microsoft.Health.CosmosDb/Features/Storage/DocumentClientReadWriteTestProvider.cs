@@ -3,7 +3,7 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-using System.Reflection.Metadata;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Health.CosmosDb.Configs;
@@ -44,6 +44,7 @@ namespace Microsoft.Health.CosmosDb.Features.Storage
             }
 
             [JsonProperty(KnownDocumentProperties.PartitionKey)]
+            [JsonPropertyName(KnownDocumentProperties.PartitionKey)]
             public string PartitionKey { get; } = "__healthcheck__";
         }
     }

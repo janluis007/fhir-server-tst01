@@ -3,6 +3,7 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
+using System.Text.Json.Serialization;
 using EnsureThat;
 using Microsoft.Health.Fhir.Core.Models;
 using Newtonsoft.Json;
@@ -26,10 +27,13 @@ namespace Microsoft.Health.Fhir.Core.Features.Persistence
         }
 
         [JsonProperty("data")]
+        [JsonPropertyName("data")]
         public string Data { get; protected set; }
 
         [JsonProperty("format")]
-        [JsonConverter(typeof(StringEnumConverter))]
+        [JsonPropertyName("format")]
+        [Newtonsoft.Json.JsonConverter(typeof(StringEnumConverter))]
+        [System.Text.Json.Serialization.JsonConverter(typeof(JsonStringEnumConverter))]
         public FhirResourceFormat Format { get; protected set; }
     }
 }

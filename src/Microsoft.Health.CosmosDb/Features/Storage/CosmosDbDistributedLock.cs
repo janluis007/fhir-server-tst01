@@ -5,6 +5,7 @@
 
 using System;
 using System.Net;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
@@ -237,9 +238,11 @@ namespace Microsoft.Health.CosmosDb.Features.Storage
 
             // used to set expiration policy
             [JsonProperty(PropertyName = "ttl")]
+            [JsonPropertyName("ttl")]
             public int TimeToLiveInSeconds { get; set; }
 
             [JsonProperty(KnownDocumentProperties.PartitionKey)]
+            [JsonPropertyName(KnownDocumentProperties.PartitionKey)]
             public string PartitionKey { get; } = LockPartition;
         }
     }

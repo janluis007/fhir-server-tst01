@@ -4,8 +4,7 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
-using System.Text;
-using EnsureThat;
+using System.Text.Json.Serialization;
 using Microsoft.Health.Core.Extensions;
 using Microsoft.Health.CosmosDb.Features.Storage;
 using Microsoft.Health.Fhir.Core.Features.Search.Registry;
@@ -13,12 +12,13 @@ using Newtonsoft.Json;
 
 namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage.Registry
 {
-    internal class SearchParameterStatusWrapper : SystemData
+    public class SearchParameterStatusWrapper : SystemData
     {
         private Uri _uri;
         public const string SearchParameterStatusPartitionKey = "__searchparameterstatus__";
 
         [JsonProperty("uri")]
+        [JsonPropertyName("uri")]
         public Uri Uri
         {
             get => _uri;
@@ -30,15 +30,19 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage.Registry
         }
 
         [JsonProperty("status")]
+        [JsonPropertyName("status")]
         public SearchParameterStatus Status { get; set; }
 
         [JsonProperty("isPartiallySupported")]
+        [JsonPropertyName("isPartiallySupported")]
         public bool? IsPartiallySupported { get; set; }
 
         [JsonProperty("lastUpdated")]
+        [JsonPropertyName("lastUpdated")]
         public DateTimeOffset LastUpdated { get; set; }
 
         [JsonProperty(KnownDocumentProperties.PartitionKey)]
+        [JsonPropertyName(KnownDocumentProperties.PartitionKey)]
         public string PartitionKey { get; } = SearchParameterStatusPartitionKey;
     }
 }

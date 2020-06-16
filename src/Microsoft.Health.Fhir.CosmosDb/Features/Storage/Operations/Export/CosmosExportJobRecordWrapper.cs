@@ -3,6 +3,7 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
+using System.Text.Json.Serialization;
 using EnsureThat;
 using Microsoft.Health.CosmosDb.Features.Storage;
 using Microsoft.Health.Fhir.Core.Features.Operations;
@@ -30,9 +31,11 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage.Operations.Export
         }
 
         [JsonProperty(KnownDocumentProperties.PartitionKey)]
+        [JsonPropertyName(KnownDocumentProperties.PartitionKey)]
         public override string PartitionKey { get; } = CosmosDbExportConstants.ExportJobPartitionKey;
 
         [JsonProperty(JobRecordProperties.JobRecord)]
+        [JsonPropertyName(JobRecordProperties.JobRecord)]
         public ExportJobRecord JobRecord { get; private set; }
     }
 }

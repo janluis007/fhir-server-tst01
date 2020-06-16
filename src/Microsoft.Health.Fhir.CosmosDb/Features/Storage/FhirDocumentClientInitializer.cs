@@ -7,6 +7,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using EnsureThat;
 using Microsoft.Azure.Cosmos;
@@ -16,9 +18,11 @@ using Microsoft.Health.CosmosDb.Configs;
 using Microsoft.Health.CosmosDb.Features.Queries;
 using Microsoft.Health.CosmosDb.Features.Storage;
 using Microsoft.Health.Fhir.Core.Features.Context;
+using Microsoft.Health.Fhir.CosmosDb.Features.Storage.Search;
 using Microsoft.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
 namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
 {
@@ -144,6 +148,9 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
         {
             private readonly JsonSerializer _serializer;
             private RecyclableMemoryStreamManager _manager = new RecyclableMemoryStreamManager();
+            private JsonSerializerOptions options;
+            ////private static readonly Type _insertModelType = typeof(UpsertWithHistoryModel);
+            ////private static readonly Type _wrapperType = typeof(ResourceWrapper);
 
             public NewtonsoftSerializer()
             {
@@ -167,10 +174,31 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
                 serializerSettings.Converters.Add(new IsoDateTimeConverter { DateTimeFormat = "o" });
 
                 _serializer = JsonSerializer.Create(serializerSettings);
+
+                options = new System.Text.Json.JsonSerializerOptions
+                {
+                    IgnoreNullValues = true,
+                };
+                options.Converters.Add(new JsonStringEnumConverter());
+                options.Converters.Add(new SearchIndexEntryJsonConverter());
             }
 
             public override T FromStream<T>(Stream stream)
             {
+                ////Type type = typeof(T);
+                ////if (type.IsAssignableFrom(_wrapperType) ||
+                ////    type.IsAssignableFrom(_insertModelType))
+                ////{
+                ////    try
+                ////    {
+                ////        return System.Text.Json.JsonSerializer.DeserializeAsync<T>(stream, options).GetAwaiter().GetResult();
+                ////    }
+                ////    finally
+                ////    {
+                ////        stream.Dispose();
+                ////    }
+                ////}
+
                 using var textReader = new StreamReader(stream);
                 using var reader = new JsonTextReader(textReader);
                 return _serializer.Deserialize<T>(reader);
@@ -178,6 +206,15 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
 
             public override Stream ToStream<T>(T input)
             {
+                ////if (input is ResourceWrapper || (input is object[] objArray && objArray.Any(x => x is ResourceWrapper)))
+                ////{
+                ////    MemoryStream stream = _manager.GetStream();
+                ////    var utf8JsonWriter = new Utf8JsonWriter(stream);
+                ////    System.Text.Json.JsonSerializer.Serialize(utf8JsonWriter, input, options);
+                ////    return stream;
+                ////}
+                ////else
+                ////{
                 MemoryStream stream = _manager.GetStream();
                 var writer = new StreamWriter(stream);
                 var jsonWriter = new JsonTextWriter(writer);
@@ -186,6 +223,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
                 writer.Flush();
                 stream.Seek(0, 0);
                 return stream;
+                ////}
             }
         }
     }
