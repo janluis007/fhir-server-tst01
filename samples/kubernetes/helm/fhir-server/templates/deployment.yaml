@@ -9,6 +9,7 @@ metadata:
   {{- if .Values.osiris.enabled }}
   annotations:
     osiris.deislabs.io/enabled: "true"
+    osiris.deislabs.io/minReplicas: "1"
   {{- end }}
 spec:
   replicas: {{ .Values.replicaCount }}
