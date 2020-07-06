@@ -22,10 +22,8 @@ spec:
       {{- if .Values.osiris.enabled }}
       annotations:
         osiris.deislabs.io/enabled: "true"
-      {{- end }}            
-      annotations:
-        osiris.deislabs.io/enabled: "true"
         osiris.deislabs.io/ignoredPaths: "/health/check"
+      {{- end }}            
     spec:
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
