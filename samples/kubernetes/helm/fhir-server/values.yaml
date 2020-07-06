@@ -37,6 +37,10 @@ service:
   type: ClusterIP
   port: 80
 
+# Enable Osiris scale-to-zero (https://github.com/deislabs/osiris)  
+osiris:
+  enable: false
+
 database:
   # options: SqlServer, SqlContainer, CosmosDb
   dataStore: "SqlServer"

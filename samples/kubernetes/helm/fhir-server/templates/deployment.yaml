@@ -6,6 +6,10 @@ metadata:
   name: {{ include "fhir-server.fullname" . }}
   labels:
     {{- include "fhir-server.labels" . | nindent 4 }}
+  {{- if .Values.osiris.enabled }}
+  annotations:
+    osiris.deislabs.io/enabled: "true"
+  {{- end }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -15,6 +19,13 @@ spec:
     metadata:
       labels:
         {{- include "fhir-server.selectorLabels" . | nindent 8 }}
+      {{- if .Values.osiris.enabled }}
+      annotations:
+        osiris.deislabs.io/enabled: "true"
+      {{- end }}            
+      annotations:
+        osiris.deislabs.io/enabled: "true"
+        osiris.deislabs.io/ignoredPaths: "/health/check"
     spec:
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:

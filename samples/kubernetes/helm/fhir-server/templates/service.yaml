@@ -4,6 +4,16 @@ metadata:
   name: {{ include "fhir-server.fullname" . }}
   labels:
     {{- include "fhir-server.labels" . | nindent 4 }}
+  {{- if .Values.osiris.enabled }}
+  annotations:
+    osiris.deislabs.io/enabled: "true"
+    osiris.deislabs.io/deployment: {{ include "fhir-server.fullname" . }}
+    {{- if .Values.ingress.enabled }}
+    {{- range $i, $e := .Values.ingress.hosts }}
+    osiris.deislabs.io/ingressHostname-{{ add $i 1 }}: {{ $e.host }}
+    {{- end }}
+    {{- end }}
+  {{- end }}
 spec:
   type: {{ .Values.service.type }}
   ports:
