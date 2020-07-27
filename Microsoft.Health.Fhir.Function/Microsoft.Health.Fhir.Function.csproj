@@ -14,12 +14,21 @@
     <Compile Include="..\src\Microsoft.Health.Fhir.Shared.Web\PrometheusMetricsServer.cs" Link="PrometheusMetricsServer.cs" />
     <Compile Include="..\src\Microsoft.Health.Fhir.Shared.Web\PrometheusMetricsServicesCollectionExtensions.cs" Link="PrometheusMetricsServicesCollectionExtensions.cs" />
     <Compile Include="..\src\Microsoft.Health.Fhir.Shared.Web\SettingsProvider.cs" Link="SettingsProvider.cs" />
+    <Compile Include="..\test\Microsoft.Health.Fhir.R4.Tests.E2E\Constants.cs" Link="Constants.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\src\Microsoft.Health.Fhir.Shared.Web\appsettings.Development.json" Link="appsettings.Development.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\src\Microsoft.Health.Fhir.Shared.Web\appsettings.json" Link="appsettings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\testauthenvironment.json" Link="testauthenvironment.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="3.0.3" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\test\Microsoft.Health.Fhir.R4.Tests.E2E\Microsoft.Health.Fhir.R4.Tests.E2E.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">
