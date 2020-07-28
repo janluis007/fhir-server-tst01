@@ -35,6 +35,7 @@
             "commandName": "Project",
             "launchBrowser": true,
             "environmentVariables": {
+                "Sqlite:ConnectionString": "server=(local);Initial Catalog=FHIR_STU3;Integrated Security=true",
                 "TestAuthEnvironment:FilePath": "..//..//testauthenvironment.json",
                 "DataStore": "Sqlite",
                 "ASPNETCORE_ENVIRONMENT": "development"

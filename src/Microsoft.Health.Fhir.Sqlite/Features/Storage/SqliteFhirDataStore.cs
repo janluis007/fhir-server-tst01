@@ -10,6 +10,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Health.Fhir.Core.Features.Conformance;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
+using Microsoft.Health.Fhir.Core.Models;
 using Microsoft.Health.Fhir.Sqlite.Configs;
 using Task = System.Threading.Tasks.Task;
 
@@ -20,14 +21,20 @@ namespace Microsoft.Health.Fhir.Sqlite.Features.Storage
     /// </summary>
     public class SqliteFhirDataStore : IFhirDataStore, IProvideCapability
     {
+        private readonly IModelInfoProvider _modelInfoProvider;
         private readonly ILogger<SqliteFhirDataStore> _logger;
         private readonly string _connectionString;
 
-        public SqliteFhirDataStore(SqliteDataStoreConfiguration configuration, ILogger<SqliteFhirDataStore> logger)
+        public SqliteFhirDataStore(
+            SqliteDataStoreConfiguration configuration,
+            IModelInfoProvider modelInfoProvider,
+            ILogger<SqliteFhirDataStore> logger)
         {
             EnsureArg.IsNotNull(configuration, nameof(configuration));
-            EnsureArg.IsNotNull(configuration, nameof(configuration));
+            EnsureArg.IsNotNull(modelInfoProvider, nameof(modelInfoProvider));
+            EnsureArg.IsNotNull(logger, nameof(logger));
 
+            _modelInfoProvider = modelInfoProvider;
             _logger = logger;
 
             _connectionString = configuration.ConnectionString;
@@ -81,6 +88,7 @@ namespace Microsoft.Health.Fhir.Sqlite.Features.Storage
         {
             EnsureArg.IsNotNull(builder, nameof(builder));
 
+            // TODO: Update this.
             builder.AddDefaultResourceInteractions()
                    .AddDefaultSearchParameters()
                    .AddDefaultRestSearchParams();

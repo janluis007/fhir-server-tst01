@@ -32,8 +32,7 @@ namespace Microsoft.Health.Fhir.Web
                 .AddAzureExportDestinationClient()
                 .AddAzureExportClientInitializer(Configuration);
 
-            // TODO: add SQLite to drop down when running solution.
-            string dataStore = "Sqlite"; // Configuration["DataStore"];
+            string dataStore = Configuration["DataStore"];
             if (dataStore.Equals(KnownDataStores.CosmosDb, StringComparison.InvariantCultureIgnoreCase))
             {
                 fhirServerBuilder.AddCosmosDb();
