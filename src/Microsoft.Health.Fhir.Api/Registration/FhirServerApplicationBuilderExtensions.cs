@@ -21,7 +21,7 @@ namespace Microsoft.AspNetCore.Builder
         {
             EnsureArg.IsNotNull(app, nameof(app));
 
-            app.UseHealthChecksExtension(new PathString(KnownRoutes.HealthCheck));
+            // app.UseHealthChecksExtension(new PathString(KnownRoutes.HealthCheck));
 
             app.UseStaticFiles();
             app.UseMvc();

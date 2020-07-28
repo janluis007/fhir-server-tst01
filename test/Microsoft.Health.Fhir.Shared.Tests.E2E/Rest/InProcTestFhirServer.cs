@@ -28,46 +28,65 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest
     /// </summary>
     public class InProcTestFhirServer : TestFhirServer
     {
-        public InProcTestFhirServer(DataStore dataStore, Type startupType)
+        public InProcTestFhirServer(DataStore dataStore, Type startupType, string path = null)
             : base(new Uri("http://localhost/"))
         {
-            var projectDir = GetProjectPath("src", startupType);
-            var corsPath = Path.GetFullPath("corstestconfiguration.json");
+            try
+            {
+                string projectDir = null;
 
-            var launchSettings = JObject.Parse(File.ReadAllText(Path.Combine(projectDir, "Properties", "launchSettings.json")));
-
-            var configuration = launchSettings["profiles"][dataStore.ToString()]["environmentVariables"].Cast<JProperty>().ToDictionary(p => p.Name, p => p.Value.ToString());
-
-            configuration["TestAuthEnvironment:FilePath"] = "testauthenvironment.json";
-            configuration["FhirServer:Security:Authentication:Authority"] = "https://inprochost";
-
-            // For local development we will use the Azure Storage Emulator for export.
-            configuration["FhirServer:Operations:Export:StorageAccountConnection"] = "UseDevelopmentStorage=true";
-
-            var builder = WebHost.CreateDefaultBuilder()
-                .UseContentRoot(Path.GetDirectoryName(startupType.Assembly.Location))
-                .ConfigureAppConfiguration(configurationBuilder =>
+                if (string.IsNullOrEmpty(path))
                 {
-                    configurationBuilder.AddDevelopmentAuthEnvironmentIfConfigured(new ConfigurationBuilder().AddInMemoryCollection(configuration).Build());
-                    configurationBuilder.AddJsonFile(corsPath);
-                    configurationBuilder.AddInMemoryCollection(configuration);
-                })
-                .UseStartup(startupType)
-                .ConfigureServices(serviceCollection =>
+                    projectDir = GetProjectPath("src", startupType);
+                }
+                else
                 {
-                    // ensure that HttpClients
-                    // use a message handler for the test server
-                    serviceCollection
-                        .AddHttpClient(Options.DefaultName)
-                        .ConfigurePrimaryHttpMessageHandler(() => Server.CreateHandler())
-                        .SetHandlerLifetime(Timeout.InfiniteTimeSpan); // So that it is not disposed after 2 minutes;
+                    projectDir = path;
+                }
 
-                    serviceCollection.PostConfigure<JwtBearerOptions>(
-                        JwtBearerDefaults.AuthenticationScheme,
-                        options => options.BackchannelHttpHandler = Server.CreateHandler());
-                });
+                // var corsPath = Path.GetFullPath("corstestconfiguration.json");
 
-            Server = new TestServer(builder);
+                var launchSettings = JObject.Parse(File.ReadAllText(Path.Combine(projectDir, "Properties", "launchSettings.json")));
+
+                var configuration = launchSettings["profiles"][dataStore.ToString()]["environmentVariables"].Cast<JProperty>().ToDictionary(p => p.Name, p => p.Value.ToString());
+
+                configuration["TestAuthEnvironment:FilePath"] = "testauthenvironment.json";
+                configuration["FhirServer:Security:Authentication:Authority"] = "https://inprochost";
+
+                // For local development we will use the Azure Storage Emulator for export.
+                configuration["FhirServer:Operations:Export:StorageAccountConnection"] = "UseDevelopmentStorage=true";
+
+                var builder = WebHost.CreateDefaultBuilder()
+                    .UseContentRoot(Path.GetDirectoryName(startupType.Assembly.Location))
+                    .ConfigureAppConfiguration(configurationBuilder =>
+                    {
+                        configurationBuilder.AddDevelopmentAuthEnvironmentIfConfigured(new ConfigurationBuilder().AddInMemoryCollection(configuration).Build());
+                        configurationBuilder.AddJsonFile(projectDir + "\\corstestconfiguration.json");
+                        configurationBuilder.AddJsonFile(projectDir + "\\appsettings.json");
+                        configurationBuilder.AddInMemoryCollection(configuration);
+                    })
+                    .UseStartup(startupType)
+                    .ConfigureServices(serviceCollection =>
+                    {
+                        // ensure that HttpClients
+                        // use a message handler for the test server
+                        serviceCollection
+                                .AddHttpClient(Options.DefaultName)
+                                .ConfigurePrimaryHttpMessageHandler(() => Server.CreateHandler())
+                                .SetHandlerLifetime(Timeout.InfiniteTimeSpan); // So that it is not disposed after 2 minutes;
+
+                        serviceCollection.PostConfigure<JwtBearerOptions>(
+                                JwtBearerDefaults.AuthenticationScheme,
+                                options => options.BackchannelHttpHandler = Server.CreateHandler());
+                    })
+                    .UseIISIntegration();
+
+                Server = new TestServer(builder);
+            }
+            catch
+            {
+                throw;
+            }
         }
 
         public TestServer Server { get; }

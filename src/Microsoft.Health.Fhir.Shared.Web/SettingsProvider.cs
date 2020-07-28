@@ -14,7 +14,7 @@ namespace Microsoft.Health.Fhir.Web
     {
         public Stream GetSettingsFile(string name)
         {
-            EnsureArg.IsNotEmptyOrWhitespace(name, nameof(name));
+            EnsureArg.IsNotEmptyOrWhiteSpace(name, nameof(name));
 
             return File.OpenRead(Path.Combine(Path.GetDirectoryName(GetType().Assembly.Location), name));
         }

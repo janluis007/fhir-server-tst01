@@ -4,19 +4,12 @@
     <AzureFunctionsVersion>v3</AzureFunctionsVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\src\Microsoft.Health.Fhir.Shared.Web\DevelopmentIdentityProviderApplicationConfiguration.cs" Link="DevelopmentIdentityProviderApplicationConfiguration.cs" />
-    <Compile Include="..\src\Microsoft.Health.Fhir.Shared.Web\DevelopmentIdentityProviderConfiguration.cs" Link="DevelopmentIdentityProviderConfiguration.cs" />
-    <Compile Include="..\src\Microsoft.Health.Fhir.Shared.Web\DevelopmentIdentityProviderRegistrationExtensions.cs" Link="DevelopmentIdentityProviderRegistrationExtensions.cs" />
-    <Compile Include="..\src\Microsoft.Health.Fhir.Shared.Web\DevelopmentIdentityProviderUserConfiguration.cs" Link="DevelopmentIdentityProviderUserConfiguration.cs" />
-    <Compile Include="..\src\Microsoft.Health.Fhir.Shared.Web\KnownDataStores.cs" Link="KnownDataStores.cs" />
-    <Compile Include="..\src\Microsoft.Health.Fhir.Shared.Web\PrometheusMetricsApplicationBuilderExtensions.cs" Link="PrometheusMetricsApplicationBuilderExtensions.cs" />
-    <Compile Include="..\src\Microsoft.Health.Fhir.Shared.Web\PrometheusMetricsConfig.cs" Link="PrometheusMetricsConfig.cs" />
-    <Compile Include="..\src\Microsoft.Health.Fhir.Shared.Web\PrometheusMetricsServer.cs" Link="PrometheusMetricsServer.cs" />
-    <Compile Include="..\src\Microsoft.Health.Fhir.Shared.Web\PrometheusMetricsServicesCollectionExtensions.cs" Link="PrometheusMetricsServicesCollectionExtensions.cs" />
-    <Compile Include="..\src\Microsoft.Health.Fhir.Shared.Web\SettingsProvider.cs" Link="SettingsProvider.cs" />
     <Compile Include="..\test\Microsoft.Health.Fhir.R4.Tests.E2E\Constants.cs" Link="Constants.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="..\src\Microsoft.Health.Fhir.R4.Web\Properties\launchSettings.json" Link="Properties\launchSettings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="..\src\Microsoft.Health.Fhir.Shared.Web\appsettings.Development.json" Link="appsettings.Development.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -31,6 +24,12 @@
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="3.0.3" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\test\Microsoft.Health.Fhir.R4.Tests.E2E\Microsoft.Health.Fhir.R4.Tests.E2E.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="corstestconfiguration.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="host.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -38,5 +37,8 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>Never</CopyToPublishDirectory>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
   </ItemGroup>
 </Project>

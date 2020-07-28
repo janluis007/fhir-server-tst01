@@ -17,20 +17,18 @@ using Microsoft.Health.Fhir.Web;
 
 namespace Microsoft.Health.Fhir.Function
 {
-    public static class Host
+    public static class FunctionHost
     {
         private static readonly InProcTestFhirServer Server;
-        private static readonly TestFhirClient FhirClient;
 
 #pragma warning disable CA1810 // Initialize reference type static fields inline
-        static Host()
+        static FunctionHost()
 #pragma warning restore CA1810 // Initialize reference type static fields inline
         {
-            var functionPath = Path.Combine(new FileInfo(typeof(Host).Assembly.Location).Directory.FullName, "..");
+            var functionPath = Path.Combine(new FileInfo(typeof(FunctionHost).Assembly.Location).Directory.FullName, "..");
             Environment.SetEnvironmentVariable("HOST_FUNCTION_CONTENT_PATH", functionPath, EnvironmentVariableTarget.Process);
 
-            Server = new InProcTestFhirServer(Tests.Common.FixtureParameters.DataStore.CosmosDb, typeof(Startup));
-            FhirClient = Server.GetTestFhirClient(Hl7.Fhir.Rest.ResourceFormat.Json, true);
+            Server = new InProcTestFhirServer(Tests.Common.FixtureParameters.DataStore.CosmosDb, typeof(Startup), functionPath);
         }
 
         /// <summary>
@@ -38,19 +36,20 @@ namespace Microsoft.Health.Fhir.Function
         /// </summary>
         /// <param name="req">The http request</param>
         /// <param name="log">The logger</param>
-        /// <param name="ctx">Execution context</param>
         /// <param name="ct">Cancellation token</param>
         /// <returns>HttpResponse built by the WebHost.</returns>
         [FunctionName("AllPaths")]
         public static async Task<HttpResponseMessage> RunAllPaths(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", "put", "patch", "options", Route = "{*x:regex(^(?!admin|debug|runtime).*$)}")]HttpRequestMessage req,
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", "put", "patch", "options", Route = "{*any}")]HttpRequestMessage req,
             ILogger log,
-            System.Threading.ExecutionContext ctx,
             CancellationToken ct)
         {
-            return await FhirClient.HttpClient.SendAsync(req);
+            log.LogInformation(req.RequestUri.ToString());
+            var fhirClient = Server.GetTestFhirClient(Hl7.Fhir.Rest.ResourceFormat.Json, true);
+            return await fhirClient.HttpClient.SendAsync(req, ct);
         }
 
+        /*
         /// <summary>
         /// This trigger covers root route only which isn't caught by the other HttpTrigger.
         /// In order to have this working, the AppSettings require the following settings:
@@ -58,17 +57,16 @@ namespace Microsoft.Health.Fhir.Function
         /// </summary>
         /// <param name="req">The http request</param>
         /// <param name="log">The logger</param>
-        /// <param name="ctx">Execution context</param>
         /// <param name="ct">Cancellation token</param>
         /// <returns>HttpResponse built by the WebHost.</returns>
         [FunctionName("Root")]
         public static async Task<HttpResponseMessage> RunRoot(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", "put", "patch", "options", Route = "/")]HttpRequestMessage req,
             ILogger log,
-            System.Threading.ExecutionContext ctx,
             CancellationToken ct)
         {
+            log.LogInformation(req.RequestUri.ToString());
             return await FhirClient.HttpClient.SendAsync(req, ct);
-        }
+        } */
     }
 }
