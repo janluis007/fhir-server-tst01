@@ -32,6 +32,7 @@ namespace Microsoft.Health.Fhir.Web
                 .AddAzureExportDestinationClient()
                 .AddAzureExportClientInitializer(Configuration);
 
+            // TODO: add SQLite to drop down when running solution.
             string dataStore = "Sqlite"; // Configuration["DataStore"];
             if (dataStore.Equals(KnownDataStores.CosmosDb, StringComparison.InvariantCultureIgnoreCase))
             {
@@ -43,7 +44,7 @@ namespace Microsoft.Health.Fhir.Web
             }
             else if (dataStore.Equals(KnownDataStores.Sqlite, StringComparison.InvariantCultureIgnoreCase))
             {
-                fhirServerBuilder.AddSqlite(Configuration);
+                fhirServerBuilder.AddSqlite();
             }
 
             if (string.Equals(Configuration["ASPNETCORE_FORWARDEDHEADERS_ENABLED"], "true", StringComparison.OrdinalIgnoreCase))

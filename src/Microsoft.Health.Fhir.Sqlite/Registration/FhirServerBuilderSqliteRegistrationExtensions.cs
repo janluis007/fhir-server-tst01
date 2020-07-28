@@ -3,6 +3,7 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
+using System;
 using EnsureThat;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Health.Extensions.DependencyInjection;
@@ -15,21 +16,29 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static class FhirServerBuilderSqliteRegistrationExtensions
     {
-        public static IFhirServerBuilder AddSqlite(this IFhirServerBuilder fhirServerBuilder, IConfiguration configuration)
+        public static IFhirServerBuilder AddSqlite(this IFhirServerBuilder fhirServerBuilder, Action<SqliteDataStoreConfiguration> configureAction = null)
         {
             EnsureArg.IsNotNull(fhirServerBuilder, nameof(fhirServerBuilder));
-            EnsureArg.IsNotNull(configuration, nameof(configuration));
 
             return fhirServerBuilder
-                .AddSqlitePersistence(configuration)
+                .AddSqlitePersistence(configureAction)
                 .AddSqliteSearch();
         }
 
-        private static IFhirServerBuilder AddSqlitePersistence(this IFhirServerBuilder fhirServerBuilder, IConfiguration configuration)
+        private static IFhirServerBuilder AddSqlitePersistence(this IFhirServerBuilder fhirServerBuilder, Action<SqliteDataStoreConfiguration> configureAction = null)
         {
             IServiceCollection services = fhirServerBuilder.Services;
 
-            services.Configure<SqliteDataStoreConfiguration>("Sqlite", sqliteConfiguration => configuration.GetSection("FhirServer:Sqlite").Bind(sqliteConfiguration));
+            services.Add(provider =>
+                {
+                    var config = new SqliteDataStoreConfiguration();
+                    provider.GetService<IConfiguration>().GetSection("Sqlite").Bind(config);
+                    configureAction?.Invoke(config);
+
+                    return config;
+                })
+                .Singleton()
+                .AsSelf();
 
             services.Add<SqliteFhirDataStore>()
                 .Singleton()
