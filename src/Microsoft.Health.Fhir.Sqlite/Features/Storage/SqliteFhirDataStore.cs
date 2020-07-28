@@ -3,6 +3,7 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
@@ -38,16 +39,11 @@ namespace Microsoft.Health.Fhir.Sqlite.Features.Storage
             _logger = logger;
 
             _connectionString = configuration.ConnectionString;
-
-            // _connectionString = new SqliteConnectionStringBuilder("Data Source=hello.db")
-            // {
-            //     Mode = SqliteOpenMode.ReadWriteCreate, // Password = password
-            // }.ToString();
         }
 
         public Task<UpsertOutcome> UpsertAsync(ResourceWrapper resource, WeakETag weakETag, bool allowCreate, bool keepHistory, CancellationToken cancellationToken)
         {
-            return (Task<UpsertOutcome>)Task.CompletedTask;
+            throw new NotImplementedException();
         }
 
         public Task<ResourceWrapper> GetAsync(ResourceKey key, CancellationToken cancellationToken)
@@ -81,14 +77,14 @@ namespace Microsoft.Health.Fhir.Sqlite.Features.Storage
 
         public Task HardDeleteAsync(ResourceKey key, CancellationToken cancellationToken)
         {
-            return Task.CompletedTask;
+            throw new NotImplementedException();
         }
 
         public void Build(ICapabilityStatementBuilder builder)
         {
             EnsureArg.IsNotNull(builder, nameof(builder));
 
-            // TODO: Update this.
+            // TODO: Update this to accurately reflect what is supported.
             builder.AddDefaultResourceInteractions()
                    .AddDefaultSearchParameters()
                    .AddDefaultRestSearchParams();
