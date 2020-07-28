@@ -30,6 +30,16 @@
                 "ASPNETCORE_ENVIRONMENT": "development"
             },
             "applicationUrl": "https://localhost:44348/"
+        },
+        "Sqlite": {
+            "commandName": "Project",
+            "launchBrowser": true,
+            "environmentVariables": {
+                "TestAuthEnvironment:FilePath": "..//..//testauthenvironment.json",
+                "DataStore": "Sqlite",
+                "ASPNETCORE_ENVIRONMENT": "development"
+            },
+            "applicationUrl": "https://localhost:44348/"
         }
     }
 }

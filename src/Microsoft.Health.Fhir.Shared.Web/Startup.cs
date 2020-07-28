@@ -32,7 +32,7 @@ namespace Microsoft.Health.Fhir.Web
                 .AddAzureExportDestinationClient()
                 .AddAzureExportClientInitializer(Configuration);
 
-            string dataStore = Configuration["DataStore"];
+            string dataStore = "Sqlite"; // Configuration["DataStore"];
             if (dataStore.Equals(KnownDataStores.CosmosDb, StringComparison.InvariantCultureIgnoreCase))
             {
                 fhirServerBuilder.AddCosmosDb();
@@ -40,6 +40,10 @@ namespace Microsoft.Health.Fhir.Web
             else if (dataStore.Equals(KnownDataStores.SqlServer, StringComparison.InvariantCultureIgnoreCase))
             {
                 fhirServerBuilder.AddSqlServer();
+            }
+            else if (dataStore.Equals(KnownDataStores.Sqlite, StringComparison.InvariantCultureIgnoreCase))
+            {
+                fhirServerBuilder.AddSqlite(Configuration);
             }
 
             if (string.Equals(Configuration["ASPNETCORE_FORWARDEDHEADERS_ENABLED"], "true", StringComparison.OrdinalIgnoreCase))

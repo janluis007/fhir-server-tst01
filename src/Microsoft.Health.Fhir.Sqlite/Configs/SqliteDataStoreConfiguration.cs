@@ -3,14 +3,10 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-namespace Microsoft.Health.Fhir.Web
+namespace Microsoft.Health.Fhir.Sqlite.Configs
 {
-    public static class KnownDataStores
+    public class SqliteDataStoreConfiguration
     {
-        public const string CosmosDb = "CosmosDb";
-
-        public const string SqlServer = "SqlServer";
-
-        public const string Sqlite = "Sqlite";
+        public string ConnectionString { get; set; }
     }
 }
