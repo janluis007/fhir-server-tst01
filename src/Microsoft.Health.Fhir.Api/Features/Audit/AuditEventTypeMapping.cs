@@ -47,6 +47,11 @@ namespace Microsoft.Health.Fhir.Api.Features.Audit
         /// <inheritdoc />
         public string GetAuditEventType(string controllerName, string actionName)
         {
+            if (_attributeDictionary == null)
+            {
+                return null;
+            }
+
             if (!_attributeDictionary.TryGetValue((controllerName, actionName), out Attribute attribute))
             {
                 throw new MissingAuditEventTypeMappingException(controllerName, actionName);

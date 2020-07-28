@@ -5,6 +5,8 @@
 
 using System;
 using EnsureThat;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
@@ -35,6 +37,12 @@ namespace Microsoft.Health.Fhir.Api.Features.Filters
         public override void OnActionExecuting(ActionExecutingContext context)
         {
             IFhirRequestContext fhirRequestContext = _fhirRequestContextAccessor.FhirRequestContext;
+
+            if (fhirRequestContext == null)
+            {
+                InitFhirRequestContext(fhirRequestContext, context);
+                fhirRequestContext = _fhirRequestContextAccessor.FhirRequestContext;
+            }
 
             fhirRequestContext.RouteName = context.ActionDescriptor?.AttributeRouteInfo?.Name;
 
@@ -79,6 +87,38 @@ namespace Microsoft.Health.Fhir.Api.Features.Filters
             }
 
             base.OnActionExecuting(context);
+        }
+
+        private void InitFhirRequestContext(IFhirRequestContext fhirRequestContext, ActionExecutingContext context)
+        {
+            const string RequestIdHeaderName = "X-Request-Id";
+            var request = context.HttpContext.Request;
+
+            string baseUriInString = UriHelper.BuildAbsolute(
+                request.Scheme,
+                request.Host,
+                request.PathBase);
+
+            string uriInString = UriHelper.BuildAbsolute(
+                request.Scheme,
+                request.Host,
+                request.PathBase,
+                request.Path,
+                request.QueryString);
+
+            string correlationId = "FakeCorrelationId";
+
+            fhirRequestContext = new FhirRequestContext(
+                method: request.Method,
+                uriString: uriInString,
+                baseUriString: baseUriInString,
+                correlationId: correlationId,
+                requestHeaders: request.Headers,
+                responseHeaders: request.Headers);
+
+            context.HttpContext.Response.Headers[RequestIdHeaderName] = correlationId;
+
+            _fhirRequestContextAccessor.FhirRequestContext = fhirRequestContext;
         }
     }
 }

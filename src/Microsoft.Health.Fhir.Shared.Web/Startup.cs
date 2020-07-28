@@ -4,11 +4,21 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
+using System.Diagnostics;
+using System.Reflection;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Abstractions;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Microsoft.Health.Fhir.Api.Controllers;
+using Microsoft.Health.Fhir.Api.Registration;
 using Microsoft.Health.Fhir.Azure;
 
 namespace Microsoft.Health.Fhir.Web
@@ -27,10 +37,11 @@ namespace Microsoft.Health.Fhir.Web
         {
             services.AddDevelopmentIdentityProvider(Configuration);
 
-            Core.Registration.IFhirServerBuilder fhirServerBuilder = services.AddFhirServer(Configuration)
-                .AddBackgroundWorkers()
-                .AddAzureExportDestinationClient()
-                .AddAzureExportClientInitializer(Configuration);
+            Core.Registration.IFhirServerBuilder fhirServerBuilder = services.AddFhirServer(Configuration);
+
+                // .AddBackgroundWorkers()
+                // .AddAzureExportDestinationClient()
+                // .AddAzureExportClientInitializer(Configuration);
 
             string dataStore = Configuration["DataStore"];
             if (dataStore.Equals(KnownDataStores.CosmosDb, StringComparison.InvariantCultureIgnoreCase))
@@ -63,6 +74,11 @@ namespace Microsoft.Health.Fhir.Web
             }
 
             AddApplicationInsightsTelemetry(services);
+
+            services.AddMvc()
+                .AddApplicationPart(Assembly.Load("Microsoft.Health.Fhir.R4.Web"))
+                .AddApplicationPart(typeof(FhirController).Assembly)
+                .AddApplicationPart(typeof(AadSmartOnFhirProxyController).Assembly);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -75,6 +91,7 @@ namespace Microsoft.Health.Fhir.Web
 
             app.UsePrometheusHttpMetrics();
 
+            // FhirServerStartupFilter.Configure(app);
             app.UseFhirServer();
             app.UseDevelopmentIdentityProviderIfConfigured();
         }

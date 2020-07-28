@@ -6,6 +6,7 @@
 using System.Net;
 using EnsureThat;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Features.Security;
 
@@ -56,6 +57,12 @@ namespace Microsoft.Health.Fhir.Api.Features.Audit
         {
             IFhirRequestContext fhirRequestContext = _fhirRequestContextAccessor.FhirRequestContext;
 
+            if (fhirRequestContext == null)
+            {
+                InitFhirRequestContext(fhirRequestContext, httpContext);
+                fhirRequestContext = _fhirRequestContextAccessor.FhirRequestContext;
+            }
+
             string auditEventType = fhirRequestContext.AuditEventType;
 
             // Audit the call if an audit event type is associated with the action.
@@ -72,6 +79,45 @@ namespace Microsoft.Health.Fhir.Api.Features.Audit
                     callerClaims: claimsExtractor.Extract(),
                     customHeaders: _auditHeaderReader.Read(httpContext));
             }
+        }
+
+        private void InitFhirRequestContext(IFhirRequestContext fhirRequestContext, HttpContext context)
+        {
+            const string RequestIdHeaderName = "X-Request-Id";
+            var request = context.Request;
+
+            string baseUriInString = UriHelper.BuildAbsolute(
+                request.Scheme,
+                request.Host,
+                request.PathBase);
+
+            string uriInString = UriHelper.BuildAbsolute(
+                request.Scheme,
+                request.Host,
+                request.PathBase,
+                request.Path,
+                request.QueryString);
+
+            string correlationId = "FakeCorrelationId";
+
+            fhirRequestContext = new FhirRequestContext(
+                method: request.Method,
+                uriString: uriInString,
+                baseUriString: baseUriInString,
+                correlationId: correlationId,
+                requestHeaders: request.Headers,
+                responseHeaders: request.Headers);
+
+            try
+            {
+                context.Response.Headers[RequestIdHeaderName] = correlationId;
+            }
+            catch
+            {
+                // swallow exception
+            }
+
+            _fhirRequestContextAccessor.FhirRequestContext = fhirRequestContext;
         }
     }
 }
