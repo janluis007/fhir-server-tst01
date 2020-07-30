@@ -37,7 +37,8 @@
             "commandName": "Project",
             "launchBrowser": true,
             "environmentVariables": {
-                "Sqlite:ConnectionString": "server=(local);Initial Catalog=FHIR_R5;Integrated Security=true",
+                "Sqlite:ConnectionString": "Data Source=FHIR_R5.sqlite;Version=3;",
+                "Sqlite:DatabaseFileName": "FHIR_R5.sqlite",
                 "TestAuthEnvironment:FilePath": "..//..//testauthenvironment.json",
                 "DataStore": "Sqlite",
                 "ASPNETCORE_ENVIRONMENT": "development"

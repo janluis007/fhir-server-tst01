@@ -8,5 +8,7 @@ namespace Microsoft.Health.Fhir.Sqlite.Configs
     public class SqliteDataStoreConfiguration
     {
         public string ConnectionString { get; set; }
+
+        public string DatabaseFileName { get; set; }
     }
 }

@@ -4,11 +4,12 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
+using System.Data.SQLite;
 using System.Threading;
 using System.Threading.Tasks;
 using EnsureThat;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
+using Microsoft.Health.Extensions.DependencyInjection;
 using Microsoft.Health.Fhir.Core.Features.Conformance;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Models;
@@ -20,11 +21,12 @@ namespace Microsoft.Health.Fhir.Sqlite.Features.Storage
     /// <summary>
     /// A SQLite-backed <see cref="IFhirDataStore"/>.
     /// </summary>
-    public class SqliteFhirDataStore : IFhirDataStore, IProvideCapability
+    public class SqliteFhirDataStore : IFhirDataStore, IProvideCapability, IStartable
     {
         private readonly IModelInfoProvider _modelInfoProvider;
         private readonly ILogger<SqliteFhirDataStore> _logger;
         private readonly string _connectionString;
+        private readonly string _databaseFileName;
 
         public SqliteFhirDataStore(
             SqliteDataStoreConfiguration configuration,
@@ -39,40 +41,32 @@ namespace Microsoft.Health.Fhir.Sqlite.Features.Storage
             _logger = logger;
 
             _connectionString = configuration.ConnectionString;
+            _databaseFileName = configuration.DatabaseFileName;
         }
 
+        // TODO: Add check if resource exists.
         public Task<UpsertOutcome> UpsertAsync(ResourceWrapper resource, WeakETag weakETag, bool allowCreate, bool keepHistory, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var connection = new SQLiteConnection(_connectionString);
+            connection.Open();
+
+            // TODO: parameterize, add resource values from client
+            string sql = @"INSERT INTO Resource (ResourceTypeId, ResourceId, RawResource) VALUES (1, 'Patient', 'Test')";
+
+            var command = new SQLiteCommand(sql, connection);
+            var newVersion = command.ExecuteNonQuery();
+
+            connection.Close();
+
+            // TODO: Add version info to resource table
+            resource.Version = newVersion.ToString();
+
+            return Task.FromResult(new UpsertOutcome(resource, SaveOutcomeType.Created));
         }
 
         public Task<ResourceWrapper> GetAsync(ResourceKey key, CancellationToken cancellationToken)
         {
-            using (var connection = new SqliteConnection(_connectionString))
-            {
-                connection.Open();
-
-                string id = "test";
-
-                var command = connection.CreateCommand();
-                command.CommandText =
-                    @"
-                        SELECT name
-                        FROM user
-                        WHERE id = $id
-                    ";
-                command.Parameters.AddWithValue("$id", id);
-
-                using (var reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        var name = reader.GetString(0);
-                    }
-                }
-            }
-
-            return (Task<ResourceWrapper>)Task.CompletedTask;
+            throw new NotImplementedException();
         }
 
         public Task HardDeleteAsync(ResourceKey key, CancellationToken cancellationToken)
@@ -88,6 +82,22 @@ namespace Microsoft.Health.Fhir.Sqlite.Features.Storage
             builder.AddDefaultResourceInteractions()
                    .AddDefaultSearchParameters()
                    .AddDefaultRestSearchParams();
+        }
+
+        public void Start()
+        {
+            SQLiteConnection.CreateFile(_databaseFileName);
+
+            var connection = new SQLiteConnection(_connectionString);
+            connection.Open();
+
+            // TODO: Update RawResource to blob?
+            string sql = "CREATE TABLE IF NOT EXISTS Resource (ResourceTypeId int, ResourceId varchar(64), RawResource varchar(256))";
+
+            var command = new SQLiteCommand(sql, connection);
+            command.ExecuteNonQuery();
+
+            connection.Close();
         }
     }
 }
