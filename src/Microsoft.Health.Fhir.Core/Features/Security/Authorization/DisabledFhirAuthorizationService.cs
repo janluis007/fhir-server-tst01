@@ -4,6 +4,7 @@
 // -------------------------------------------------------------------------------------------------
 
 using System.Threading.Tasks;
+using Microsoft.Health.Core.Features.Security;
 
 namespace Microsoft.Health.Fhir.Core.Features.Security.Authorization
 {

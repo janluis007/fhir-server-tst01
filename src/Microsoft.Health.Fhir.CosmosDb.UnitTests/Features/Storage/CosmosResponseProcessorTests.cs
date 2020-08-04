@@ -13,8 +13,8 @@ using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Health.Abstractions.Exceptions;
+using Microsoft.Health.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Exceptions;
-using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.CosmosDb.Features.Metrics;
 using Microsoft.Health.Fhir.CosmosDb.Features.Storage;
 using NSubstitute;
@@ -28,15 +28,15 @@ namespace Microsoft.Health.Fhir.CosmosDb.UnitTests.Features.Storage
         private readonly Dictionary<string, StringValues> _responseHeaders = new Dictionary<string, StringValues>();
         private readonly CosmosResponseProcessor _cosmosResponseProcessor;
         private readonly IMediator _mediator;
-        private readonly IFhirRequestContextAccessor _fhirRequestContextAccessor;
+        private readonly IRequestContextAccessor _fhirRequestContextAccessor;
 
         public CosmosResponseProcessorTests()
         {
-            _fhirRequestContextAccessor = Substitute.For<IFhirRequestContextAccessor>();
-            _fhirRequestContextAccessor.FhirRequestContext.RequestHeaders.Returns(_requestHeaders);
-            _fhirRequestContextAccessor.FhirRequestContext.ResponseHeaders.Returns(_responseHeaders);
-            _fhirRequestContextAccessor.FhirRequestContext.ResourceType.Returns("resource");
-            _fhirRequestContextAccessor.FhirRequestContext.AuditEventType.Returns("operation");
+            _fhirRequestContextAccessor = Substitute.For<IRequestContextAccessor>();
+            _fhirRequestContextAccessor.RequestContext.RequestHeaders.Returns(_requestHeaders);
+            _fhirRequestContextAccessor.RequestContext.ResponseHeaders.Returns(_responseHeaders);
+            _fhirRequestContextAccessor.RequestContext.ResourceType.Returns("resource");
+            _fhirRequestContextAccessor.RequestContext.AuditEventType.Returns("operation");
 
             _mediator = Substitute.For<IMediator>();
             var nullLogger = NullLogger<CosmosResponseProcessor>.Instance;
@@ -114,7 +114,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.UnitTests.Features.Storage
         [Fact]
         public async Task GivenANullFhirRequestContext_WhenProcessing_ThenNothingAdditionalShouldOccur()
         {
-            _fhirRequestContextAccessor.FhirRequestContext.Returns((IFhirRequestContext)null);
+            _fhirRequestContextAccessor.RequestContext.Returns((IRequestContext)null);
             ResponseMessage response = CreateResponseException("fail", HttpStatusCode.TooManyRequests);
 
             await _cosmosResponseProcessor.ProcessErrorResponse(response);

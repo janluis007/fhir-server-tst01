@@ -7,11 +7,11 @@ using System;
 using System.Collections.Generic;
 using System.Security.Claims;
 using Microsoft.Extensions.Primitives;
-using Microsoft.Health.Fhir.Core.Features.Context;
+using Microsoft.Health.Core.Features.Context;
 
 namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Context
 {
-    public class DefaultFhirRequestContext : IFhirRequestContext
+    public class DefaultFhirRequestContext : IRequestContext
     {
         public string Method { get; set; }
 

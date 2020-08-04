@@ -9,11 +9,11 @@ using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Health.Core.Features.Context;
 using Microsoft.Health.Fhir.Api.Features.ActionResults;
 using Microsoft.Health.Fhir.Api.Features.ContentTypes;
 using Microsoft.Health.Fhir.Api.Features.Context;
 using Microsoft.Health.Fhir.Api.Features.Exceptions;
-using Microsoft.Health.Fhir.Core.Features.Context;
 using NSubstitute;
 using Xunit;
 using Task = System.Threading.Tasks.Task;
@@ -24,7 +24,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Exceptions
     {
         private readonly string _correlationId;
         private readonly DefaultHttpContext _context;
-        private readonly IFhirRequestContextAccessor _fhirRequestContextAccessor;
+        private readonly IRequestContextAccessor _fhirRequestContextAccessor;
         private readonly CorrelationIdProvider _provider = () => Guid.NewGuid().ToString();
         private readonly IContentTypeService _contentTypeService;
 
@@ -32,8 +32,8 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Exceptions
         {
             _correlationId = Guid.NewGuid().ToString();
 
-            _fhirRequestContextAccessor = Substitute.For<IFhirRequestContextAccessor>();
-            _fhirRequestContextAccessor.FhirRequestContext.CorrelationId.Returns(_correlationId);
+            _fhirRequestContextAccessor = Substitute.For<IRequestContextAccessor>();
+            _fhirRequestContextAccessor.RequestContext.CorrelationId.Returns(_correlationId);
             _contentTypeService = Substitute.For<IContentTypeService>();
 
             _context = new DefaultHttpContext();

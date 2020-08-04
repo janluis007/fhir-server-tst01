@@ -5,12 +5,13 @@
 
 using System.Net;
 using EnsureThat;
-using Microsoft.Health.Fhir.Core.Exceptions;
+using Microsoft.Health.Core.Exceptions;
+using Microsoft.Health.Core.Models;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations
 {
-    public class OperationFailedException : FhirException
+    public class OperationFailedException : HealthException
     {
         public OperationFailedException(string message, HttpStatusCode statusCode)
             : base(message)

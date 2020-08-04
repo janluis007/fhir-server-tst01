@@ -13,11 +13,11 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Primitives;
+using Microsoft.Health.Core.Features.Context;
 using Microsoft.Health.Fhir.Api.Features.Bundle;
 using Microsoft.Health.Fhir.Api.Features.Routing;
 using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features;
-using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Features.Operations;
 using Microsoft.Health.Fhir.Core.Models;
 using NSubstitute;
@@ -32,7 +32,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Routing
         private const string ContinuationTokenQueryParamName = "ct";
         private const string DefaultRouteName = "Route";
 
-        private readonly IFhirRequestContextAccessor _fhirRequestContextAccessor = Substitute.For<IFhirRequestContextAccessor>();
+        private readonly IRequestContextAccessor _fhirRequestContextAccessor = Substitute.For<IRequestContextAccessor>();
         private readonly IUrlHelperFactory _urlHelperFactory = Substitute.For<IUrlHelperFactory>();
         private readonly IHttpContextAccessor _httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         private readonly IActionContextAccessor _actionContextAccessor = Substitute.For<IActionContextAccessor>();
@@ -55,7 +55,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Routing
                 _actionContextAccessor,
                 _bundleHttpContextAccessor);
 
-            _fhirRequestContextAccessor.FhirRequestContext.RouteName = DefaultRouteName;
+            _fhirRequestContextAccessor.RequestContext.RouteName = DefaultRouteName;
 
             _httpContextAccessor.HttpContext.Returns(_httpContext);
 

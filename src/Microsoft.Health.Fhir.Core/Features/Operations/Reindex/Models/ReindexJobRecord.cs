@@ -6,7 +6,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Health.Core;
-using Microsoft.Health.Fhir.Core.Models;
+using Microsoft.Health.Core.Models;
 using Newtonsoft.Json;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations.Reindex.Models

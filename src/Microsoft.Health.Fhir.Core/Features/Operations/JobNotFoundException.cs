@@ -4,13 +4,13 @@
 // -------------------------------------------------------------------------------------------------
 
 using EnsureThat;
-
-using Microsoft.Health.Fhir.Core.Exceptions;
+using Microsoft.Health.Core.Exceptions;
+using Microsoft.Health.Core.Models;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations
 {
-    public class JobNotFoundException : FhirException
+    public class JobNotFoundException : HealthException
     {
         public JobNotFoundException(string message)
             : base(message)

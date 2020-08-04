@@ -5,7 +5,8 @@
 
 using System;
 using EnsureThat;
-using Microsoft.Health.Fhir.Core.Exceptions;
+using Microsoft.Health.Core.Exceptions;
+using Microsoft.Health.Core.Models;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Features
@@ -13,7 +14,7 @@ namespace Microsoft.Health.Fhir.Core.Features
     /// <summary>
     /// The exception that is thrown when the resource is not supported.
     /// </summary>
-    public class ResourceNotSupportedException : FhirException
+    public class ResourceNotSupportedException : HealthException
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="ResourceNotSupportedException"/> class.

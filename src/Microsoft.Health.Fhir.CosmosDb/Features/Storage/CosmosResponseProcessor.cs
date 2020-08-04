@@ -14,7 +14,7 @@ using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Health.Abstractions.Exceptions;
-using Microsoft.Health.Fhir.Core.Features.Context;
+using Microsoft.Health.Core.Features.Context;
 using Microsoft.Health.Fhir.CosmosDb.Features.Metrics;
 using Microsoft.Health.Fhir.CosmosDb.Features.Queries;
 
@@ -22,11 +22,11 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
 {
     public class CosmosResponseProcessor : ICosmosResponseProcessor
     {
-        private readonly IFhirRequestContextAccessor _fhirRequestContextAccessor;
+        private readonly IRequestContextAccessor _fhirRequestContextAccessor;
         private readonly IMediator _mediator;
         private readonly ILogger<CosmosResponseProcessor> _logger;
 
-        public CosmosResponseProcessor(IFhirRequestContextAccessor fhirRequestContextAccessor, IMediator mediator, ILogger<CosmosResponseProcessor> logger)
+        public CosmosResponseProcessor(IRequestContextAccessor fhirRequestContextAccessor, IMediator mediator, ILogger<CosmosResponseProcessor> logger)
         {
             EnsureArg.IsNotNull(fhirRequestContextAccessor, nameof(fhirRequestContextAccessor));
             EnsureArg.IsNotNull(mediator, nameof(mediator));
@@ -44,7 +44,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
         /// <param name="response">The response that has errored</param>
         public Task ProcessErrorResponse(ResponseMessage response)
         {
-            if (_fhirRequestContextAccessor.FhirRequestContext == null)
+            if (_fhirRequestContextAccessor.RequestContext == null)
             {
                 return Task.CompletedTask;
             }
@@ -89,14 +89,14 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
         /// <param name="statusCode">The HTTP status code.</param>
         public async Task ProcessResponse(string sessionToken, double responseRequestCharge, HttpStatusCode? statusCode)
         {
-            if (_fhirRequestContextAccessor.FhirRequestContext == null)
+            if (_fhirRequestContextAccessor.RequestContext == null)
             {
                 return;
             }
 
             if (!string.IsNullOrEmpty(sessionToken))
             {
-                _fhirRequestContextAccessor.FhirRequestContext.ResponseHeaders[CosmosDbHeaders.SessionToken] = sessionToken;
+                _fhirRequestContextAccessor.RequestContext.ResponseHeaders[CosmosDbHeaders.SessionToken] = sessionToken;
             }
 
             await AddRequestChargeToFhirRequestContext(responseRequestCharge, statusCode);
@@ -104,7 +104,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
 
         private async Task AddRequestChargeToFhirRequestContext(double responseRequestCharge, HttpStatusCode? statusCode)
         {
-            IFhirRequestContext requestContext = _fhirRequestContextAccessor.FhirRequestContext;
+            IRequestContext requestContext = _fhirRequestContextAccessor.RequestContext;
 
             // If there has already been a request to the database for this request, then we want to append a second charge header.
             if (requestContext.ResponseHeaders.TryGetValue(CosmosDbHeaders.RequestCharge, out StringValues existingHeaderValue))

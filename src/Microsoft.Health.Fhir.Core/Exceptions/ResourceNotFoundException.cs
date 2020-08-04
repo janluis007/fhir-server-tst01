@@ -4,11 +4,13 @@
 // -------------------------------------------------------------------------------------------------
 
 using System.Diagnostics;
+using Microsoft.Health.Core.Exceptions;
+using Microsoft.Health.Core.Models;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Exceptions
 {
-    public class ResourceNotFoundException : FhirException
+    public class ResourceNotFoundException : HealthException
     {
         public ResourceNotFoundException(string message)
             : base(message)

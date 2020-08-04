@@ -14,15 +14,15 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Health.Api.Features.Audit;
+using Microsoft.Health.Core.Features.Context;
 using Microsoft.Health.Fhir.Api.Features.ActionResults;
-using Microsoft.Health.Fhir.Api.Features.Audit;
 using Microsoft.Health.Fhir.Api.Features.Filters;
 using Microsoft.Health.Fhir.Api.Features.Headers;
 using Microsoft.Health.Fhir.Api.Features.Routing;
 using Microsoft.Health.Fhir.Core.Configs;
 using Microsoft.Health.Fhir.Core.Exceptions;
 using Microsoft.Health.Fhir.Core.Extensions;
-using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Features.Operations;
 using Microsoft.Health.Fhir.Core.Features.Routing;
 using Microsoft.Health.Fhir.Core.Models;
@@ -35,7 +35,7 @@ namespace Microsoft.Health.Fhir.Api.Controllers
     public class ReindexController : Controller
     {
         private readonly IMediator _mediator;
-        private readonly IFhirRequestContextAccessor _fhirRequestContextAccessor;
+        private readonly IRequestContextAccessor _fhirRequestContextAccessor;
         private readonly ReindexJobConfiguration _config;
         private readonly ILogger<ReindexController> _logger;
         private static Dictionary<string, HashSet<string>> _supportedParams = InitSupportedParams();
@@ -43,7 +43,7 @@ namespace Microsoft.Health.Fhir.Api.Controllers
 
         public ReindexController(
             IMediator mediator,
-            IFhirRequestContextAccessor fhirRequestContextAccessor,
+            IRequestContextAccessor fhirRequestContextAccessor,
             IOptions<OperationsConfiguration> operationsConfig,
             IUrlResolver urlResolver,
             ILogger<ReindexController> logger)

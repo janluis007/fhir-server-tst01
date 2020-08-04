@@ -4,11 +4,13 @@
 // -------------------------------------------------------------------------------------------------
 
 using System.Diagnostics;
+using Microsoft.Health.Core.Exceptions;
+using Microsoft.Health.Core.Models;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Exceptions
 {
-    public class PreconditionFailedException : FhirException
+    public class PreconditionFailedException : HealthException
     {
         public PreconditionFailedException(string message)
             : base(message)

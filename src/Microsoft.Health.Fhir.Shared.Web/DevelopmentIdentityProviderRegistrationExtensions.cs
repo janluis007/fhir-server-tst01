@@ -17,7 +17,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Microsoft.Health.Fhir.Core.Configs;
+using Microsoft.Health.Core.Configs;
 
 namespace Microsoft.Health.Fhir.Web
 {

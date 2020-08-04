@@ -9,8 +9,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Health.Core.Features.Context;
 using Microsoft.Health.Extensions.DependencyInjection;
-using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.CosmosDb.Configs;
 using Microsoft.Health.Fhir.CosmosDb.Features.Queries;
@@ -26,13 +26,13 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
         private static readonly string _validConsistencyLevelsForErrorMessage = string.Join(", ", Enum.GetNames(typeof(ConsistencyLevel)).Select(v => $"'{v}'"));
         private readonly Func<IScoped<Container>> _client;
         private readonly CosmosDataStoreConfiguration _cosmosDataStoreConfiguration;
-        private readonly IFhirRequestContextAccessor _fhirRequestContextAccessor;
+        private readonly IRequestContextAccessor _fhirRequestContextAccessor;
         private readonly ICosmosResponseProcessor _cosmosResponseProcessor;
 
         public FhirCosmosResponseHandler(
             Func<IScoped<Container>> client,
             CosmosDataStoreConfiguration cosmosDataStoreConfiguration,
-            IFhirRequestContextAccessor fhirRequestContextAccessor,
+            IRequestContextAccessor fhirRequestContextAccessor,
             ICosmosResponseProcessor cosmosResponseProcessor)
         {
             _client = client;
@@ -84,7 +84,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
 
         private (ConsistencyLevel? consistencyLevel, string sessionToken) GetConsistencyHeaders()
         {
-            IFhirRequestContext fhirRequestContext = _fhirRequestContextAccessor.FhirRequestContext;
+            IRequestContext fhirRequestContext = _fhirRequestContextAccessor.RequestContext;
 
             if (fhirRequestContext == null)
             {

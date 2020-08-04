@@ -10,6 +10,7 @@ using FluentValidation.Results;
 using FluentValidation.Validators;
 using Hl7.Fhir.ElementModel;
 using Hl7.FhirPath;
+using Microsoft.Health.Core.Models;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Features.Validation.Narratives

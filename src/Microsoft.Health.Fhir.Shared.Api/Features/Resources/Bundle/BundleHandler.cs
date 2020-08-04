@@ -25,8 +25,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Health.Abstractions.Features.Transactions;
+using Microsoft.Health.Api.Features.Audit;
+using Microsoft.Health.Core.Features.Context;
+using Microsoft.Health.Core.Features.Security;
 using Microsoft.Health.Fhir.Api.Configs;
-using Microsoft.Health.Fhir.Api.Features.Audit;
 using Microsoft.Health.Fhir.Api.Features.Bundle;
 using Microsoft.Health.Fhir.Api.Features.ContentTypes;
 using Microsoft.Health.Fhir.Api.Features.Exceptions;
@@ -34,10 +36,8 @@ using Microsoft.Health.Fhir.Api.Features.Headers;
 using Microsoft.Health.Fhir.Api.Features.Routing;
 using Microsoft.Health.Fhir.Core.Exceptions;
 using Microsoft.Health.Fhir.Core.Extensions;
-using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Features.Resources;
-using Microsoft.Health.Fhir.Core.Features.Security;
 using Microsoft.Health.Fhir.Core.Features.Security.Authorization;
 using Microsoft.Health.Fhir.Core.Messages.Bundle;
 using static Hl7.Fhir.Model.Bundle;
@@ -50,7 +50,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Resources.Bundle
     /// </summary>
     public partial class BundleHandler : IRequestHandler<BundleRequest, BundleResponse>
     {
-        private readonly IFhirRequestContextAccessor _fhirRequestContextAccessor;
+        private readonly IRequestContextAccessor _fhirRequestContextAccessor;
         private readonly FhirJsonSerializer _fhirJsonSerializer;
         private readonly FhirJsonParser _fhirJsonParser;
         private readonly Dictionary<HTTPVerb, List<(RouteContext, int, string)>> _requests;
@@ -74,7 +74,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Resources.Bundle
 
         public BundleHandler(
             IHttpContextAccessor httpContextAccessor,
-            IFhirRequestContextAccessor fhirRequestContextAccessor,
+            IRequestContextAccessor fhirRequestContextAccessor,
             FhirJsonSerializer fhirJsonSerializer,
             FhirJsonParser fhirJsonParser,
             ITransactionHandler transactionHandler,
@@ -279,7 +279,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Resources.Bundle
             httpContext.Features[typeof(IHttpAuthenticationFeature)] = _httpAuthenticationFeature;
             httpContext.Response.Body = new MemoryStream();
 
-            var requestUri = new Uri(_fhirRequestContextAccessor.FhirRequestContext.BaseUri, requestUrl);
+            var requestUri = new Uri(_fhirRequestContextAccessor.RequestContext.BaseUri, requestUrl);
             httpContext.Request.Scheme = requestUri.Scheme;
             httpContext.Request.Host = new HostString(requestUri.Host, requestUri.Port);
             httpContext.Request.Path = requestUri.LocalPath;
@@ -424,12 +424,12 @@ namespace Microsoft.Health.Fhir.Api.Features.Resources.Bundle
 
         private void SetupContexts(RouteContext request, HttpContext httpContext)
         {
-            IFhirRequestContext originalFhirRequestContext = _fhirRequestContextAccessor.FhirRequestContext;
+            IRequestContext originalFhirRequestContext = _fhirRequestContextAccessor.RequestContext;
 
             request.RouteData.Values.TryGetValue("controller", out object controllerName);
             request.RouteData.Values.TryGetValue("action", out object actionName);
             request.RouteData.Values.TryGetValue(KnownActionParameterNames.ResourceType, out object resourceType);
-            var newFhirRequestContext = new FhirRequestContext(
+            var newFhirRequestContext = new RequestContext(
                 httpContext.Request.Method,
                 httpContext.Request.GetDisplayUrl(),
                 originalFhirRequestContext.BaseUri.OriginalString,
@@ -444,7 +444,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Resources.Bundle
                     actionName?.ToString()),
             };
 
-            _fhirRequestContextAccessor.FhirRequestContext = newFhirRequestContext;
+            _fhirRequestContextAccessor.RequestContext = newFhirRequestContext;
 
             _bundleHttpContextAccessor.HttpContext = httpContext;
         }

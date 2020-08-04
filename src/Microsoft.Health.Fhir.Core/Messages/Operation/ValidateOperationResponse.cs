@@ -5,7 +5,7 @@
 
 using System.Collections.Generic;
 using EnsureThat;
-using Microsoft.Health.Fhir.Core.Models;
+using Microsoft.Health.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Messages.Operation
 {

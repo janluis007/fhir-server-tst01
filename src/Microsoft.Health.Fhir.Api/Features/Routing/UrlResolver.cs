@@ -14,9 +14,9 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Primitives;
+using Microsoft.Health.Core.Features.Context;
 using Microsoft.Health.Fhir.Api.Features.Bundle;
 using Microsoft.Health.Fhir.Core.Features;
-using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Features.Operations;
 using Microsoft.Health.Fhir.Core.Features.Routing;
 using Microsoft.Health.Fhir.Core.Models;
@@ -28,7 +28,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Routing
     /// </summary>
     public class UrlResolver : IUrlResolver
     {
-        private readonly IFhirRequestContextAccessor _fhirRequestContextAccessor;
+        private readonly IRequestContextAccessor _fhirRequestContextAccessor;
         private readonly IUrlHelperFactory _urlHelperFactory;
 
         // If we update the search implementation to not use these, we should remove
@@ -47,7 +47,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Routing
         /// <param name="actionContextAccessor">The ASP.NET Core Action context accessor.</param>
         /// <param name="bundleHttpContextAccessor">The bundle aware http context accessor.</param>
         public UrlResolver(
-            IFhirRequestContextAccessor fhirRequestContextAccessor,
+            IRequestContextAccessor fhirRequestContextAccessor,
             IUrlHelperFactory urlHelperFactory,
             IHttpContextAccessor httpContextAccessor,
             IActionContextAccessor actionContextAccessor,
@@ -130,7 +130,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Routing
 
         public Uri ResolveRouteUrl(IEnumerable<Tuple<string, string>> unsupportedSearchParams = null, IReadOnlyList<(string parameterName, string reason)> unsupportedSortingParameters = null, string continuationToken = null, bool removeTotalParameter = false)
         {
-            string routeName = _fhirRequestContextAccessor.FhirRequestContext.RouteName;
+            string routeName = _fhirRequestContextAccessor.RequestContext.RouteName;
 
             Debug.Assert(!string.IsNullOrWhiteSpace(routeName), "The routeName should not be null or empty.");
 

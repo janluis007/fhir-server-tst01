@@ -7,8 +7,8 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
+using Microsoft.Health.Core.Features.Context;
 using Microsoft.Health.Fhir.Api.Features.Context;
-using Microsoft.Health.Fhir.Core.Features.Context;
 using NSubstitute;
 using Xunit;
 
@@ -19,7 +19,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Context
         [Fact]
         public async Task GivenAnHttpRequest_WhenExecutingFhirRequestContextMiddleware_ThenCorrectUriShouldBeSet()
         {
-            IFhirRequestContext fhirRequestContext = await SetupAsync(CreateHttpContext());
+            IRequestContext fhirRequestContext = await SetupAsync(CreateHttpContext());
 
             Assert.Equal(new Uri("https://localhost:30/stu3/Observation?code=123"), fhirRequestContext.Uri);
         }
@@ -27,7 +27,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Context
         [Fact]
         public async Task GivenAnHttpRequest_WhenExecutingFhirRequestContextMiddleware_ThenCorrectBaseUriShouldBeSet()
         {
-            IFhirRequestContext fhirRequestContext = await SetupAsync(CreateHttpContext());
+            IRequestContext fhirRequestContext = await SetupAsync(CreateHttpContext());
 
             Assert.Equal(new Uri("https://localhost:30/stu3"), fhirRequestContext.BaseUri);
         }
@@ -39,7 +39,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Context
 
             HttpContext httpContext = CreateHttpContext();
 
-            var fhirRequestContextAccessor = Substitute.For<IFhirRequestContextAccessor>();
+            var fhirRequestContextAccessor = Substitute.For<IRequestContextAccessor>();
             var fhirContextMiddlware = new FhirRequestContextMiddleware(next: (innerHttpContext) => Task.CompletedTask);
             string Provider() => expectedRequestId;
 
@@ -49,17 +49,17 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Context
             Assert.Equal(new StringValues(expectedRequestId), value);
         }
 
-        private async Task<IFhirRequestContext> SetupAsync(HttpContext httpContext)
+        private async Task<IRequestContext> SetupAsync(HttpContext httpContext)
         {
-            var fhirRequestContextAccessor = Substitute.For<IFhirRequestContextAccessor>();
+            var fhirRequestContextAccessor = Substitute.For<IRequestContextAccessor>();
             var fhirContextMiddlware = new FhirRequestContextMiddleware(next: (innerHttpContext) => Task.CompletedTask);
             string Provider() => Guid.NewGuid().ToString();
 
             await fhirContextMiddlware.Invoke(httpContext, fhirRequestContextAccessor, Provider);
 
-            Assert.NotNull(fhirRequestContextAccessor.FhirRequestContext);
+            Assert.NotNull(fhirRequestContextAccessor.RequestContext);
 
-            return fhirRequestContextAccessor.FhirRequestContext;
+            return fhirRequestContextAccessor.RequestContext;
         }
 
         private HttpContext CreateHttpContext()

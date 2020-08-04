@@ -8,10 +8,10 @@ using System.Threading.Tasks;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Health.Core.Features.Context;
 using Microsoft.Health.Fhir.Api.Features.ApiNotifications;
 using Microsoft.Health.Fhir.Api.Features.Routing;
 using Microsoft.Health.Fhir.Api.UnitTests.Features.Context;
-using Microsoft.Health.Fhir.Core.Features.Context;
 using NSubstitute;
 using Xunit;
 
@@ -19,8 +19,8 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Notifications
 {
     public class ApiNotificationMiddlewareTests
     {
-        private readonly IFhirRequestContextAccessor _fhirRequestContextAccessor = Substitute.For<IFhirRequestContextAccessor>();
-        private readonly IFhirRequestContext _fhirRequestContext = new DefaultFhirRequestContext();
+        private readonly IRequestContextAccessor _fhirRequestContextAccessor = Substitute.For<IRequestContextAccessor>();
+        private readonly IRequestContext _fhirRequestContext = new DefaultFhirRequestContext();
         private readonly IMediator _mediator = Substitute.For<IMediator>();
 
         private readonly RequestDelegate _next = httpContext => Task.CompletedTask;
@@ -29,7 +29,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Notifications
 
         public ApiNotificationMiddlewareTests()
         {
-            _fhirRequestContextAccessor.FhirRequestContext.Returns(_fhirRequestContext);
+            _fhirRequestContextAccessor.RequestContext.Returns(_fhirRequestContext);
 
             _apiNotificationMiddleware = new ApiNotificationMiddleware(
                     _fhirRequestContextAccessor,
@@ -61,7 +61,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Notifications
         [Fact]
         public async Task GivenRequestPath_AndNullFhirRequestContext_WhenInvoked_DoesNotFail_AndDoesNotEmitMediatREvents()
         {
-            _fhirRequestContextAccessor.FhirRequestContext.Returns((IFhirRequestContext)null);
+            _fhirRequestContextAccessor.RequestContext.Returns((IRequestContext)null);
 
             _httpContext.Request.Path = "/Observation";
             await _apiNotificationMiddleware.InvokeAsync(_httpContext, _next);

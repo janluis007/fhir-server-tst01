@@ -7,7 +7,7 @@ using System;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Options;
-using Microsoft.Health.Fhir.Core.Configs;
+using Microsoft.Health.Core.Configs;
 
 namespace Microsoft.Health.Fhir.Api.Features.ActionResults
 {

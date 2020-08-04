@@ -5,7 +5,7 @@
 
 using System;
 using Hl7.Fhir.Model;
-using Microsoft.Health.Fhir.Core.Features.Context;
+using Microsoft.Health.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Features.Search.SearchValues;
 using NSubstitute;
 using Xunit;
@@ -17,12 +17,12 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Search.SearchValues
         private const string ParamNameS = "s";
         private static readonly Uri BaseUri = new Uri("https://localhost/stu3/");
 
-        private readonly IFhirRequestContextAccessor _fhirRequestContextAccessor = Substitute.For<IFhirRequestContextAccessor>();
+        private readonly IRequestContextAccessor _fhirRequestContextAccessor = Substitute.For<IRequestContextAccessor>();
         private readonly ReferenceSearchValueParser _referenceSearchValueParser;
 
         public ReferenceSearchValueParserTests()
         {
-            _fhirRequestContextAccessor.FhirRequestContext.BaseUri.Returns(BaseUri);
+            _fhirRequestContextAccessor.RequestContext.BaseUri.Returns(BaseUri);
 
             _referenceSearchValueParser = new ReferenceSearchValueParser(_fhirRequestContextAccessor);
         }

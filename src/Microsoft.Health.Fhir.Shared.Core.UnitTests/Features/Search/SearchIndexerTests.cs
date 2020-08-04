@@ -7,8 +7,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Health.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Extensions;
-using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Features.Search;
 using Microsoft.Health.Fhir.Core.Features.Search.SearchValues;
 using Microsoft.Health.Fhir.Core.Models;
@@ -38,7 +38,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Search
             _indexer = new TypedElementSearchIndexer(
                 SearchParameterFixtureData.SupportedSearchDefinitionManager,
                 SearchParameterFixtureData.Manager,
-                new LightweightReferenceToElementResolver(new ReferenceSearchValueParser(new FhirRequestContextAccessor()), ModelInfoProvider.Instance),
+                new LightweightReferenceToElementResolver(new ReferenceSearchValueParser(new RequestContextAccessor()), ModelInfoProvider.Instance),
                 ModelInfoProvider.Instance,
                 NullLogger<SearchIndexer>.Instance);
         }

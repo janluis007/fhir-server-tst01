@@ -7,10 +7,10 @@ using Hl7.Fhir.Model;
 using MediatR;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Health.Core.Features.Context;
 using Microsoft.Health.Fhir.Api.Controllers;
 using Microsoft.Health.Fhir.Core.Configs;
 using Microsoft.Health.Fhir.Core.Exceptions;
-using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Features.Routing;
 using NSubstitute;
 using Xunit;
@@ -22,7 +22,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Controllers
     {
         private ExportController _exportEnabledController;
         private IMediator _mediator = Substitute.For<IMediator>();
-        private IFhirRequestContextAccessor _fhirRequestContextAccessor = Substitute.For<IFhirRequestContextAccessor>();
+        private IRequestContextAccessor _fhirRequestContextAccessor = Substitute.For<IRequestContextAccessor>();
         private IUrlResolver _urlResolver = Substitute.For<IUrlResolver>();
 
         public ExportControllerTests()

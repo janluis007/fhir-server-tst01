@@ -13,13 +13,14 @@ using Hl7.Fhir.Model;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Health.Abstractions.Exceptions;
+using Microsoft.Health.Api.Features.Audit;
+using Microsoft.Health.Core.Exceptions;
+using Microsoft.Health.Core.Features.Context;
 using Microsoft.Health.Fhir.Api.Features.ActionResults;
-using Microsoft.Health.Fhir.Api.Features.Audit;
 using Microsoft.Health.Fhir.Api.Features.Bundle;
 using Microsoft.Health.Fhir.Api.Features.Exceptions;
 using Microsoft.Health.Fhir.Core.Exceptions;
 using Microsoft.Health.Fhir.Core.Extensions;
-using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Features.Operations;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Features.Search;
@@ -34,9 +35,9 @@ namespace Microsoft.Health.Fhir.Api.Features.Filters
         private const string RetryAfterHeaderName = "x-ms-retry-after-ms";
         private const string ValidateController = "Validate";
 
-        private readonly IFhirRequestContextAccessor _fhirRequestContextAccessor;
+        private readonly IRequestContextAccessor _fhirRequestContextAccessor;
 
-        public OperationOutcomeExceptionFilterAttribute(IFhirRequestContextAccessor fhirRequestContextAccessor)
+        public OperationOutcomeExceptionFilterAttribute(IRequestContextAccessor fhirRequestContextAccessor)
         {
             EnsureArg.IsNotNull(fhirRequestContextAccessor, nameof(fhirRequestContextAccessor));
 
@@ -52,12 +53,12 @@ namespace Microsoft.Health.Fhir.Api.Features.Filters
                 return;
             }
 
-            if (context.Exception is FhirException fhirException)
+            if (context.Exception is HealthException fhirException)
             {
                 var operationOutcomeResult = new OperationOutcomeResult(
                     new OperationOutcome
                     {
-                        Id = _fhirRequestContextAccessor.FhirRequestContext.CorrelationId,
+                        Id = _fhirRequestContextAccessor.RequestContext.CorrelationId,
                         Issue = fhirException.Issues.Select(x => x.ToPoco()).ToList(),
                     }, HttpStatusCode.BadRequest);
 
@@ -173,7 +174,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Filters
                         healthExceptionResult = new OperationOutcomeResult(
                             new OperationOutcome
                             {
-                                Id = _fhirRequestContextAccessor.FhirRequestContext.CorrelationId,
+                                Id = _fhirRequestContextAccessor.RequestContext.CorrelationId,
                             }, HttpStatusCode.InternalServerError);
                         break;
                 }
@@ -204,7 +205,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Filters
             return new OperationOutcomeResult(
                 new OperationOutcome
                 {
-                    Id = _fhirRequestContextAccessor.FhirRequestContext.CorrelationId,
+                    Id = _fhirRequestContextAccessor.RequestContext.CorrelationId,
                     Issue = new List<OperationOutcome.IssueComponent>
                     {
                         new OperationOutcome.IssueComponent

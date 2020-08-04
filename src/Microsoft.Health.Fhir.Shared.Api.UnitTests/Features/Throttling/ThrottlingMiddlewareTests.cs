@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Health.Core.Configs;
 using Microsoft.Health.Fhir.Api.Configs;
 using Microsoft.Health.Fhir.Api.Features.Throttling;
 using NSubstitute;
@@ -150,7 +151,7 @@ namespace Microsoft.Health.Fhir.Shared.Api.UnitTests.Features.Throttling
                     }
                 },
                 Options.Create(throttlingConfiguration),
-                Options.Create(new Core.Configs.SecurityConfiguration { Enabled = securityEnabled }),
+                Options.Create(new SecurityConfiguration { Enabled = securityEnabled }),
                 NullLogger<ThrottlingMiddleware>.Instance);
 
             _executor = Substitute.For<IActionResultExecutor<ObjectResult>>();

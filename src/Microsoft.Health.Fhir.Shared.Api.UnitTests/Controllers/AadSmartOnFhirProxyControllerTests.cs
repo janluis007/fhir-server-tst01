@@ -14,10 +14,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Health.Core.Configs;
 using Microsoft.Health.Fhir.Api.Configs;
 using Microsoft.Health.Fhir.Api.Controllers;
 using Microsoft.Health.Fhir.Api.Features.Exceptions;
-using Microsoft.Health.Fhir.Core.Configs;
 using Microsoft.Health.Fhir.Core.Features.Routing;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -30,7 +30,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Controllers
     {
         private readonly SecurityConfiguration _securityConfiguration = new SecurityConfiguration();
         private readonly IHttpClientFactory _httpClientFactory = Substitute.For<IHttpClientFactory>();
-        private readonly ILogger<Core.Configs.SecurityConfiguration> _logger = NullLogger<Core.Configs.SecurityConfiguration>.Instance;
+        private readonly ILogger<SecurityConfiguration> _logger = NullLogger<SecurityConfiguration>.Instance;
         private readonly IUrlResolver _urlResolver = Substitute.For<IUrlResolver>();
         private readonly FeatureConfiguration _featureConfiguration = new FeatureConfiguration();
         private readonly AadSmartOnFhirProxyController _controller;

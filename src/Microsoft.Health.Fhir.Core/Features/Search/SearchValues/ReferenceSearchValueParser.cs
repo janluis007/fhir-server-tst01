@@ -7,7 +7,7 @@ using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 using EnsureThat;
-using Microsoft.Health.Fhir.Core.Features.Context;
+using Microsoft.Health.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Features.Search.SearchValues
@@ -27,9 +27,9 @@ namespace Microsoft.Health.Fhir.Core.Features.Search.SearchValues
             ReferenceCaptureRegexPattern,
             RegexOptions.Singleline | RegexOptions.Compiled | RegexOptions.ExplicitCapture);
 
-        private readonly IFhirRequestContextAccessor _fhirRequestContextAccessor;
+        private readonly IRequestContextAccessor _fhirRequestContextAccessor;
 
-        public ReferenceSearchValueParser(IFhirRequestContextAccessor fhirRequestContextAccessor)
+        public ReferenceSearchValueParser(IRequestContextAccessor fhirRequestContextAccessor)
         {
             EnsureArg.IsNotNull(fhirRequestContextAccessor, nameof(fhirRequestContextAccessor));
 
@@ -69,7 +69,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Search.SearchValues
                 {
                     baseUri = new Uri(s.Substring(0, resourceTypeStartIndex), UriKind.RelativeOrAbsolute);
 
-                    if (baseUri == _fhirRequestContextAccessor.FhirRequestContext.BaseUri)
+                    if (baseUri == _fhirRequestContextAccessor.RequestContext.BaseUri)
                     {
                         // This is an absolute URL pointing to an internal resource.
                         return new ReferenceSearchValue(

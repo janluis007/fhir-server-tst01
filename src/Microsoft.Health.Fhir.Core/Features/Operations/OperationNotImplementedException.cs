@@ -4,12 +4,13 @@
 // -------------------------------------------------------------------------------------------------
 
 using EnsureThat;
-using Microsoft.Health.Fhir.Core.Exceptions;
+using Microsoft.Health.Core.Exceptions;
+using Microsoft.Health.Core.Models;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations
 {
-    public class OperationNotImplementedException : FhirException
+    public class OperationNotImplementedException : HealthException
     {
         public OperationNotImplementedException(string message)
             : base(message)

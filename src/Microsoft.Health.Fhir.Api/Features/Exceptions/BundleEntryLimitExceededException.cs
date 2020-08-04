@@ -4,12 +4,13 @@
 // -------------------------------------------------------------------------------------------------
 
 using EnsureThat;
-using Microsoft.Health.Fhir.Core.Exceptions;
+using Microsoft.Health.Core.Exceptions;
+using Microsoft.Health.Core.Models;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Api.Features.Exceptions
 {
-    public class BundleEntryLimitExceededException : FhirException
+    public class BundleEntryLimitExceededException : HealthException
     {
         public BundleEntryLimitExceededException(string message)
             : base(message)

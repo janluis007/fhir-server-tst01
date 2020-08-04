@@ -7,9 +7,9 @@ using System;
 using System.Collections.Generic;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
+using Microsoft.Health.Core.Features.Context;
 using Microsoft.Health.Core.Internal;
 using Microsoft.Health.Fhir.Core.Extensions;
-using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Features.Routing;
 using Microsoft.Health.Fhir.Core.Features.Search;
@@ -26,7 +26,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Search
         private readonly FhirJsonSerializer _fhirJsonSerializer = new FhirJsonSerializer();
         private readonly FhirJsonParser _fhirJsonParser = new FhirJsonParser();
         private readonly IUrlResolver _urlResolver = Substitute.For<IUrlResolver>();
-        private readonly IFhirRequestContextAccessor _fhirRequestContextAccessor = Substitute.For<IFhirRequestContextAccessor>();
+        private readonly IRequestContextAccessor _fhirRequestContextAccessor = Substitute.For<IRequestContextAccessor>();
         private readonly ResourceDeserializer _resourceDeserializer;
         private readonly BundleFactory _bundleFactory;
 
@@ -50,11 +50,11 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Search
                 _fhirRequestContextAccessor,
                 _resourceDeserializer);
 
-            IFhirRequestContext fhirRequestContext = Substitute.For<IFhirRequestContext>();
+            IRequestContext fhirRequestContext = Substitute.For<IRequestContext>();
 
             fhirRequestContext.CorrelationId.Returns(_correlationId);
 
-            _fhirRequestContextAccessor.FhirRequestContext.Returns(fhirRequestContext);
+            _fhirRequestContextAccessor.RequestContext.Returns(fhirRequestContext);
         }
 
         [Fact]

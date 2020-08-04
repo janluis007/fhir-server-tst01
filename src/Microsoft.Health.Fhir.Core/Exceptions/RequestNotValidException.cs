@@ -4,11 +4,13 @@
 // -------------------------------------------------------------------------------------------------
 
 using EnsureThat;
+using Microsoft.Health.Core.Exceptions;
+using Microsoft.Health.Core.Models;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Exceptions
 {
-    public class RequestNotValidException : FhirException
+    public class RequestNotValidException : HealthException
     {
         public RequestNotValidException(string message)
             : base(message)

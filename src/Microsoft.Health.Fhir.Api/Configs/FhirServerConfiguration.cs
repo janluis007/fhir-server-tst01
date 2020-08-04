@@ -13,7 +13,7 @@ namespace Microsoft.Health.Fhir.Api.Configs
     {
         public FeatureConfiguration Features { get; } = new FeatureConfiguration();
 
-        public SecurityConfiguration Security { get; } = new SecurityConfiguration();
+        public Health.Core.Configs.SecurityConfiguration Security { get; } = new Health.Core.Configs.SecurityConfiguration();
 
         public virtual CorsConfiguration Cors { get; } = new CorsConfiguration();
 

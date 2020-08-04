@@ -7,9 +7,9 @@ using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Health.Fhir.Api.Features.Audit;
+using Microsoft.Health.Api.Features.Audit;
+using Microsoft.Health.Core.Features.Context;
 using Microsoft.Health.Fhir.Api.Features.Context;
-using Microsoft.Health.Fhir.Core.Features.Context;
 using NSubstitute;
 using Xunit;
 
@@ -21,7 +21,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Context
         private const string ActionName = "action";
         private const string DefaultAuditEventType = "audit";
 
-        private readonly IFhirRequestContextAccessor _fhirRequestContextAccessor = Substitute.For<IFhirRequestContextAccessor>();
+        private readonly IRequestContextAccessor _fhirRequestContextAccessor = Substitute.For<IRequestContextAccessor>();
         private readonly IAuditEventTypeMapping _auditEventTypeMapping = Substitute.For<IAuditEventTypeMapping>();
 
         private readonly FhirRequestContextBeforeAuthenticationMiddleware _fhirRequestContextBeforeAuthenticationMiddleware;
@@ -31,7 +31,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Context
 
         public FhirRequestContextBeforeAuthenticationMiddlewareTests()
         {
-            _fhirRequestContextAccessor.FhirRequestContext.Returns(_fhirRequestContext);
+            _fhirRequestContextAccessor.RequestContext.Returns(_fhirRequestContext);
 
             _fhirRequestContextBeforeAuthenticationMiddleware = new FhirRequestContextBeforeAuthenticationMiddleware(
                 httpContext => Task.CompletedTask,

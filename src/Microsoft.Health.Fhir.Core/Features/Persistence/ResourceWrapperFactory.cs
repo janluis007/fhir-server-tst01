@@ -5,10 +5,10 @@
 
 using System.Collections.Generic;
 using EnsureThat;
+using Microsoft.Health.Core.Features.Context;
+using Microsoft.Health.Core.Features.Security;
 using Microsoft.Health.Fhir.Core.Features.Compartment;
-using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Features.Search;
-using Microsoft.Health.Fhir.Core.Features.Security;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Features.Persistence
@@ -20,7 +20,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Persistence
     {
         private readonly IRawResourceFactory _rawResourceFactory;
         private readonly ISearchIndexer _searchIndexer;
-        private readonly IFhirRequestContextAccessor _fhirRequestContextAccessor;
+        private readonly IRequestContextAccessor _fhirRequestContextAccessor;
         private readonly IClaimsExtractor _claimsExtractor;
         private readonly ICompartmentIndexer _compartmentIndexer;
 
@@ -34,7 +34,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Persistence
         /// <param name="compartmentIndexer">The compartment indexer.</param>
         public ResourceWrapperFactory(
             IRawResourceFactory rawResourceFactory,
-            IFhirRequestContextAccessor fhirRequestContextAccessor,
+            IRequestContextAccessor fhirRequestContextAccessor,
             ISearchIndexer searchIndexer,
             IClaimsExtractor claimsExtractor,
             ICompartmentIndexer compartmentIndexer)
@@ -58,7 +58,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Persistence
             RawResource rawResource = _rawResourceFactory.Create(resource);
             IReadOnlyCollection<SearchIndexEntry> searchIndices = _searchIndexer.Extract(resource);
 
-            IFhirRequestContext fhirRequestContext = _fhirRequestContextAccessor.FhirRequestContext;
+            IRequestContext fhirRequestContext = _fhirRequestContextAccessor.RequestContext;
 
             return new ResourceWrapper(
                 resource,

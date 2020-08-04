@@ -6,7 +6,8 @@
 using System;
 using System.Diagnostics;
 using EnsureThat;
-using Microsoft.Health.Fhir.Core.Exceptions;
+using Microsoft.Health.Core.Exceptions;
+using Microsoft.Health.Core.Models;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Features.Search
@@ -14,7 +15,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
     /// <summary>
     /// The exception that is thrown when the search parameter is not supported.
     /// </summary>
-    public class SearchParameterNotSupportedException : FhirException
+    public class SearchParameterNotSupportedException : HealthException
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="SearchParameterNotSupportedException"/> class.

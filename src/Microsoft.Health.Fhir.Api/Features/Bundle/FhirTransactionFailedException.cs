@@ -6,12 +6,13 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
-using Microsoft.Health.Fhir.Core.Exceptions;
+using Microsoft.Health.Core.Exceptions;
+using Microsoft.Health.Core.Models;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Api.Features.Bundle
 {
-    public class FhirTransactionFailedException : FhirException
+    public class FhirTransactionFailedException : HealthException
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="FhirTransactionFailedException"/> class.

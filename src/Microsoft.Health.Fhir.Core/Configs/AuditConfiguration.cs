@@ -3,30 +3,13 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-using Microsoft.Health.Fhir.Core.Exceptions;
-
 namespace Microsoft.Health.Fhir.Core.Configs
 {
-    public class AuditConfiguration
+    public class AuditConfiguration : Microsoft.Health.Core.Configs.AuditConfiguration
     {
-        private string _customAuditHeaderPrefix = "X-MS-AZUREFHIR-AUDIT-";
-
-        public string CustomAuditHeaderPrefix
+        public AuditConfiguration()
+            : base("X-MS-AZUREFHIR-AUDIT-")
         {
-            get
-            {
-                return _customAuditHeaderPrefix;
-            }
-
-            set
-            {
-                if (string.IsNullOrEmpty(value))
-                {
-                    throw new InvalidDefinitionException(Resources.CustomHeaderPrefixCannotBeEmpty);
-                }
-
-                _customAuditHeaderPrefix = value;
-            }
         }
     }
 }

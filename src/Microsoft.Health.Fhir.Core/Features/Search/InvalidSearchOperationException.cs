@@ -4,7 +4,8 @@
 // -------------------------------------------------------------------------------------------------
 
 using System.Diagnostics;
-using Microsoft.Health.Fhir.Core.Exceptions;
+using Microsoft.Health.Core.Exceptions;
+using Microsoft.Health.Core.Models;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Features.Search
@@ -12,7 +13,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
     /// <summary>
     /// Exception thrown when an invalid search operation is specified.
     /// </summary>
-    public class InvalidSearchOperationException : FhirException
+    public class InvalidSearchOperationException : HealthException
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="InvalidSearchOperationException"/> class.

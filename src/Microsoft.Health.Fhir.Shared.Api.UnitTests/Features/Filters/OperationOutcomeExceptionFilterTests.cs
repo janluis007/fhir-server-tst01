@@ -14,13 +14,15 @@ using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Health.Abstractions.Exceptions;
+using Microsoft.Health.Core.Exceptions;
+using Microsoft.Health.Core.Features.Context;
+using Microsoft.Health.Core.Models;
 using Microsoft.Health.Fhir.Api.Features.ActionResults;
 using Microsoft.Health.Fhir.Api.Features.Bundle;
 using Microsoft.Health.Fhir.Api.Features.Exceptions;
 using Microsoft.Health.Fhir.Api.Features.Filters;
 using Microsoft.Health.Fhir.Api.UnitTests.Features.Context;
 using Microsoft.Health.Fhir.Core.Exceptions;
-using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Features.Operations;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Features.Search;
@@ -35,7 +37,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Filters
     public class OperationOutcomeExceptionFilterTests
     {
         private readonly ActionExecutedContext _context;
-        private readonly IFhirRequestContextAccessor _fhirRequestContextAccessor = Substitute.For<IFhirRequestContextAccessor>();
+        private readonly IRequestContextAccessor _fhirRequestContextAccessor = Substitute.For<IRequestContextAccessor>();
         private readonly DefaultFhirRequestContext _fhirRequestContext = new DefaultFhirRequestContext();
         private readonly string _correlationId = Guid.NewGuid().ToString();
 
@@ -47,7 +49,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Filters
                 FilterTestsHelper.CreateMockFhirController());
 
             _fhirRequestContext.CorrelationId = _correlationId;
-            _fhirRequestContextAccessor.FhirRequestContext.Returns(_fhirRequestContext);
+            _fhirRequestContextAccessor.RequestContext.Returns(_fhirRequestContext);
         }
 
         [Fact]
@@ -55,7 +57,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Filters
         {
             var filter = new OperationOutcomeExceptionFilterAttribute(_fhirRequestContextAccessor);
 
-            _context.Exception = Substitute.For<FhirException>();
+            _context.Exception = Substitute.For<HealthException>();
 
             filter.OnActionExecuted(_context);
 
@@ -97,7 +99,7 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Filters
             var reason = "This is a test reason.";
 
             var operation = ValidateOperationOutcome(
-                Substitute.For<FhirException>(new OperationOutcomeIssue(
+                Substitute.For<HealthException>(new OperationOutcomeIssue(
                     OperationOutcomeConstants.IssueSeverity.Error,
                     OperationOutcomeConstants.IssueType.Invalid,
                     reason)),

@@ -4,11 +4,12 @@
 // -------------------------------------------------------------------------------------------------
 
 using EnsureThat;
+using Microsoft.Health.Core.Exceptions;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 
 namespace Microsoft.Health.Fhir.Core.Exceptions
 {
-    public class ResourceGoneException : FhirException
+    public class ResourceGoneException : HealthException
     {
         public ResourceGoneException(ResourceKey deletedResource)
         {

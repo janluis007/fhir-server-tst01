@@ -5,7 +5,7 @@
 
 using EnsureThat;
 using FluentValidation.Results;
-using Microsoft.Health.Fhir.Core.Models;
+using Microsoft.Health.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Features.Validation
 {

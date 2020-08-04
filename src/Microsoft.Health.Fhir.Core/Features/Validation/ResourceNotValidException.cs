@@ -6,12 +6,13 @@
 using System.Collections.Generic;
 using EnsureThat;
 using FluentValidation.Results;
-using Microsoft.Health.Fhir.Core.Exceptions;
+using Microsoft.Health.Core.Exceptions;
+using Microsoft.Health.Core.Models;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Features.Validation
 {
-    public class ResourceNotValidException : FhirException
+    public class ResourceNotValidException : HealthException
     {
         public ResourceNotValidException(IEnumerable<OperationOutcomeIssue> validationFailures)
         {

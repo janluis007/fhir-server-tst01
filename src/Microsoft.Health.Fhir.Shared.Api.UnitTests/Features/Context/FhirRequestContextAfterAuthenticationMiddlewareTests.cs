@@ -5,8 +5,8 @@
 
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Health.Core.Features.Context;
 using Microsoft.Health.Fhir.Api.Features.Context;
-using Microsoft.Health.Fhir.Core.Features.Context;
 using NSubstitute;
 using Xunit;
 
@@ -25,11 +25,11 @@ namespace Microsoft.Health.Fhir.Api.UnitTests.Features.Context
         [Fact]
         public async Task GivenUserNotNull_WhenInvoked_ThenPrincipalShouldBeSet()
         {
-            IFhirRequestContextAccessor fhirRequestContextAccessor = Substitute.For<IFhirRequestContextAccessor>();
+            IRequestContextAccessor fhirRequestContextAccessor = Substitute.For<IRequestContextAccessor>();
 
             var fhirRequestContext = new DefaultFhirRequestContext();
 
-            fhirRequestContextAccessor.FhirRequestContext.Returns(fhirRequestContext);
+            fhirRequestContextAccessor.RequestContext.Returns(fhirRequestContext);
 
             HttpContext httpContext = new DefaultHttpContext();
 

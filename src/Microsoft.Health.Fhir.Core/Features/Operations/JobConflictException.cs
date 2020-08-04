@@ -3,12 +3,13 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-using Microsoft.Health.Fhir.Core.Exceptions;
+using Microsoft.Health.Core.Exceptions;
+using Microsoft.Health.Core.Models;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations
 {
-    public class JobConflictException : FhirException
+    public class JobConflictException : HealthException
     {
         public JobConflictException()
             : base()
@@ -18,7 +19,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations
         public JobConflictException(string message)
             : base(message)
         {
-            Issues.Add(new Models.OperationOutcomeIssue(
+            Issues.Add(new OperationOutcomeIssue(
                 OperationOutcomeConstants.IssueSeverity.Error,
                 OperationOutcomeConstants.IssueType.Conflict,
                 message));

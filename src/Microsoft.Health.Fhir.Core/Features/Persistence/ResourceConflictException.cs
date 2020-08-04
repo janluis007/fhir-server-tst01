@@ -4,12 +4,13 @@
 // -------------------------------------------------------------------------------------------------
 
 using System.Diagnostics;
-using Microsoft.Health.Fhir.Core.Exceptions;
+using Microsoft.Health.Core.Exceptions;
+using Microsoft.Health.Core.Models;
 using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Features.Persistence
 {
-    public class ResourceConflictException : FhirException
+    public class ResourceConflictException : HealthException
     {
         public ResourceConflictException(WeakETag etag)
         {
