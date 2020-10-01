@@ -4,9 +4,9 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
-using System.Data.SqlClient;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
 using Microsoft.Health.Fhir.Tests.Common.FixtureParameters;
 using Microsoft.Health.SqlServer.Features.Client;
 using Xunit;
@@ -111,7 +111,7 @@ namespace Microsoft.Health.Fhir.Tests.Integration.Persistence
             using (SqlCommandWrapper sqlCommandWrapper = connectionWrapper.CreateSqlCommand())
             {
                 sqlCommandWrapper.CommandText = $@"
-                            SELECT * 
+                            SELECT *
                             FROM resource {tableHints}
                             WHERE ResourceId = @newId";
 

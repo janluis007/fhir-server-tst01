@@ -7,9 +7,9 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
 using System.Linq;
 using EnsureThat;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Health.Abstractions.Exceptions;
@@ -157,37 +157,37 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Storage
                         SET XACT_ABORT ON
                         BEGIN TRANSACTION
 
-                        INSERT INTO dbo.ResourceType (Name) 
+                        INSERT INTO dbo.ResourceType (Name)
                         SELECT value FROM string_split(@resourceTypes, ',')
-                        EXCEPT SELECT Name FROM dbo.ResourceType WITH (TABLOCKX); 
+                        EXCEPT SELECT Name FROM dbo.ResourceType WITH (TABLOCKX);
 
                         -- result set 1
                         SELECT ResourceTypeId, Name FROM dbo.ResourceType;
 
                         INSERT INTO dbo.SearchParam (Uri)
-                        SELECT * FROM  OPENJSON (@searchParams) 
+                        SELECT * FROM  OPENJSON (@searchParams)
                         WITH (Uri varchar(128) '$.Uri')
                         EXCEPT SELECT Uri FROM dbo.SearchParam;
 
                         -- result set 2
                         SELECT Uri, SearchParamId FROM dbo.SearchParam;
 
-                        INSERT INTO dbo.ClaimType (Name) 
+                        INSERT INTO dbo.ClaimType (Name)
                         SELECT value FROM string_split(@claimTypes, ',')
-                        EXCEPT SELECT Name FROM dbo.ClaimType; 
+                        EXCEPT SELECT Name FROM dbo.ClaimType;
 
                         -- result set 3
                         SELECT ClaimTypeId, Name FROM dbo.ClaimType;
 
-                        INSERT INTO dbo.CompartmentType (Name) 
+                        INSERT INTO dbo.CompartmentType (Name)
                         SELECT value FROM string_split(@compartmentTypes, ',')
-                        EXCEPT SELECT Name FROM dbo.CompartmentType; 
+                        EXCEPT SELECT Name FROM dbo.CompartmentType;
 
                         -- result set 4
                         SELECT CompartmentTypeId, Name FROM dbo.CompartmentType;
-                        
+
                         COMMIT TRANSACTION
-    
+
                         -- result set 5
                         SELECT Value, SystemId from dbo.System;
 
@@ -304,9 +304,9 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Storage
                         DECLARE @id int = (SELECT {idColumn} FROM {table} WITH (UPDLOCK) WHERE {stringColumn} = @stringValue)
 
                         IF (@id IS NULL) BEGIN
-                            INSERT INTO {table} 
+                            INSERT INTO {table}
                                 ({stringColumn})
-                            VALUES 
+                            VALUES
                                 (@stringValue)
                             SET @id = SCOPE_IDENTITY()
                         END

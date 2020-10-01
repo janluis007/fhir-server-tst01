@@ -4,11 +4,11 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
-using System.Data.SqlClient;
 using System.Numerics;
 using System.Threading;
 using Hl7.Fhir.Model;
 using MediatR;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

@@ -4,11 +4,11 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
-using System.Data.SqlClient;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Health.Fhir.SqlServer.Features.Schema;
 using Microsoft.Health.Fhir.SqlServer.Features.Storage;
@@ -18,7 +18,6 @@ using Microsoft.SqlServer.Dac.Compare;
 using NSubstitute;
 using Polly;
 using Xunit;
-
 using Task = System.Threading.Tasks.Task;
 
 namespace Microsoft.Health.Fhir.Tests.Integration.Persistence
@@ -160,7 +159,7 @@ namespace Microsoft.Health.Fhir.Tests.Integration.Persistence
                 using (SqlCommand outerCommand = connection.CreateCommand())
                 {
                     outerCommand.CommandText = @"
-                    SELECT t.name 
+                    SELECT t.name
                     FROM sys.tables t
                     INNER JOIN sys.columns c ON c.object_id = t.object_id
                     WHERE c.name = 'ResourceSurrogateId'";
