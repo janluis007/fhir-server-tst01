@@ -1,0 +1,30 @@
+version: '3'
+services:
+  fhir-server-dev:
+      container_name: dev
+      # Note that the path of the Dockerfile and context is relative to the *primary*
+      # docker-compose.yml file (the first in the devcontainer.json "dockerComposeFile"
+      # array). The sample below assumes your primary file is in the root of your project.
+      build:
+        context: .
+        dockerfile: ./Dockerfile
+        args:
+          VARIANT: 3.1
+          INSTALL_NODE: "true"
+          NODE_VERSION: lts/*
+          INSTALL_AZURE_CLI: "false"
+      volumes:
+        - ..:/workspace:cached
+      command: /bin/sh -c "while sleep 1000; do :; done"
+      depends_on:
+        - sql
+      ports:     
+      - "44348:44348"
+  sql:
+      container_name: sql
+      image: "mcr.microsoft.com/mssql/server"
+      environment:
+        ACCEPT_EULA: "Y"
+        SA_PASSWORD: localDev1!
+      ports:     
+      - "1433:1433"
