@@ -22,6 +22,8 @@ stages:
   dependsOn: []
   jobs:
   - job: ProvisionEnvironment
+    pool:
+      vmImage: 'windows-latest'
     steps:
     - task: AzurePowerShell@4
       displayName: Provision Resource Group
@@ -36,9 +38,10 @@ stages:
       inputs:
         azureSubscription: $(ConnectedServiceName)
         azurePowerShellVersion: latestVersion
+        errorActionPreference: 'continue'
         ScriptType: inlineScript
         Inline: |
-          $cors = (ConvertFrom-Json (Get-Content -Raw "*/**/corstestconfiguration.json"))
+          $cors = (ConvertFrom-Json (Get-Content -Raw "$(System.DefaultWorkingDirectory)/**/*/corstestconfiguration.json"))
           $flattenedCors = $(System.DefaultWorkingDirectory)/release/scripts/PowerShell/ConvertTo-FlattenedConfigurationHashtable.ps1 -InputObject $cors
       
           $additionalProperties = $flattenedCors
