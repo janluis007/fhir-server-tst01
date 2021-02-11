@@ -79,6 +79,15 @@ namespace Microsoft.Health.Fhir.SqlServer {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to This operation is not implemented for this data provider..
+        /// </summary>
+        internal static string OperationNotImplemented {
+            get {
+                return ResourceManager.GetString("OperationNotImplemented", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Cannot carry out the SQL datastore operation because the SQL schema needs to be upgraded..
         /// </summary>
         internal static string SchemaVersionNeedsToBeUpgraded {

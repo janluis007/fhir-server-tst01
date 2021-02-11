@@ -3,20 +3,12 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-using System;
-
 namespace Microsoft.Health.Fhir.Core.Features.Search.Registry
 {
-    public class ResourceSearchParameterStatus
+    public enum SortParameterStatus
     {
-        public Uri Uri { get; set; }
-
-        public SearchParameterStatus Status { get; set; }
-
-        public bool IsPartiallySupported { get; set; }
-
-        public SortParameterStatus SortStatus { get; set; }
-
-        public DateTimeOffset LastUpdated { get; set; }
+        Disabled = 0,
+        Supported = 1,
+        Enabled = 2,
     }
 }

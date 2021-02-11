@@ -135,4 +135,7 @@
   <data name="SearchParameterStatusShouldNotBeNull" xml:space="preserve">
     <value>Search parameter status information should not be null.</value>
   </data>
+  <data name="OperationNotImplemented" xml:space="preserve">
+    <value>This operation is not implemented for this data provider.</value>
+  </data>
 </root>

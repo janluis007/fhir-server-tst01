@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Health.Extensions.DependencyInjection;
 using Microsoft.Health.Fhir.Core.Features.Search.Registry;
 using Microsoft.Health.Fhir.Core.Registration;
+using Microsoft.Health.Fhir.SqlServer.Features.Operations.SortSettings;
 using Microsoft.Health.Fhir.SqlServer.Features.Schema;
 using Microsoft.Health.Fhir.SqlServer.Features.Search;
 using Microsoft.Health.Fhir.SqlServer.Features.Search.Expressions.Visitors;
@@ -96,6 +97,8 @@ namespace Microsoft.Extensions.DependencyInjection
             services.Add<SchemaUpgradedHandler>()
                 .Transient()
                 .AsImplementedInterfaces();
+
+            fhirServerBuilder.Services.Add<SortSettingsHandler>().Transient().AsImplementedInterfaces();
 
             return fhirServerBuilder;
         }

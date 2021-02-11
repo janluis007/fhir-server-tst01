@@ -4,19 +4,20 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
+using Microsoft.Health.Fhir.Core.Features.Search.Registry;
 
-namespace Microsoft.Health.Fhir.Core.Features.Search.Registry
+namespace Microsoft.Health.Fhir.Core.Messages.Operation
 {
-    public class ResourceSearchParameterStatus
+    public class SortSettingsResponse
     {
-        public Uri Uri { get; set; }
+        public SortSettingsResponse(Uri uri, SortParameterStatus status)
+        {
+            Uri = uri;
+            Status = status;
+        }
 
-        public SearchParameterStatus Status { get; set; }
+        public Uri Uri { get; }
 
-        public bool IsPartiallySupported { get; set; }
-
-        public SortParameterStatus SortStatus { get; set; }
-
-        public DateTimeOffset LastUpdated { get; set; }
+        public SortParameterStatus Status { get; }
     }
 }

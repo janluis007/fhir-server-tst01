@@ -19,6 +19,7 @@ using Microsoft.Health.Fhir.Core.Registration;
 using Microsoft.Health.Fhir.CosmosDb;
 using Microsoft.Health.Fhir.CosmosDb.Configs;
 using Microsoft.Health.Fhir.CosmosDb.Features.Health;
+using Microsoft.Health.Fhir.CosmosDb.Features.Operations.SortSettings;
 using Microsoft.Health.Fhir.CosmosDb.Features.Queries;
 using Microsoft.Health.Fhir.CosmosDb.Features.Search;
 using Microsoft.Health.Fhir.CosmosDb.Features.Search.Queries;
@@ -214,6 +215,9 @@ namespace Microsoft.Extensions.DependencyInjection
             fhirServerBuilder.Services.Add<CosmosDbSortingValidator>()
                 .Singleton()
                 .AsImplementedInterfaces();
+
+            fhirServerBuilder.Services.Add<SortSettingsHandler>().Transient().AsImplementedInterfaces();
+            fhirServerBuilder.Services.Add<UpdateSettingsValidator>().Transient().AsImplementedInterfaces();
 
             return fhirServerBuilder;
         }

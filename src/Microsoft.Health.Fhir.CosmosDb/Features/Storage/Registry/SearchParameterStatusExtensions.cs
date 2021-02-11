@@ -17,6 +17,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage.Registry
                 Status = status.Status,
                 LastUpdated = status.LastUpdated,
                 IsPartiallySupported = status.IsPartiallySupported ? true : (bool?)null,
+                SortStatus = status.SortStatus,
             };
         }
 
@@ -28,6 +29,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage.Registry
                 Status = wrapper.Status,
                 LastUpdated = wrapper.LastUpdated,
                 IsPartiallySupported = wrapper.IsPartiallySupported.GetValueOrDefault(),
+                SortStatus = wrapper.SortStatus.GetValueOrDefault(SortParameterStatus.Disabled),
             };
         }
     }

@@ -46,5 +46,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Configs
         /// This time includes the time to fetch the first page.
         /// </summary>
         public int SearchEnumerationTimeoutInSeconds { get; set; } = 30;
+
+        public HashSet<string> SortSearchParameters { get; } = new HashSet<string>();
     }
 }

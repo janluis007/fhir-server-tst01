@@ -86,10 +86,10 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Reindex
                 {
                     // Build query based on new search params
                     // Find supported, but not yet searchable params
-                    var notYetIndexedParams = _supportedSearchParameterDefinitionManager.GetSupportedButNotSearchableParams();
+                    var searchParamsToReindex = _supportedSearchParameterDefinitionManager.GetSupportedButNotSearchableParams().ToArray();
 
                     // if there are not any parameters which are supported but not yet indexed, then we have nothing to do
-                    if (!notYetIndexedParams.Any())
+                    if (!searchParamsToReindex.Any())
                     {
                         _reindexJobRecord.Error.Add(new OperationOutcomeIssue(
                             OperationOutcomeConstants.IssueSeverity.Information,
@@ -103,7 +103,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Reindex
                     // From the param list, get the list of necessary resources which should be
                     // included in our query
                     var resourceList = new HashSet<string>();
-                    foreach (var param in notYetIndexedParams)
+                    foreach (var param in searchParamsToReindex)
                     {
                         if (param.TargetResourceTypes != null)
                         {
@@ -116,8 +116,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Reindex
                         }
                     }
 
-                    _reindexJobRecord.Resources.AddRange(resourceList);
-                    _reindexJobRecord.SearchParams.AddRange(notYetIndexedParams.Select(p => p.Url.ToString()));
+                    _reindexJobRecord.Resources.AddRange(resourceList.Where(x => ModelInfoProvider.IsKnownResource(x)));
+                    _reindexJobRecord.SearchParams.AddRange(searchParamsToReindex.Select(p => p.Url.ToString()));
 
                     await CalculateTotalCount(cancellationToken);
 
@@ -127,7 +127,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Reindex
                             OperationOutcomeConstants.IssueSeverity.Information,
                             OperationOutcomeConstants.IssueType.Informational,
                             Resources.NoResourcesNeedToBeReindexed));
-                        await UpdateParametersAndCompleteJob(cancellationToken);
+                        _reindexJobRecord.CanceledTime = DateTimeOffset.UtcNow;
+                        await CompleteJobAsync(OperationStatus.Canceled, cancellationToken);
                         return;
                     }
 
