@@ -80,6 +80,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Resources.Bundle
         private static readonly string[] HeadersToAccumulate = new[] { KnownHeaders.RetryAfter, KnownHeaders.RetryAfterMilliseconds, "x-ms-session-token", "x-ms-request-charge" };
 
         private IFhirRequestContext _originalFhirRequestContext;
+        private int bundleRequestsSent = 0;
 
         public BundleHandler(
             IHttpContextAccessor httpContextAccessor,
@@ -136,7 +137,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Resources.Bundle
             _referenceIdDictionary = new Dictionary<string, (string resourceId, string resourceType)>();
         }
 
-        private async Task ExecuteAllRequests(Hl7.Fhir.Model.Bundle responseBundle)
+        private async Task ExecuteAllRequests(Hl7.Fhir.Model.Bundle responseBundle, bool sendAsBatch)
         {
             // List is not created initially since it doesn't create a list with _requestCount elements
             responseBundle.Entry = new List<EntryComponent>(new EntryComponent[_requestCount]);
@@ -156,11 +157,19 @@ namespace Microsoft.Health.Fhir.Api.Features.Resources.Bundle
                 responseBundle.Entry[emptyRequestOrder] = entryComponent;
             }
 
+            var tasks = new List<Task<EntryComponent>>();
             EntryComponent throttledEntryComponent = null;
             foreach (HTTPVerb verb in _verbExecutionOrder)
             {
-                throttledEntryComponent = await ExecuteRequests(responseBundle, verb, throttledEntryComponent);
+                var task = Task.Run(async () => throttledEntryComponent = await ExecuteRequests(responseBundle, verb, throttledEntryComponent, sendAsBatch));
+                tasks.Add(task);
+                if (!sendAsBatch)
+                {
+                    await task;
+                }
             }
+
+            await Task.WhenAll(tasks);
         }
 
         public async Task<BundleResponse> Handle(BundleRequest bundleRequest, CancellationToken cancellationToken)
@@ -197,7 +206,7 @@ namespace Microsoft.Health.Fhir.Api.Features.Resources.Bundle
                         Type = BundleType.BatchResponse,
                     };
 
-                    await ExecuteAllRequests(responseBundle);
+                    await ExecuteAllRequests(responseBundle, false);
                     return new BundleResponse(responseBundle.ToResourceElement());
                 }
 
@@ -228,16 +237,23 @@ namespace Microsoft.Health.Fhir.Api.Features.Resources.Bundle
         {
             try
             {
-                using (var transaction = _transactionHandler.BeginTransaction())
-                {
-                    await ExecuteAllRequests(responseBundle);
+                using ITransactionScope transaction = _transactionHandler.BeginTransaction();
 
+                if (transaction is IBatchedTransaction batchedTransaction)
+                {
+                    Task task = ExecuteAllRequests(responseBundle, true);
+                    await batchedTransaction.CompleteAsync(_requestCount);
+                    await task;
+                }
+                else
+                {
+                    await ExecuteAllRequests(responseBundle, false);
                     transaction.Complete();
                 }
             }
             catch (TransactionAbortedException)
             {
-                _logger.LogError("Failed to commit a transaction. Throwing BadRequest as a default exception.");
+                _logger.LogInformation("Failed to commit a transaction. Throwing BadRequest as a default exception.");
                 throw new FhirTransactionFailedException(Api.Resources.GeneralTransactionFailedError, HttpStatusCode.BadRequest);
             }
 
@@ -342,83 +358,97 @@ namespace Microsoft.Health.Fhir.Api.Features.Resources.Bundle
             }
         }
 
-        private async Task<EntryComponent> ExecuteRequests(Hl7.Fhir.Model.Bundle responseBundle, HTTPVerb httpVerb, EntryComponent throttledEntryComponent)
+        private async Task<EntryComponent> ExecuteRequests(Hl7.Fhir.Model.Bundle responseBundle, HTTPVerb httpVerb, EntryComponent throttledEntryComponent, bool sendAsBatch = false)
         {
+            var requestTasks = new List<Task>();
             foreach ((RouteContext request, int entryIndex, string persistedId) in _requests[httpVerb])
             {
-                EntryComponent entryComponent;
+                Interlocked.Increment(ref bundleRequestsSent);
 
-                if (request.Handler != null)
+                var requestTask = Task.Run(async () =>
                 {
-                    if (throttledEntryComponent != null)
+                    EntryComponent entryComponent;
+
+                    if (request.Handler != null)
                     {
-                        // A previous action was throttled.
-                        // Skip executing subsequent actions and include the 429 response.
-                        entryComponent = throttledEntryComponent;
+                        if (throttledEntryComponent != null)
+                        {
+                            // A previous action was throttled.
+                            // Skip executing subsequent actions and include the 429 response.
+                            entryComponent = throttledEntryComponent;
+                        }
+                        else
+                        {
+                            HttpContext httpContext = request.HttpContext;
+
+                            SetupContexts(request, httpContext);
+
+                            Func<string> originalResourceIdProvider = _resourceIdProvider.Create;
+
+                            if (!string.IsNullOrWhiteSpace(persistedId))
+                            {
+                                _resourceIdProvider.Create = () => persistedId;
+                            }
+
+                            await request.Handler.Invoke(httpContext);
+
+                            _resourceIdProvider.Create = originalResourceIdProvider;
+
+                            entryComponent = CreateEntryComponent(httpContext);
+
+                            foreach (string headerName in HeadersToAccumulate)
+                            {
+                                if (httpContext.Response.Headers.TryGetValue(headerName, out var values))
+                                {
+                                    _originalFhirRequestContext.ResponseHeaders[headerName] = values;
+                                }
+                            }
+
+                            if (_bundleType == BundleType.Batch && entryComponent.Response.Status == "429")
+                            {
+                                // this action was throttled. Capture the entry and reuse it for subsequent actions.
+                                throttledEntryComponent = entryComponent;
+                            }
+                        }
                     }
                     else
                     {
-                        HttpContext httpContext = request.HttpContext;
-
-                        SetupContexts(request, httpContext);
-
-                        Func<string> originalResourceIdProvider = _resourceIdProvider.Create;
-
-                        if (!string.IsNullOrWhiteSpace(persistedId))
+                        entryComponent = new EntryComponent
                         {
-                            _resourceIdProvider.Create = () => persistedId;
-                        }
-
-                        await request.Handler.Invoke(httpContext);
-
-                        _resourceIdProvider.Create = originalResourceIdProvider;
-
-                        entryComponent = CreateEntryComponent(httpContext);
-
-                        foreach (string headerName in HeadersToAccumulate)
-                        {
-                            if (httpContext.Response.Headers.TryGetValue(headerName, out var values))
+                            Response = new ResponseComponent
                             {
-                                _originalFhirRequestContext.ResponseHeaders[headerName] = values;
-                            }
-                        }
-
-                        if (_bundleType == BundleType.Batch && entryComponent.Response.Status == "429")
-                        {
-                            // this action was throttled. Capture the entry and reuse it for subsequent actions.
-                            throttledEntryComponent = entryComponent;
-                        }
-                    }
-                }
-                else
-                {
-                    entryComponent = new EntryComponent
-                    {
-                        Response = new ResponseComponent
-                        {
-                            Status = ((int)HttpStatusCode.NotFound).ToString(),
-                            Outcome = CreateOperationOutcome(
-                                OperationOutcome.IssueSeverity.Error,
-                                OperationOutcome.IssueType.NotFound,
-                                string.Format(Api.Resources.BundleNotFound, $"{request.HttpContext.Request.Path}{request.HttpContext.Request.QueryString}")),
-                        },
-                    };
-                }
-
-                if (_bundleType.Equals(BundleType.Transaction) && entryComponent.Response.Outcome != null)
-                {
-                    var errorMessage = string.Format(Api.Resources.TransactionFailed, request.HttpContext.Request.Method, request.HttpContext.Request.Path);
-
-                    if (!Enum.TryParse(entryComponent.Response.Status, out HttpStatusCode httpStatusCode))
-                    {
-                        httpStatusCode = HttpStatusCode.BadRequest;
+                                Status = ((int)HttpStatusCode.NotFound).ToString(),
+                                Outcome = CreateOperationOutcome(
+                                    OperationOutcome.IssueSeverity.Error,
+                                    OperationOutcome.IssueType.NotFound,
+                                    string.Format(Api.Resources.BundleNotFound, $"{request.HttpContext.Request.Path}{request.HttpContext.Request.QueryString}")),
+                            },
+                        };
                     }
 
-                    TransactionExceptionHandler.ThrowTransactionException(errorMessage, httpStatusCode, (OperationOutcome)entryComponent.Response.Outcome);
-                }
+                    if (_bundleType.Equals(BundleType.Transaction) && entryComponent.Response.Outcome != null)
+                    {
+                        var errorMessage = string.Format(Api.Resources.TransactionFailed, request.HttpContext.Request.Method, request.HttpContext.Request.Path);
 
-                responseBundle.Entry[entryIndex] = entryComponent;
+                        if (!Enum.TryParse(entryComponent.Response.Status, out HttpStatusCode httpStatusCode))
+                        {
+                            httpStatusCode = HttpStatusCode.BadRequest;
+                        }
+
+                        TransactionExceptionHandler.ThrowTransactionException(errorMessage, httpStatusCode, (OperationOutcome)entryComponent.Response.Outcome);
+                    }
+
+                    responseBundle.Entry[entryIndex] = entryComponent;
+                });
+
+                requestTasks.Add(requestTask);
+                if (!sendAsBatch)
+                {
+                    await requestTask;
+                }
             }
+
+            await Task.WhenAll(requestTasks);
 
             return throttledEntryComponent;
         }

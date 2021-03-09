@@ -18,6 +18,7 @@ using Microsoft.Azure.Cosmos.Scripts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Health.Abstractions.Exceptions;
+using Microsoft.Health.Abstractions.Features.Transactions;
 using Microsoft.Health.Core;
 using Microsoft.Health.Extensions.DependencyInjection;
 using Microsoft.Health.Fhir.Core.Configs;
@@ -95,6 +96,8 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
             _coreFeatures = coreFeatures.Value;
         }
 
+        internal CosmosTransactionHandler.CosmosTransactionScope CurrentTransactionScope { get; set; }
+
         public async Task<UpsertOutcome> UpsertAsync(
             ResourceWrapper resource,
             WeakETag weakETag,
@@ -114,22 +117,30 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
 
             if (weakETag == null && allowCreate && !cosmosWrapper.IsDeleted)
             {
-                // Optimistically try to create this as a new resource
-                try
+                if (CurrentTransactionScope != null)
                 {
-                    await retryPolicy.ExecuteAsync(
-                        async ct => await _containerScope.Value.CreateItemAsync(
-                            cosmosWrapper,
-                            partitionKey,
-                            cancellationToken: ct,
-                            requestOptions: new ItemRequestOptions { EnableContentResponseOnWrite = false }),
-                        cancellationToken);
-
-                    return new UpsertOutcome(cosmosWrapper, SaveOutcomeType.Created);
+                    CurrentTransactionScope.AddCreateOperation(cosmosWrapper);
+                    await CurrentTransactionScope.CompletionToken;
                 }
-                catch (CosmosException e) when (e.StatusCode == HttpStatusCode.Conflict)
+                else
                 {
-                    // this means there is already an existing version of this resource
+                    // Optimistically try to create this as a new resource
+                    try
+                    {
+                        await retryPolicy.ExecuteAsync(
+                            async ct => await _containerScope.Value.CreateItemAsync(
+                                cosmosWrapper,
+                                partitionKey,
+                                cancellationToken: ct,
+                                requestOptions: new ItemRequestOptions { EnableContentResponseOnWrite = false }),
+                            cancellationToken);
+
+                        return new UpsertOutcome(cosmosWrapper, SaveOutcomeType.Created);
+                    }
+                    catch (CosmosException e) when (e.StatusCode == HttpStatusCode.Conflict)
+                    {
+                        // this means there is already an existing version of this resource
+                    }
                 }
             }
 
@@ -496,6 +507,11 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
             builder.AddDefaultResourceInteractions()
                 .AddDefaultSearchParameters()
                 .AddDefaultRestSearchParams();
+
+            if (_coreFeatures.SupportsTransaction)
+            {
+                builder.AddRestInteraction(SystemRestfulInteraction.Transaction);
+            }
 
             if (_coreFeatures.SupportsBatch)
             {

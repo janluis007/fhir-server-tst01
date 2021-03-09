@@ -94,7 +94,19 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
         public override IReadOnlyCollection<SearchIndexEntry> SearchIndices { get; set; }
 
         [JsonProperty(KnownDocumentProperties.PartitionKey)]
-        public string PartitionKey => ToResourceKey().ToPartitionKey();
+        public string PartitionKey
+        {
+            get
+            {
+                // Assign resources to a patient compartment, if possible
+                if (CompartmentIndices?.PatientCompartmentEntry?.Any() == true && CompartmentIndices?.PatientCompartmentEntry.Count == 1)
+                {
+                    return new ResourceKey(KnownResourceTypes.Patient, CompartmentIndices.PatientCompartmentEntry.Single()).ToPartitionKey();
+                }
+
+                return ToResourceKey().ToPartitionKey();
+            }
+        }
 
         [JsonProperty(KnownDocumentProperties.ReferencesToInclude)]
         public IReadOnlyList<ResourceTypeAndId> ReferencesToInclude { get; set; }
