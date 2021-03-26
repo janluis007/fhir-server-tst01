@@ -9,6 +9,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -44,7 +45,8 @@ namespace Microsoft.Health.Fhir.CosmosDb.UnitTests.Features.Storage
                 new RetryExceptionPolicyFactory(_cosmosDataStoreConfiguration, Substitute.For<IFhirRequestContextAccessor>()),
                 NullLogger<CosmosFhirDataStore>.Instance,
                 Options.Create(new CoreFeatureConfiguration()),
-                new Lazy<ISupportedSearchParameterDefinitionManager>(Substitute.For<ISupportedSearchParameterDefinitionManager>()));
+                new Lazy<ISupportedSearchParameterDefinitionManager>(Substitute.For<ISupportedSearchParameterDefinitionManager>()),
+                new BlobServiceClient("abc"));
         }
 
         [Fact]

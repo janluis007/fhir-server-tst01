@@ -7,9 +7,12 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using EnsureThat;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Primitives;
@@ -39,6 +42,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
         private readonly CosmosDataStoreConfiguration _cosmosConfig;
         private readonly ICosmosDbCollectionPhysicalPartitionInfo _physicalPartitionInfo;
         private readonly QueryPartitionStatisticsCache _queryPartitionStatisticsCache;
+        private readonly BlobServiceClient _blobServiceClient;
         private readonly SearchParameterInfo _resourceTypeSearchParameter;
         private readonly SearchParameterInfo _resourceIdSearchParameter;
         private const int _chainedSearchMaxSubqueryItemLimit = 100;
@@ -57,7 +61,8 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
             IFhirRequestContextAccessor requestContextAccessor,
             CosmosDataStoreConfiguration cosmosConfig,
             ICosmosDbCollectionPhysicalPartitionInfo physicalPartitionInfo,
-            QueryPartitionStatisticsCache queryPartitionStatisticsCache)
+            QueryPartitionStatisticsCache queryPartitionStatisticsCache,
+            BlobServiceClient blobServiceClient)
             : base(searchOptionsFactory, fhirDataStore)
         {
             EnsureArg.IsNotNull(fhirDataStore, nameof(fhirDataStore));
@@ -67,6 +72,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
             EnsureArg.IsNotNull(cosmosConfig, nameof(cosmosConfig));
             EnsureArg.IsNotNull(physicalPartitionInfo, nameof(physicalPartitionInfo));
             EnsureArg.IsNotNull(queryPartitionStatisticsCache, nameof(queryPartitionStatisticsCache));
+            EnsureArg.IsNotNull(blobServiceClient, nameof(blobServiceClient));
 
             _fhirDataStore = fhirDataStore;
             _queryBuilder = queryBuilder;
@@ -74,6 +80,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
             _cosmosConfig = cosmosConfig;
             _physicalPartitionInfo = physicalPartitionInfo;
             _queryPartitionStatisticsCache = queryPartitionStatisticsCache;
+            _blobServiceClient = blobServiceClient;
             _resourceTypeSearchParameter = searchParameterDefinitionManager.GetSearchParameter(KnownResourceTypes.Resource, SearchParameterNames.ResourceType);
             _resourceIdSearchParameter = searchParameterDefinitionManager.GetSearchParameter(KnownResourceTypes.Resource, SearchParameterNames.Id);
         }
@@ -124,7 +131,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
                         return new SearchResult(0, searchOptions.UnsupportedSearchParams);
                     }
 
-                    return CreateSearchResult(searchOptions, ArraySegment<SearchResultEntry>.Empty, continuationToken: null);
+                    return await CreateSearchResult(searchOptions, ArraySegment<SearchResultEntry>.Empty, continuationToken: null);
                 }
             }
 
@@ -145,7 +152,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
 
             (IList<FhirCosmosResourceWrapper> includes, bool includesTruncated) = await PerformIncludeQueries(results, includeExpressions, revIncludeExpressions, searchOptions.IncludeCount, cancellationToken);
 
-            SearchResult searchResult = CreateSearchResult(
+            SearchResult searchResult = await CreateSearchResult(
                 searchOptions,
                 results.Select(m => new SearchResultEntry(m, SearchEntryMode.Match)).Concat(includes.Select(i => new SearchResultEntry(i, SearchEntryMode.Include))),
                 continuationToken,
@@ -312,7 +319,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
                 searchOptions.CountOnly ? null : searchOptions.ContinuationToken,
                 cancellationToken);
 
-            return CreateSearchResult(searchOptions, results.Select(r => new SearchResultEntry(r)), continuationToken);
+            return await CreateSearchResult(searchOptions, results.Select(r => new SearchResultEntry(r)), continuationToken);
         }
 
         protected override async Task<SearchResult> SearchForReindexInternalAsync(
@@ -334,7 +341,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
                 searchOptions.CountOnly ? null : searchOptions.ContinuationToken,
                 cancellationToken);
 
-            return CreateSearchResult(searchOptions, results.Select(r => new SearchResultEntry(r)), continuationToken);
+            return await CreateSearchResult(searchOptions, results.Select(r => new SearchResultEntry(r)), continuationToken);
         }
 
         private async Task<(IReadOnlyList<T> results, string continuationToken)> ExecuteSearchAsync<T>(
@@ -453,7 +460,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
             return (await _fhirDataStore.ExecuteDocumentQueryAsync<int>(sqlQuerySpec, feedOptions, continuationToken: null, cancellationToken: cancellationToken)).results.Single();
         }
 
-        private SearchResult CreateSearchResult(SearchOptions searchOptions, IEnumerable<SearchResultEntry> results, string continuationToken, bool includesTruncated = false)
+        private async Task<SearchResult> CreateSearchResult(SearchOptions searchOptions, IEnumerable<SearchResultEntry> results, string continuationToken, bool includesTruncated = false)
         {
             if (includesTruncated)
             {
@@ -462,6 +469,30 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
                         OperationOutcomeConstants.IssueSeverity.Warning,
                         OperationOutcomeConstants.IssueType.Incomplete,
                         Core.Resources.TruncatedIncludeMessage));
+            }
+
+            var tasks = new List<Task>();
+
+            foreach (SearchResultEntry searchResultEntry in results)
+            {
+                var wrapper = searchResultEntry.Resource;
+                if (wrapper.RawResource.Link != null)
+                {
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        BlobClient blobClient = _blobServiceClient.GetBlobContainerClient(wrapper.RawResource.Link.Segments[1]).GetBlobClient(wrapper.RawResource.Link.Segments[^1]);
+
+                        global::Azure.Response<BlobDownloadInfo> response = await blobClient.DownloadAsync(CancellationToken.None);
+                        StreamReader r = new StreamReader(response.Value.Content);
+                        string readToEndAsync = await r.ReadToEndAsync();
+                        wrapper.RawResource = new RawResource(readToEndAsync, wrapper.RawResource.Format, wrapper.RawResource.IsMetaSet);
+                    }));
+                }
+            }
+
+            foreach (Task task in tasks)
+            {
+                await task;
             }
 
             return new SearchResult(

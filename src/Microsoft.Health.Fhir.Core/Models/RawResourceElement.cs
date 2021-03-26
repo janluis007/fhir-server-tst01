@@ -12,17 +12,20 @@ namespace Microsoft.Health.Fhir.Core.Models
     public class RawResourceElement : IResourceElement
     {
         public RawResourceElement(ResourceWrapper wrapper)
+            : this(EnsureArg.IsNotNull(wrapper, nameof(wrapper)).RawResource, wrapper.ResourceId, wrapper.Version, wrapper.ResourceTypeName, wrapper.LastModified)
         {
-            EnsureArg.IsNotNull(wrapper, nameof(wrapper));
-            EnsureArg.IsNotNull(wrapper.RawResource, nameof(wrapper.RawResource));
+        }
 
-            RawResource = wrapper.RawResource;
+        public RawResourceElement(RawResource rawResource, string id, string versionId, string instanceType, DateTimeOffset? lastUpdated)
+        {
+            EnsureArg.IsNotNull(rawResource, nameof(rawResource));
 
-            Format = wrapper.RawResource.Format;
-            Id = wrapper.ResourceId;
-            VersionId = wrapper.Version;
-            InstanceType = wrapper.ResourceTypeName;
-            LastUpdated = wrapper.LastModified;
+            RawResource = rawResource;
+            Format = rawResource.Format;
+            Id = id;
+            VersionId = versionId;
+            InstanceType = instanceType;
+            LastUpdated = lastUpdated;
         }
 
         public RawResource RawResource { get; protected set; }

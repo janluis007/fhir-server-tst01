@@ -37,7 +37,7 @@ namespace Microsoft.Health.Fhir.Web
             string dataStore = Configuration["DataStore"];
             if (dataStore.Equals(KnownDataStores.CosmosDb, StringComparison.InvariantCultureIgnoreCase))
             {
-                fhirServerBuilder.AddCosmosDb();
+                fhirServerBuilder.AddCosmosDb(Configuration);
             }
             else if (dataStore.Equals(KnownDataStores.SqlServer, StringComparison.InvariantCultureIgnoreCase))
             {
@@ -55,7 +55,7 @@ namespace Microsoft.Health.Fhir.Web
                 services.Configure<ForwardedHeadersOptions>(options =>
                 {
                     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor |
-                        ForwardedHeaders.XForwardedProto;
+                                               ForwardedHeaders.XForwardedProto;
 
                     // Only loopback proxies are allowed by default.
                     // Clear that restriction because forwarders are enabled by explicit
@@ -95,7 +95,11 @@ namespace Microsoft.Health.Fhir.Web
 
             if (!string.IsNullOrWhiteSpace(instrumentationKey))
             {
-                services.AddApplicationInsightsTelemetry(instrumentationKey);
+                services.AddApplicationInsightsTelemetry(o =>
+                {
+                    o.InstrumentationKey = instrumentationKey;
+                    o.EnableAdaptiveSampling = false;
+                });
                 services.AddSingleton<ITelemetryInitializer, CloudRoleNameTelemetryInitializer>();
                 services.AddLogging(loggingBuilder => loggingBuilder.AddApplicationInsights(instrumentationKey));
             }

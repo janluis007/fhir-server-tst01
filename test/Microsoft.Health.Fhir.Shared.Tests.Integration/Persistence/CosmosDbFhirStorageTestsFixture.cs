@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs;
 using MediatR;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -155,7 +156,8 @@ namespace Microsoft.Health.Fhir.Tests.Integration.Persistence
                 retryExceptionPolicyFactory,
                 NullLogger<CosmosFhirDataStore>.Instance,
                 options,
-                new Lazy<ISupportedSearchParameterDefinitionManager>(Substitute.For<ISupportedSearchParameterDefinitionManager>()));
+                new Lazy<ISupportedSearchParameterDefinitionManager>(Substitute.For<ISupportedSearchParameterDefinitionManager>()),
+                new BlobServiceClient("abc"));
 
             _fhirOperationDataStore = new CosmosFhirOperationDataStore(
                 documentClient,

@@ -6,8 +6,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Azure.Identity;
+using Azure.Storage.Blobs;
 using EnsureThat;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -38,19 +41,20 @@ namespace Microsoft.Extensions.DependencyInjection
         /// Adds Cosmos Db as the data store for the FHIR server.
         /// </summary>
         /// <param name="fhirServerBuilder">The FHIR server builder.</param>
+        /// <param name="configuration">The configuration</param>
         /// <param name="configureAction">Configure action. Defaulted to null.</param>
         /// <returns>The builder.</returns>
-        public static IFhirServerBuilder AddCosmosDb(this IFhirServerBuilder fhirServerBuilder, Action<CosmosDataStoreConfiguration> configureAction = null)
+        public static IFhirServerBuilder AddCosmosDb(this IFhirServerBuilder fhirServerBuilder, IConfiguration configuration, Action<CosmosDataStoreConfiguration> configureAction = null)
         {
             EnsureArg.IsNotNull(fhirServerBuilder, nameof(fhirServerBuilder));
 
             return fhirServerBuilder
-                .AddCosmosDbPersistence(configureAction)
+                .AddCosmosDbPersistence(configuration, configureAction)
                 .AddCosmosDbSearch()
                 .AddCosmosDbHealthCheck();
         }
 
-        private static IFhirServerBuilder AddCosmosDbPersistence(this IFhirServerBuilder fhirServerBuilder, Action<CosmosDataStoreConfiguration> configureAction = null)
+        private static IFhirServerBuilder AddCosmosDbPersistence(this IFhirServerBuilder fhirServerBuilder, IConfiguration configuration, Action<CosmosDataStoreConfiguration> configureAction = null)
         {
             IServiceCollection services = fhirServerBuilder.Services;
 
@@ -121,6 +125,11 @@ namespace Microsoft.Extensions.DependencyInjection
                 .Scoped()
                 .AsSelf()
                 .AsImplementedInterfaces();
+
+            services.AddAzureClients(builder =>
+                {
+                    builder.AddBlobServiceClient(configuration.GetSection("Storage")["ConnectionString"]);
+                });
 
             services.Add<CosmosTransactionHandler>()
                 .Scoped()

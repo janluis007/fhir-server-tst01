@@ -12,6 +12,9 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using EnsureThat;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Scripts;
@@ -47,6 +50,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
         private readonly RetryExceptionPolicyFactory _retryExceptionPolicyFactory;
         private readonly ILogger<CosmosFhirDataStore> _logger;
         private readonly Lazy<ISupportedSearchParameterDefinitionManager> _supportedSearchParameters;
+        private readonly BlobServiceClient _blobServiceClient;
 
         private static readonly HardDelete _hardDelete = new HardDelete();
         private static readonly ReplaceSingleResource _replaceSingleResource = new ReplaceSingleResource();
@@ -67,6 +71,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
         /// <param name="logger">The logger instance.</param>
         /// <param name="coreFeatures">The core feature configuration</param>
         /// <param name="supportedSearchParameters">The supported search parameters</param>
+        /// <param name="blobServiceClient">The blob client</param>
         public CosmosFhirDataStore(
             IScoped<Container> containerScope,
             CosmosDataStoreConfiguration cosmosDataStoreConfiguration,
@@ -75,7 +80,8 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
             RetryExceptionPolicyFactory retryExceptionPolicyFactory,
             ILogger<CosmosFhirDataStore> logger,
             IOptions<CoreFeatureConfiguration> coreFeatures,
-            Lazy<ISupportedSearchParameterDefinitionManager> supportedSearchParameters)
+            Lazy<ISupportedSearchParameterDefinitionManager> supportedSearchParameters,
+            BlobServiceClient blobServiceClient)
         {
             EnsureArg.IsNotNull(containerScope, nameof(containerScope));
             EnsureArg.IsNotNull(cosmosDataStoreConfiguration, nameof(cosmosDataStoreConfiguration));
@@ -85,6 +91,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
             EnsureArg.IsNotNull(logger, nameof(logger));
             EnsureArg.IsNotNull(coreFeatures, nameof(coreFeatures));
             EnsureArg.IsNotNull(supportedSearchParameters, nameof(supportedSearchParameters));
+            EnsureArg.IsNotNull(blobServiceClient, nameof(blobServiceClient));
 
             _containerScope = containerScope;
             _cosmosDataStoreConfiguration = cosmosDataStoreConfiguration;
@@ -92,6 +99,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
             _retryExceptionPolicyFactory = retryExceptionPolicyFactory;
             _logger = logger;
             _supportedSearchParameters = supportedSearchParameters;
+            _blobServiceClient = blobServiceClient;
             _coreFeatures = coreFeatures.Value;
         }
 
@@ -107,31 +115,18 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
             var cosmosWrapper = new FhirCosmosResourceWrapper(resource);
             UpdateSortIndex(cosmosWrapper);
 
+            BlobContainerClient blobContainerClient = _blobServiceClient.GetBlobContainerClient(resource.ResourceTypeName.ToLowerInvariant());
+            string blobId = $"{Guid.NewGuid().ToString()}.json";
+            BlobClient blobClient = blobContainerClient.GetBlobClient(blobId);
+
+            RawResource originalRawResource = cosmosWrapper.RawResource;
+            RawResource newRawResource = new(blobClient.Uri, originalRawResource.Format, originalRawResource.IsMetaSet);
+            cosmosWrapper.RawResource = newRawResource;
+
             var partitionKey = new PartitionKey(cosmosWrapper.PartitionKey);
             AsyncPolicy retryPolicy = _retryExceptionPolicyFactory.GetRetryPolicy();
 
             _logger.LogDebug($"Upserting {resource.ResourceTypeName}/{resource.ResourceId}, ETag: \"{weakETag?.VersionId}\", AllowCreate: {allowCreate}, KeepHistory: {keepHistory}");
-
-            if (weakETag == null && allowCreate && !cosmosWrapper.IsDeleted)
-            {
-                // Optimistically try to create this as a new resource
-                try
-                {
-                    await retryPolicy.ExecuteAsync(
-                        async ct => await _containerScope.Value.CreateItemAsync(
-                            cosmosWrapper,
-                            partitionKey,
-                            cancellationToken: ct,
-                            requestOptions: new ItemRequestOptions { EnableContentResponseOnWrite = false }),
-                        cancellationToken);
-
-                    return new UpsertOutcome(cosmosWrapper, SaveOutcomeType.Created);
-                }
-                catch (CosmosException e) when (e.StatusCode == HttpStatusCode.Conflict)
-                {
-                    // this means there is already an existing version of this resource
-                }
-            }
 
             while (true)
             {
@@ -162,7 +157,44 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
                         throw new MethodNotAllowedException(Core.Resources.ResourceCreationNotAllowed);
                     }
 
-                    throw;
+                    // this is the first version
+                    try
+                    {
+                        using MemoryStream memoryStream = _recyclableMemoryStreamManager.GetStream();
+                        await new RawResourceElement(originalRawResource, cosmosWrapper.Id, cosmosWrapper.Version, cosmosWrapper.ResourceTypeName, cosmosWrapper.LastModified).SerializeToStreamAsUtf8Json(memoryStream);
+
+                        while (true)
+                        {
+                            memoryStream.Position = 0;
+
+                            try
+                            {
+                                global::Azure.Response<BlobContentInfo> uploadAsync = await blobClient.UploadAsync(memoryStream, cancellationToken);
+                                break;
+                            }
+                            catch (RequestFailedException requestFailedException) when (requestFailedException.ErrorCode == "ContainerNotFound")
+                            {
+                                await blobContainerClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken);
+                            }
+                        }
+
+                        await retryPolicy.ExecuteAsync(
+                            async ct => await _containerScope.Value.CreateItemAsync(
+                                cosmosWrapper,
+                                partitionKey,
+                                cancellationToken: ct,
+                                requestOptions: new ItemRequestOptions { EnableContentResponseOnWrite = false }),
+                            cancellationToken);
+
+                        cosmosWrapper.RawResource = originalRawResource;
+
+                        return new UpsertOutcome(cosmosWrapper, SaveOutcomeType.Created);
+                    }
+                    catch (CosmosException e2) when (e2.StatusCode == HttpStatusCode.Conflict)
+                    {
+                        // this means there is already an existing version of this resource
+                        continue;
+                    }
                 }
 
                 if (weakETag != null && weakETag.VersionId != existingItemResource.Version)
@@ -176,11 +208,8 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
                 }
 
                 cosmosWrapper.Version = int.TryParse(existingItemResource.Version, out int existingVersion) ? (existingVersion + 1).ToString(CultureInfo.InvariantCulture) : Guid.NewGuid().ToString();
-
-                // indicate that the version in the raw resource's meta property does not reflect the actual version.
-                cosmosWrapper.RawResource.IsMetaSet = false;
-
-                if (cosmosWrapper.RawResource.Format == FhirResourceFormat.Json)
+                originalRawResource.IsMetaSet = false;
+                if (originalRawResource.Format == FhirResourceFormat.Json)
                 {
                     // Update the raw resource based on the new version.
                     // This is a lot faster than re-serializing the POCO.
@@ -189,10 +218,14 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
                     // If the format is not XML, IsMetaSet will remain false and we will update the version when the resource is read.
 
                     using MemoryStream memoryStream = _recyclableMemoryStreamManager.GetStream();
-                    await new RawResourceElement(cosmosWrapper).SerializeToStreamAsUtf8Json(memoryStream);
+                    await new RawResourceElement(originalRawResource, cosmosWrapper.Id, cosmosWrapper.Version, cosmosWrapper.ResourceTypeName, cosmosWrapper.LastModified).SerializeToStreamAsUtf8Json(memoryStream);
                     memoryStream.Position = 0;
-                    using var reader = new StreamReader(memoryStream, Encoding.UTF8);
-                    cosmosWrapper.RawResource = new RawResource(reader.ReadToEnd(), FhirResourceFormat.Json, isMetaSet: true);
+
+                    await blobClient.UploadAsync(memoryStream, cancellationToken);
+                }
+                else
+                {
+                    throw new NotImplementedException(); // TODO
                 }
 
                 if (keepHistory)
@@ -240,6 +273,9 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
                     }
                 }
 
+                originalRawResource.IsMetaSet = false;
+                cosmosWrapper.RawResource = originalRawResource;
+
                 return new UpsertOutcome(cosmosWrapper, SaveOutcomeType.Updated);
             }
         }
@@ -267,8 +303,20 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
 
             try
             {
-                return await _containerScope.Value
+                FhirCosmosResourceWrapper wrapper = await _containerScope.Value
                     .ReadItemAsync<FhirCosmosResourceWrapper>(key.Id, new PartitionKey(key.ToPartitionKey()), cancellationToken: cancellationToken);
+
+                if (wrapper.RawResource.Link != null)
+                {
+                    BlobClient blobClient = _blobServiceClient.GetBlobContainerClient(wrapper.RawResource.Link.Segments[1]).GetBlobClient(wrapper.RawResource.Link.Segments[^1]);
+
+                    global::Azure.Response<BlobDownloadInfo> response = await blobClient.DownloadAsync(cancellationToken);
+                    StreamReader r = new StreamReader(response.Value.Content);
+                    string readToEndAsync = await r.ReadToEndAsync();
+                    wrapper.RawResource = new RawResource(readToEndAsync, wrapper.RawResource.Format, wrapper.RawResource.IsMetaSet);
+                }
+
+                return wrapper;
             }
             catch (CosmosException exception) when (exception.StatusCode == HttpStatusCode.NotFound)
             {
