@@ -8,7 +8,6 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
-using Microsoft.Health.Fhir.Core.Features.Operations.Export.Models;
 using Microsoft.Health.Fhir.Core.Messages.Migrate;
 using Newtonsoft.Json;
 

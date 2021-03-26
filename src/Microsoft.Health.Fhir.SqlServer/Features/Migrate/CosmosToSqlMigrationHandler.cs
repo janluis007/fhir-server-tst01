@@ -56,30 +56,6 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Migrate
 
         public Task Process(IEnumerable<ResourceWrapper> resourceList)
         {
-            var resource0 = resourceList.First();
-            var resourceMetadata = new ResourceMetadata(
-                resource0.CompartmentIndices,
-                resource0.SearchIndices?.ToLookup(e => _searchParameterTypeMap.GetSearchValueType(e)),
-                resource0.LastModifiedClaims);
-            var searchParameterValues = _upsertResourceTvpGeneratorVLatest.Generate(resourceMetadata);
-            var type = searchParameterValues.GetType();
-            var properties = type.GetProperties(BindingFlags.NonPublic | BindingFlags.Instance);
-
-            foreach (var field in searchParameterValues.GetType().GetProperties(BindingFlags.NonPublic | BindingFlags.Instance))
-            {
-                var val = field.GetValue(searchParameterValues);
-                var typeName = val.GetType().Name;
-                IEnumerable valList = (IEnumerable)val;
-                foreach (var columValue in valList)
-                {
-                    foreach (var rowField in columValue.GetType().GetProperties(BindingFlags.NonPublic | BindingFlags.Instance))
-                    {
-                        var rowValue = rowField.GetValue(columValue);
-                        Console.WriteLine($"{rowField.Name} ---> {rowValue}");
-                    }
-                }
-            }
-
             var resourceValueList = new List<Dictionary<string, object>>();
             var searchParamValueList = new Dictionary<string, List<Dictionary<string, object>>>();
             foreach (var resource in resourceList)
