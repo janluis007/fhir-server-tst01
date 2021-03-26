@@ -88,7 +88,6 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations
                 {
                     break;
                 }
-
             }
 
             stopWatch.Stop();
