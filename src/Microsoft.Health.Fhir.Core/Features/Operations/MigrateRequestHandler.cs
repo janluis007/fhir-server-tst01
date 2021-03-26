@@ -30,20 +30,20 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations
         {
             return request.RequestType switch
             {
-                MigrateRequestType.Migrate => await DoMigration(),
-                MigrateRequestType.ExportOnly => await DoExportOnly(),
+                MigrateRequestType.Migrate => await DoMigration(request.MigrationCount),
+                MigrateRequestType.ExportOnly => await DoExportOnly(request.MigrationCount),
                 _ => throw new NotImplementedException(),
             };
         }
 
-        private async Task<MigrateResponse> DoExportOnly()
+        private async Task<MigrateResponse> DoExportOnly(int resourceLimit)
         {
             var stopWatch = Stopwatch.StartNew();
             int count = 0;
             await foreach (var data in _dataExporter.Export())
             {
                 count += data.Count;
-                if (count >= 10000000)
+                if (count >= resourceLimit)
                 {
                     break;
                 }
@@ -64,18 +64,12 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations
             };
         }
 
-        private async Task<MigrateResponse> DoMigration()
+        private async Task<MigrateResponse> DoMigration(int resourceLimit)
         {
             var stopWatch = Stopwatch.StartNew();
             int count = 0;
             await foreach (var data in _dataExporter.Export())
             {
-                count += data.Count;
-                if (count >= 10000000)
-                {
-                    break;
-                }
-
                 try
                 {
                     await _migrateHandler.Process(data);
@@ -88,6 +82,13 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations
                         Message = ex.ToString(),
                     };
                 }
+
+                count += data.Count;
+                if (count >= resourceLimit)
+                {
+                    break;
+                }
+
             }
 
             stopWatch.Stop();

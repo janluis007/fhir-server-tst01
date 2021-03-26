@@ -9,13 +9,16 @@ namespace Microsoft.Health.Fhir.Core.Messages.Migrate
 {
     public class MigrateRequest : IRequest<MigrateResponse>
     {
-        public MigrateRequest(string migrateId, MigrateRequestType requestType)
+        public MigrateRequest(string migrateId, MigrateRequestType requestType, int migrationCount)
         {
             Id = migrateId;
             RequestType = requestType;
+            MigrationCount = migrationCount;
         }
 
         public string Id { get; set; }
+
+        public int MigrationCount { get; set; }
 
         public MigrateRequestType RequestType { get; set; }
     }

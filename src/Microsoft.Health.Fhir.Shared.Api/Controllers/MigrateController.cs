@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Health.Api.Features.Audit;
 using Microsoft.Health.Fhir.Api.Features.Filters;
 using Microsoft.Health.Fhir.Api.Features.Routing;
+using Microsoft.Health.Fhir.Core.Features;
 using Microsoft.Health.Fhir.Core.Messages.Migrate;
 using Microsoft.Health.Fhir.ValueSets;
 using Newtonsoft.Json;
@@ -31,9 +32,19 @@ namespace Microsoft.Health.Fhir.Api.Controllers
         [HttpGet]
         [Route(KnownRoutes.Migrate)]
         [AuditEventType(AuditEventSubType.ConvertData)]
-        public async Task<IActionResult> Migrate()
+        public async Task<IActionResult> Migrate(
+            [FromQuery(Name = KnownQueryParameterNames.MigrationCount)] int migrationCount)
         {
-            var request = new MigrateRequest("123", MigrateRequestType.Migrate);
+            if (migrationCount <= 0)
+            {
+                return new ContentResult
+                {
+                    Content = "Resource count is invalid.",
+                    StatusCode = 400,
+                };
+            }
+
+            var request = new MigrateRequest("123", MigrateRequestType.Migrate, migrationCount);
             var response = await _mediator.Send(request, CancellationToken.None);
 
             return new ContentResult
@@ -46,9 +57,10 @@ namespace Microsoft.Health.Fhir.Api.Controllers
         [HttpGet]
         [Route(KnownRoutes.ExportOnly)]
         [AuditEventType(AuditEventSubType.ConvertData)]
-        public async Task<IActionResult> ExportTest()
+        public async Task<IActionResult> ExportTest(
+            [FromQuery(Name = KnownQueryParameterNames.MigrationCount)] int migrationCount)
         {
-            var request = new MigrateRequest("123", MigrateRequestType.ExportOnly);
+            var request = new MigrateRequest("123", MigrateRequestType.ExportOnly, migrationCount);
             var response = await _mediator.Send(request, CancellationToken.None);
 
             return new ContentResult

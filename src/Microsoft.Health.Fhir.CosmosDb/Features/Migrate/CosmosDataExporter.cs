@@ -50,8 +50,9 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Migrate
                     }
 
                     entities.Add(entity);
-                    yield return entities;
                 }
+
+                yield return entities;
             }
         }
     }

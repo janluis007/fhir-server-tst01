@@ -45,12 +45,12 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Migrate
             get
             {
                 _nextSurrogateId += 1;
-                if (_nextSurrogateId > 7999)
+                if (_nextSurrogateId > 8000)
                 {
-                    _nextSurrogateId = 0;
+                    _nextSurrogateId = 1;
                 }
 
-                return _nextSurrogateId;
+                return _nextSurrogateId - 1;
             }
         }
 
@@ -60,10 +60,12 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Migrate
             var searchParamValueList = new Dictionary<string, List<Dictionary<string, object>>>();
             foreach (var resource in resourceList)
             {
-                var valueSet = GetReourceValueSet(resource);
+                long baseResourceSurrogateId = ResourceSurrogateIdHelper.LastUpdatedToResourceSurrogateId(resource.LastModified.UtcDateTime);
+                long resourceSurrogateId = baseResourceSurrogateId + NextSurrogateId;
+                var valueSet = GetReourceValueSet(resource, resourceSurrogateId);
                 resourceValueList.Add(valueSet);
 
-                ExtractSearchParameterValues(searchParamValueList, resource);
+                ExtractSearchParameterValues(searchParamValueList, resource, resourceSurrogateId);
             }
 
             SaveToSqlServer(resourceValueList, "Resource");
@@ -75,9 +77,8 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Migrate
             return Task.CompletedTask;
         }
 
-        private void ExtractSearchParameterValues(Dictionary<string, List<Dictionary<string, object>>> valueMap, ResourceWrapper resource)
+        private void ExtractSearchParameterValues(Dictionary<string, List<Dictionary<string, object>>> valueMap, ResourceWrapper resource, long resourceSurrogateId)
         {
-            long baseResourceSurrogateId = ResourceSurrogateIdHelper.LastUpdatedToResourceSurrogateId(resource.LastModified.UtcDateTime);
             short resourceTypeId = _model.GetResourceTypeId(resource.ResourceTypeName);
             bool isHistory = resource.IsHistory;
 
@@ -105,7 +106,7 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Migrate
 
                     var parameterMap = new Dictionary<string, object>
                     {
-                        { "ResourceSurrogateId", baseResourceSurrogateId },
+                        { "ResourceSurrogateId", resourceSurrogateId },
                         { "ResourceTypeId", resourceTypeId },
                         { "IsHistory", isHistory },
                     };
@@ -164,14 +165,14 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Migrate
             }
         }
 
-        private Dictionary<string, object> GetReourceValueSet(ResourceWrapper resource)
+        private Dictionary<string, object> GetReourceValueSet(ResourceWrapper resource, long resourceSurrogateId)
         {
             var values = new Dictionary<string, object>();
 
             long baseResourceSurrogateId = ResourceSurrogateIdHelper.LastUpdatedToResourceSurrogateId(resource.LastModified.UtcDateTime);
             short resourceTypeId = _model.GetResourceTypeId(resource.ResourceTypeName);
 
-            values["ResourceSurrogateId"] = baseResourceSurrogateId + NextSurrogateId;
+            values["ResourceSurrogateId"] = resourceSurrogateId;
             values["ResourceTypeId"] = resourceTypeId;
             values["Version"] = int.Parse(resource.Version);
             values["IsHistory"] = resource.IsHistory;
