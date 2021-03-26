@@ -31,6 +31,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Definition
 
         public IReadOnlyDictionary<string, string> SearchParameterHashMap => _inner.SearchParameterHashMap;
 
+        public IReadOnlyDictionary<string, SearchParameterInfo> AllSearchParameterInfos => AllSearchParameters.ToDictionary(info => info.Name, info => info);
+
         public IEnumerable<SearchParameterInfo> GetSearchParameters(string resourceType)
         {
             return _inner.GetSearchParameters(resourceType)

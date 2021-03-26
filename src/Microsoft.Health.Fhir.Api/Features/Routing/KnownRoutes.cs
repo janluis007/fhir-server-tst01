@@ -52,6 +52,9 @@ namespace Microsoft.Health.Fhir.Api.Features.Routing
         public const string ConvertData = "$convert-data";
         public const string ConvertDataOperationDefinition = OperationDefinition + "/" + OperationsConstants.ConvertData;
 
+        public const string Migrate = "$migrate";
+        public const string ExportOnly = Migrate + "/" + "export-only";
+
         public const string CompartmentTypeByResourceType = CompartmentTypeRouteSegment + "/" + IdRouteSegment + "/" + CompartmentResourceTypeRouteSegment;
 
         public const string Metadata = "metadata";

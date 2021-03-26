@@ -44,6 +44,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Definition
 
         public IEnumerable<SearchParameterInfo> AllSearchParameters => UrlLookup.Values;
 
+        public IReadOnlyDictionary<string, SearchParameterInfo> AllSearchParameterInfos => AllSearchParameters.ToDictionary(info => info.Name, info => info);
+
         public IReadOnlyDictionary<string, string> SearchParameterHashMap
         {
             get { return new ReadOnlyDictionary<string, string>(_resourceTypeSearchParameterHashMap.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)); }

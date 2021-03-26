@@ -24,6 +24,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Definition
         /// </summary>
         IEnumerable<SearchParameterInfo> AllSearchParameters { get; }
 
+        IReadOnlyDictionary<string, SearchParameterInfo> AllSearchParameterInfos { get; }
+
         /// <summary>
         /// Represents a mapping of resource type to a hash of the search parameters
         /// currently supported for that resource type.

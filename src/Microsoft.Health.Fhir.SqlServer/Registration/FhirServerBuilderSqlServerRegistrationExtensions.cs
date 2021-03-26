@@ -8,8 +8,10 @@ using System.Linq;
 using EnsureThat;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Health.Extensions.DependencyInjection;
+using Microsoft.Health.Fhir.Core.Features.Operations;
 using Microsoft.Health.Fhir.Core.Features.Search.Registry;
 using Microsoft.Health.Fhir.Core.Registration;
+using Microsoft.Health.Fhir.SqlServer.Features.Migrate;
 using Microsoft.Health.Fhir.SqlServer.Features.Schema;
 using Microsoft.Health.Fhir.SqlServer.Features.Search;
 using Microsoft.Health.Fhir.SqlServer.Features.Search.Expressions.Visitors;
@@ -120,6 +122,47 @@ namespace Microsoft.Extensions.DependencyInjection
                     }
                 }
             }
+        }
+
+        public static void AddMigrateServices(this IServiceCollection serviceCollection)
+        {
+            serviceCollection.Add(provider => new SchemaInformation(SchemaVersionConstants.Min, SchemaVersionConstants.Max))
+                .Singleton()
+                .AsSelf()
+                .AsImplementedInterfaces();
+
+            serviceCollection.Add<SqlServerFhirModel>()
+                .Singleton()
+                .AsSelf()
+                .AsImplementedInterfaces();
+
+            serviceCollection.Add<SearchParameterToSearchValueTypeMap>()
+                .Singleton()
+                .AsSelf();
+
+            var types = typeof(SqlServerFhirModel).Assembly.GetTypes().Where(t => t.IsClass && !t.IsAbstract).ToArray();
+            foreach (var type in types)
+            {
+                var interfaces = type.GetInterfaces().ToArray();
+
+                foreach (var interfaceType in interfaces)
+                {
+                    if (interfaceType.IsGenericType && interfaceType.GetGenericTypeDefinition() == typeof(IStoredProcedureTableValuedParametersGenerator<,>))
+                    {
+                        serviceCollection.AddSingleton(type);
+                    }
+
+                    if (interfaceType.IsGenericType && interfaceType.GetGenericTypeDefinition() == typeof(ITableValuedParameterRowGenerator<,>))
+                    {
+                        serviceCollection.Add(type).Singleton().AsSelf().AsService(interfaceType);
+                    }
+                }
+            }
+
+            serviceCollection.Add<CosmosToSqlMigrationHandler>()
+                .Singleton()
+                .AsSelf()
+                .AsService<IFhirDataMigrationHandler>();
         }
     }
 }

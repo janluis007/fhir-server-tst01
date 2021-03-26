@@ -33,6 +33,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Definition
 
         public IEnumerable<SearchParameterInfo> AllSearchParameters => GetAllSearchParameters();
 
+        public IReadOnlyDictionary<string, SearchParameterInfo> AllSearchParameterInfos => AllSearchParameters.ToDictionary(info => info.Name, info => info);
+
         public IReadOnlyDictionary<string, string> SearchParameterHashMap => _inner.SearchParameterHashMap;
 
         public IEnumerable<SearchParameterInfo> GetSearchParameters(string resourceType)

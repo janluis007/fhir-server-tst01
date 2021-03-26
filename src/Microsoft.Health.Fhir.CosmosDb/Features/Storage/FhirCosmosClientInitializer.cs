@@ -13,6 +13,7 @@ using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Fluent;
 using Microsoft.Extensions.Logging;
 using Microsoft.Health.Fhir.CosmosDb.Configs;
+using Microsoft.Health.Fhir.CosmosDb.Features.Storage.Search;
 using Microsoft.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -156,6 +157,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
                 };
 
                 serializerSettings.Converters.Add(new StringEnumConverter());
+                serializerSettings.Converters.Add(new SearchIndexEntryConverter());
 
                 // By default, the Json.NET serializer uses 'F' instead of 'f' for fractions.
                 // 'F' will omit the trailing digits if they are 0. You might end up getting something like '2018-02-07T20:04:49.97114+00:00'

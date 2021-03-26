@@ -4,13 +4,24 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
+using System.Linq;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Health.Extensions.DependencyInjection;
 using Microsoft.Health.Fhir.Azure;
+using Microsoft.Health.Fhir.Core.Features;
+using Microsoft.Health.Fhir.Core.Features.Operations;
+using Microsoft.Health.Fhir.CosmosDb.Features.Migrate;
+using Microsoft.Health.Fhir.SqlServer.Features.Migrate;
+using Microsoft.Health.Fhir.SqlServer.Features.Schema;
+using Microsoft.Health.Fhir.SqlServer.Features.Storage;
+using Microsoft.Health.SqlServer.Features.Schema;
+using Microsoft.Health.SqlServer.Features.Schema.Model;
+using Microsoft.Health.SqlServer.Registration;
 
 namespace Microsoft.Health.Fhir.Web
 {
@@ -38,6 +49,14 @@ namespace Microsoft.Health.Fhir.Web
             if (dataStore.Equals(KnownDataStores.CosmosDb, StringComparison.InvariantCultureIgnoreCase))
             {
                 fhirServerBuilder.AddCosmosDb();
+                fhirServerBuilder.Services.AddSqlServerBase<SchemaVersion>(Configuration, null);
+
+                fhirServerBuilder.Services.AddMigrateServices();
+
+                fhirServerBuilder.Services.Add<CosmosDataExporter>()
+                    .Singleton()
+                    .AsSelf()
+                    .AsService<IMigrateDataExporter>();
             }
             else if (dataStore.Equals(KnownDataStores.SqlServer, StringComparison.InvariantCultureIgnoreCase))
             {
