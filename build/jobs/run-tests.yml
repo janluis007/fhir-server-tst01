@@ -68,8 +68,8 @@ jobs:
         {
             $environmentVariableName = $secret.Name.Replace("--","_")
 
-            $secretValue = Get-AzKeyVaultSecret -VaultName $keyVault -Name $secret.Name
-            Write-Host "##vso[task.setvariable variable=$($environmentVariableName)]$($secretValue.SecretValueText)"
+            $secretValue = Get-AzKeyVaultSecret -VaultName $keyVault -Name $secret.Name -AsPlainText
+            Write-Host "##vso[task.setvariable variable=$($environmentVariableName)]$($secretValue)"
         }
         
         $storageAccounts = Get-AzStorageAccount -ResourceGroupName $(ResourceGroupName)
@@ -100,8 +100,8 @@ jobs:
         {
             $environmentVariableName = $secret.Name.Replace("--","_")
 
-            $secretValue = Get-AzKeyVaultSecret -VaultName resolute-oss-tenant-info -Name $secret.Name
-            Write-Host "##vso[task.setvariable variable=$($environmentVariableName)]$($secretValue.SecretValueText)"
+            $secretValue = Get-AzKeyVaultSecret -VaultName resolute-oss-tenant-info -Name $secret.Name -AsPlainText
+            Write-Host "##vso[task.setvariable variable=$($environmentVariableName)]$($secretValue)"
         }
         # ----------------------------------------
 
@@ -165,8 +165,8 @@ jobs:
         {
             $environmentVariableName = $secret.Name.Replace("--","_")
 
-            $secretValue = Get-AzKeyVaultSecret -VaultName $keyVault -Name $secret.Name
-            Write-Host "##vso[task.setvariable variable=$($environmentVariableName)]$($secretValue.SecretValueText)"
+            $secretValue = Get-AzKeyVaultSecret -VaultName $keyVault -Name $secret.Name -AsPlainText
+            Write-Host "##vso[task.setvariable variable=$($environmentVariableName)]$($secretValue)"
         }
 
         $storageAccounts = Get-AzStorageAccount -ResourceGroupName $(ResourceGroupName)
@@ -197,8 +197,8 @@ jobs:
         {
             $environmentVariableName = $secret.Name.Replace("--","_")
 
-            $secretValue = Get-AzKeyVaultSecret -VaultName resolute-oss-tenant-info -Name $secret.Name
-            Write-Host "##vso[task.setvariable variable=$($environmentVariableName)]$($secretValue.SecretValueText)"
+            $secretValue = Get-AzKeyVaultSecret -VaultName resolute-oss-tenant-info -Name $secret.Name -AsPlainText
+            Write-Host "##vso[task.setvariable variable=$($environmentVariableName)]$($secretValue)"
         }
         # ----------------------------------------
 
