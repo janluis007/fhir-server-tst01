@@ -40,27 +40,6 @@ namespace Microsoft.Health.Fhir.Shared.Core.UnitTests.Features.Operations.Conver
         }
 
         [Fact]
-        public async Task GivenHl7V2ConvertDataRequest_WithDefaultTemplates_CorrectResultShouldReturn()
-        {
-            var convertDataEngine = GetDefaultEngine();
-            var request = GetHl7V2RequestWithDefaultTemplates();
-            var response = await convertDataEngine.Process(request, CancellationToken.None);
-
-            var setting = new ParserSettings()
-            {
-                AcceptUnknownMembers = true,
-                PermissiveParsing = true,
-            };
-            var parser = new FhirJsonParser(setting);
-            var bundleResource = parser.Parse<Bundle>(response.Resource);
-
-            var patient = bundleResource.Entry.ByResourceType<Patient>().First();
-            Assert.NotEmpty(patient.Id);
-            Assert.Equal("DUCK", patient.Name.First().Family);
-            Assert.Equal("1924-10-10", patient.BirthDate);
-        }
-
-        [Fact]
         public async Task GivenCcdaConvertDataRequest_WithADefaultTemplates_CorrectResultShouldReturn()
         {
             var convertDataEngine = GetDefaultEngine();
