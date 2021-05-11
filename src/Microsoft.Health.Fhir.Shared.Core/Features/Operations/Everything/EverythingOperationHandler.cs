@@ -20,20 +20,20 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Everything
 {
     public class EverythingOperationHandler : IRequestHandler<EverythingOperationRequest, EverythingOperationResponse>
     {
-        private readonly ISearchService _searchService;
+        private readonly IPatientEverythingService _patientEverythingService;
         private readonly IBundleFactory _bundleFactory;
         private readonly IAuthorizationService<DataActions> _authorizationService;
 
         private IReadOnlyList<string> _includes = new[] { "general-practitioner", "organization" };
         private IReadOnlyList<Tuple<string, string>> _revincludes = new[] { Tuple.Create("Device", "patient") };
 
-        public EverythingOperationHandler(ISearchService searchService, IBundleFactory bundleFactory, IAuthorizationService<DataActions> authorizationService)
+        public EverythingOperationHandler(IPatientEverythingService patientEverythingService, IBundleFactory bundleFactory, IAuthorizationService<DataActions> authorizationService)
         {
-            EnsureArg.IsNotNull(searchService, nameof(searchService));
+            EnsureArg.IsNotNull(patientEverythingService, nameof(patientEverythingService));
             EnsureArg.IsNotNull(bundleFactory, nameof(bundleFactory));
             EnsureArg.IsNotNull(authorizationService, nameof(authorizationService));
 
-            _searchService = searchService;
+            _patientEverythingService = patientEverythingService;
             _bundleFactory = bundleFactory;
             _authorizationService = authorizationService;
         }
@@ -47,7 +47,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Everything
                 throw new UnauthorizedFhirActionException();
             }
 
-            SearchResult searchResult = await _searchService.SearchForEverythingOperationAsync(
+            SearchResult searchResult = await _patientEverythingService.SearchAsync(
                 request.ResourceType, request.ResourceId, request.Start, request.End, request.Since, request.Type, request.Count, request.ContinuationToken, _includes, _revincludes, cancellationToken);
 
             ResourceElement bundle = _bundleFactory.CreateSearchBundle(searchResult);

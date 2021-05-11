@@ -51,7 +51,7 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest
 
             using FhirException ex = await Assert.ThrowsAsync<FhirException>(() => Client.SearchAsync(searchUrl));
 
-            Assert.Equal(HttpStatusCode.BadRequest, ex.StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, ex.StatusCode);
         }
 
         [Fact]

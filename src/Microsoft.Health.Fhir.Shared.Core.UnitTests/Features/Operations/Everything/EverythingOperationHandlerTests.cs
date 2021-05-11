@@ -21,14 +21,14 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Operations.Everything
 {
     public class EverythingOperationHandlerTests
     {
-        private readonly ISearchService _searchService = Substitute.For<ISearchService>();
+        private readonly IPatientEverythingService _patientEverythingService = Substitute.For<IPatientEverythingService>();
         private readonly IBundleFactory _bundleFactory = Substitute.For<IBundleFactory>();
 
         private readonly EverythingOperationHandler _everythingOperationHandler;
 
         public EverythingOperationHandlerTests()
         {
-            _everythingOperationHandler = new EverythingOperationHandler(_searchService, _bundleFactory, DisabledFhirAuthorizationService.Instance);
+            _everythingOperationHandler = new EverythingOperationHandler(_patientEverythingService, _bundleFactory, DisabledFhirAuthorizationService.Instance);
         }
 
         [Fact]
@@ -38,7 +38,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Operations.Everything
 
             var searchResult = new SearchResult(Enumerable.Empty<SearchResultEntry>(), null, null, new Tuple<string, string>[0]);
 
-            _searchService.SearchForEverythingOperationAsync(
+            _patientEverythingService.SearchAsync(
                 request.ResourceType,
                 request.ResourceId,
                 request.Start,
