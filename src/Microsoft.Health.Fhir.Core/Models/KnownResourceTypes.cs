@@ -13,6 +13,8 @@ namespace Microsoft.Health.Fhir.Core.Models
 
         public const string Bundle = "Bundle";
 
+        public const string CapabilityStatement = "CapabilityStatement";
+
         public const string CompartmentDefinition = "CompartmentDefinition";
 
         public const string Device = "Device";

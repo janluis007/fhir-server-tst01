@@ -357,4 +357,28 @@
   <data name="MemberMatchInvalidParameter" xml:space="preserve">
     <value>$member-match operation parameters must be specified as a FHIR Parameters resource.  Provided body in this request is not valid.</value>
   </data>
+  <data name="FhirVersion" xml:space="preserve">
+    <value>FHIR Version</value>
+  </data>
+  <data name="Format" xml:space="preserve">
+    <value>Format</value>
+  </data>
+  <data name="Interactions" xml:space="preserve">
+    <value>Interactions</value>
+  </data>
+  <data name="MetadataHeading" xml:space="preserve">
+    <value>Capability Statement</value>
+  </data>
+  <data name="Operations" xml:space="preserve">
+    <value>Operations</value>
+  </data>
+  <data name="Publisher" xml:space="preserve">
+    <value>Publisher</value>
+  </data>
+  <data name="SearchParam" xml:space="preserve">
+    <value>Search Parameters</value>
+  </data>
+  <data name="Version" xml:space="preserve">
+    <value>Version</value>
+  </data>
 </root>

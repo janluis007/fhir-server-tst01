@@ -1,0 +1,68 @@
+﻿@using Microsoft.Health.Fhir.Api
+@using System.Collections.Generic
+@model Hl7.Fhir.Model.CapabilityStatement
+@{
+    ViewData["Title"] = "Metadata";
+}
+<div class="container">
+    <div class="panel panel-default">
+        <div class="panel-heading">@Resources.MetadataHeading</div>
+        <div class="panel-body">
+            <h1>@Model.Name</h1>
+            <h3>@Resources.Version<span class="label label-primary">@Model.Version</span></h3>
+            <h3>@Resources.Publisher<a href="@Model.Contact[0].Telecom[0].Value"><span class="label label-primary">@Model.Publisher</span></a></h3>
+            <h3>@Resources.FhirVersion<span class="label label-primary">@Model.FhirVersion</span></h3>
+            <h3>@Resources.Format
+                @foreach (var format in Model.Format) {
+                    <span class="label label-primary">@format</span>
+                }
+            </h3>
+        </div>
+    </div>
+    <div class="panel panel-default">
+        <div class="panel-heading">@Resources.Interactions</div>
+        <div class="panel-body">
+            <p>@String.Join(", ",Model.Rest[0].Interaction)</p>
+        </div>
+    </div>
+    <div class="panel panel-default">
+        <div class="panel-heading">@Resources.Operations</div>
+        <div class="panel-body">
+            <ul class="list-group">
+                @foreach (var operation in Model.Rest[0].Operation) {
+                    <li class="list-group-item"><a href="@operation.Definition">@operation.Name</a></li>
+                }
+            </ul>
+        </div>
+    </div>
+    <div class="panel panel-default">
+        <div class="panel-heading">@Resources.SearchParam</div>
+        <div class="panel-body">
+            <ul class="list-group">
+                @foreach (var searchParam in Model.Rest[0].SearchParam) {
+                    <li class="list-group-item"><a href="@searchParam.Definition">@searchParam.Name<span class="label label-primary">@searchParam.Type</span></a></li>
+                }
+            </ul>
+        </div>
+    </div>
+    @foreach (var resource in Model.Rest[0].Resource) {
+        <div class="panel panel-default">
+            <div class="panel-heading"><a href="@resource.Profile">@resource.Type</a></div>
+            <div class="panel-body">
+                <p>@Resources.Interactions: @String.Join(", ",resource.Interaction)</p>
+                <hr />
+                <ul class="list-group">
+                    @foreach (var operation in @resource.Operation) {
+                        <li class="list-group-item"><a href="@operation.Definition">@operation.Name</a></li>
+                    }
+                </ul>
+                <hr />
+                <ul class="list-group">
+                @foreach (var searchParam in @resource.SearchParam) {
+                    <li class="list-group-item"><a href="@searchParam.Definition">@searchParam.Name<span class="label label-primary">@searchParam.Type</span></a>: @searchParam.Documentation</li>
+                }
+            </ul>
+            </div>
+        </div>
+    }
+</div>

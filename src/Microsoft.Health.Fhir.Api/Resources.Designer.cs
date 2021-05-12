@@ -187,11 +187,29 @@ namespace Microsoft.Health.Fhir.Api {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to FHIR Version.
+        /// </summary>
+        public static string FhirVersion {
+            get {
+                return ResourceManager.GetString("FhirVersion", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Authorization failed..
         /// </summary>
         public static string Forbidden {
             get {
                 return ResourceManager.GetString("Forbidden", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Format.
+        /// </summary>
+        public static string Format {
+            get {
+                return ResourceManager.GetString("Format", resourceCulture);
             }
         }
         
@@ -219,6 +237,15 @@ namespace Microsoft.Health.Fhir.Api {
         public static string InputDataTypeAndDefaultTemplateCollectionInconsistent {
             get {
                 return ResourceManager.GetString("InputDataTypeAndDefaultTemplateCollectionInconsistent", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Interactions.
+        /// </summary>
+        public static string Interactions {
+            get {
+                return ResourceManager.GetString("Interactions", resourceCulture);
             }
         }
         
@@ -376,6 +403,15 @@ namespace Microsoft.Health.Fhir.Api {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Capability Statement.
+        /// </summary>
+        public static string MetadataHeading {
+            get {
+                return ResourceManager.GetString("MetadataHeading", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The audit information is missing for Controller: {0} and Action: {1}. This usually means the action is not marked with appropriate attribute..
         /// </summary>
         public static string MissingAuditInformation {
@@ -430,6 +466,15 @@ namespace Microsoft.Health.Fhir.Api {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Operations.
+        /// </summary>
+        public static string Operations {
+            get {
+                return ResourceManager.GetString("Operations", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to FHIR Server.
         /// </summary>
         public static string PageTitle {
@@ -462,6 +507,15 @@ namespace Microsoft.Health.Fhir.Api {
         public static string ProfileIsInvalid {
             get {
                 return ResourceManager.GetString("ProfileIsInvalid", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Publisher.
+        /// </summary>
+        public static string Publisher {
+            get {
+                return ResourceManager.GetString("Publisher", resourceCulture);
             }
         }
         
@@ -534,6 +588,15 @@ namespace Microsoft.Health.Fhir.Api {
         public static string ResourceTypeMismatch {
             get {
                 return ResourceManager.GetString("ResourceTypeMismatch", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Search Parameters.
+        /// </summary>
+        public static string SearchParam {
+            get {
+                return ResourceManager.GetString("SearchParam", resourceCulture);
             }
         }
         
@@ -651,6 +714,15 @@ namespace Microsoft.Health.Fhir.Api {
         public static string ValueCannotBeNull {
             get {
                 return ResourceManager.GetString("ValueCannotBeNull", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Version.
+        /// </summary>
+        public static string Version {
+            get {
+                return ResourceManager.GetString("Version", resourceCulture);
             }
         }
         

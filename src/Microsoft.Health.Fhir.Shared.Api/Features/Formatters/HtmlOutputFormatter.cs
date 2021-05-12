@@ -6,6 +6,7 @@
 using System;
 using System.Buffers;
 using System.IO;
+using System.Linq;
 using System.Text;
 using EnsureThat;
 using Hl7.Fhir.Model;
@@ -16,12 +17,14 @@ using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.ViewEngines;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Health.Fhir.Api.Models;
 using Microsoft.Health.Fhir.Core.Features.Validation.Narratives;
+using Microsoft.Health.Fhir.Core.Models;
 using Newtonsoft.Json;
 using Task = System.Threading.Tasks.Task;
 
@@ -76,40 +79,60 @@ namespace Microsoft.Health.Fhir.Api.Features.Formatters
 
             using (TextWriter textWriter = context.WriterFactory(context.HttpContext.Response.Body, selectedEncoding))
             {
-                var viewName = "ViewJson";
-                var viewResult = engine.FindView(actionContext, viewName, true);
-
-                if (viewResult.View == null)
-                {
-                    throw new FileNotFoundException(Api.Resources.ViewNotFound, $"{viewName}.cshtml");
-                }
-
                 var resourceInstance = (Resource)context.Object;
                 string div = null;
+                ViewEngineResult viewResult;
+                ViewDataDictionary viewDictionary;
 
                 if (resourceInstance is DomainResource domainResourceInstance && !string.IsNullOrEmpty(domainResourceInstance.Text?.Div))
                 {
                     div = _htmlSanitizer.Sanitize(domainResourceInstance.Text.Div);
                 }
 
-                var stringBuilder = new StringBuilder();
-                using (var stringWriter = new StringWriter(stringBuilder))
-                using (var jsonTextWriter = new JsonTextWriter(stringWriter))
+                if (resourceInstance is CapabilityStatement capabilityStatement)
                 {
-                    jsonTextWriter.ArrayPool = _charPool;
-                    jsonTextWriter.Formatting = Formatting.Indented;
+                    var viewName = "ViewMetadata";
+                    viewResult = engine.FindView(actionContext, viewName, true);
 
-                    _fhirJsonSerializer.Serialize(resourceInstance, jsonTextWriter, context.HttpContext.GetSummaryTypeOrDefault(), context.HttpContext.GetElementsOrDefault());
-                }
-
-                var viewDictionary = new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary())
-                {
-                    Model = new CodePreviewModel
+                    if (viewResult.View == null)
                     {
-                        Code = stringBuilder.ToString(),
-                        Div = div,
-                    },
-                };
+                        throw new FileNotFoundException(Api.Resources.ViewNotFound, $"{viewName}.cshtml");
+                    }
+
+                    viewDictionary = new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary())
+                    {
+                        Model = capabilityStatement,
+                    };
+                }
+                else
+                {
+                    var viewName = "ViewJson";
+                    viewResult = engine.FindView(actionContext, viewName, true);
+
+                    if (viewResult.View == null)
+                    {
+                        throw new FileNotFoundException(Api.Resources.ViewNotFound, $"{viewName}.cshtml");
+                    }
+
+                    var stringBuilder = new StringBuilder();
+                    using (var stringWriter = new StringWriter(stringBuilder))
+                    using (var jsonTextWriter = new JsonTextWriter(stringWriter))
+                    {
+                        jsonTextWriter.ArrayPool = _charPool;
+                        jsonTextWriter.Formatting = Formatting.Indented;
+
+                        _fhirJsonSerializer.Serialize(resourceInstance, jsonTextWriter, context.HttpContext.GetSummaryTypeOrDefault(), context.HttpContext.GetElementsOrDefault());
+                    }
+
+                    viewDictionary = new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary())
+                    {
+                        Model = new CodePreviewModel
+                        {
+                            Code = stringBuilder.ToString(),
+                            Div = div,
+                        },
+                    };
+                }
 
                 var viewContext = new ViewContext(
                     actionContext,
