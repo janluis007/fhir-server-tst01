@@ -3,8 +3,6 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Health.Fhir.Core.Features.Search;
@@ -23,8 +21,6 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Everything
             string type,
             int? count,
             string continuationToken,
-            IReadOnlyList<string> includes,
-            IReadOnlyList<Tuple<string, string>> revincludes,
             CancellationToken cancellationToken);
     }
 }

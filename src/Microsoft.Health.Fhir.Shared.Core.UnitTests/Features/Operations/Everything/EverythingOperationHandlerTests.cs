@@ -4,7 +4,6 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Hl7.Fhir.Model;
@@ -47,8 +46,6 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Operations.Everything
                 request.Type,
                 request.Count,
                 request.ContinuationToken,
-                Arg.Any<IReadOnlyList<string>>(),
-                Arg.Any<IReadOnlyList<Tuple<string, string>>>(),
                 CancellationToken.None).Returns(searchResult);
 
             var expectedBundle = new Bundle().ToResourceElement();

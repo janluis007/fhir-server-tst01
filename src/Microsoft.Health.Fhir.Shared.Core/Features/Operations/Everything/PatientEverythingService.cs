@@ -11,10 +11,10 @@ using System.Threading.Tasks;
 using EnsureThat;
 using Microsoft.Health.Extensions.DependencyInjection;
 using Microsoft.Health.Fhir.Core.Features.Definition;
+using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Features.Search;
-using Microsoft.Health.Fhir.Core.Features.Search.Expressions;
-using Microsoft.Health.Fhir.Core.Features.Search.Expressions.Parsers;
 using Microsoft.Health.Fhir.Core.Models;
+using CompartmentType = Microsoft.Health.Fhir.ValueSets.CompartmentType;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations.Everything
 {
@@ -22,25 +22,27 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Everything
     {
         private readonly Func<IScoped<ISearchService>> _searchServiceFactory;
         private readonly ISearchOptionsFactory _searchOptionsFactory;
-        private readonly IExpressionParser _expressionParser;
         private readonly ISearchParameterDefinitionManager _searchParameterDefinitionManager;
-        private const int _everythingMaxSubqueryItemLimit = 100;
+        private readonly ICompartmentDefinitionManager _compartmentDefinitionManager;
+
+        private IReadOnlyList<string> _includes = new[] { "general-practitioner", "organization" };
+        private readonly Tuple<string, string> _revinclude = Tuple.Create("Device", "patient");
 
         public PatientEverythingService(
             Func<IScoped<ISearchService>> searchServiceFactory,
             ISearchOptionsFactory searchOptionsFactory,
-            IExpressionParser expressionParser,
-            ISearchParameterDefinitionManager.SearchableSearchParameterDefinitionManagerResolver searchParameterDefinitionManagerResolver)
+            ISearchParameterDefinitionManager searchParameterDefinitionManager,
+            ICompartmentDefinitionManager compartmentDefinitionManager)
         {
             EnsureArg.IsNotNull(searchServiceFactory, nameof(searchServiceFactory));
             EnsureArg.IsNotNull(searchOptionsFactory, nameof(searchOptionsFactory));
-            EnsureArg.IsNotNull(expressionParser, nameof(expressionParser));
-            EnsureArg.IsNotNull(searchParameterDefinitionManagerResolver, nameof(searchParameterDefinitionManagerResolver));
+            EnsureArg.IsNotNull(searchParameterDefinitionManager, nameof(searchParameterDefinitionManager));
+            EnsureArg.IsNotNull(compartmentDefinitionManager, nameof(compartmentDefinitionManager));
 
             _searchServiceFactory = searchServiceFactory;
             _searchOptionsFactory = searchOptionsFactory;
-            _expressionParser = expressionParser;
-            _searchParameterDefinitionManager = searchParameterDefinitionManagerResolver();
+            _searchParameterDefinitionManager = searchParameterDefinitionManager;
+            _compartmentDefinitionManager = compartmentDefinitionManager;
         }
 
         public async Task<SearchResult> SearchAsync(
@@ -52,44 +54,92 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Everything
             string type,
             int? count,
             string continuationToken,
-            IReadOnlyList<string> includes,
-            IReadOnlyList<Tuple<string, string>> revincludes,
             CancellationToken cancellationToken)
         {
             using IScoped<ISearchService> search = _searchServiceFactory();
 
+            // Will enable this after more tests
             if (string.Equals(search.Value.GetType().Name, "SqlServerSearchService", StringComparison.Ordinal))
             {
                 throw new OperationNotImplementedException("$everything operation is not yet implemented in SQL Server.");
             }
 
-            // If continuation token provided, we are in second page or after, return compartment search results
-            SearchOptions searchOptions;
-            if (!string.IsNullOrEmpty(continuationToken))
+            EverythingOperationContinuationToken token = string.IsNullOrEmpty(continuationToken)
+                ? new EverythingOperationContinuationToken(0, null)
+                : EverythingOperationContinuationToken.FromString(DecodeContinuationTokenFromBase64String(continuationToken));
+
+            if (token == null)
             {
-                searchOptions = CreateSearchOptions(resourceType, resourceId, start, end, since, type, count, continuationToken);
-                return await search.Value.SearchAsync(searchOptions, cancellationToken);
+                throw new BadRequestException(Core.Resources.InvalidContinuationToken);
             }
 
-            // Otherwise we are in first page, return resource, include, revinclude and first compartment search result
-            var searchResultEntries = new List<SearchResultEntry>();
-            SearchResult searchResult = await SearchReferencesForEverythingOperation(resourceType, resourceId, since, type, includes, revincludes, cancellationToken);
-            searchResultEntries.AddRange(searchResult.Results);
+            SearchResult searchResult;
+            string encodedInternalContinuationToken = EncodeContinuationToken(token.InternalContinuationToken);
 
-            searchOptions = CreateSearchOptions(resourceType, resourceId, start, end, since, type, 1, continuationToken);
-            searchResult = await search.Value.SearchAsync(searchOptions, cancellationToken);
-            searchResultEntries.AddRange(searchResult.Results);
+            switch (token.Phase)
+            {
+                case 0:
+                    searchResult = await SearchIncludes(resourceType, resourceId, since, type, cancellationToken);
+                    if (!searchResult.Results.Any())
+                    {
+                        token.Phase = 1;
+                        goto case 1;
+                    }
 
-            return new SearchResult(searchResultEntries, searchResult.ContinuationToken, null, new List<Tuple<string, string>>());
+                    break;
+                case 1:
+                    // If both start and end are null, we can just perform regular compartment search in Phase 2
+                    if (start == null && end == null)
+                    {
+                        token.Phase = 2;
+                        goto case 2;
+                    }
+
+                    searchResult = await SearchCompartmentWithDate(resourceType, resourceId, start, end, since, type, encodedInternalContinuationToken, cancellationToken);
+                    if (!searchResult.Results.Any())
+                    {
+                        token.Phase = 2;
+                        goto case 2;
+                    }
+
+                    break;
+                case 2:
+                    searchResult = start == null && end == null
+                        ? await SearchCompartment(resourceType, resourceId, since, type, encodedInternalContinuationToken, cancellationToken)
+                        : await SearchCompartmentWithoutDate(resourceType, resourceId, since, type, encodedInternalContinuationToken, cancellationToken);
+
+                    if (!searchResult.Results.Any())
+                    {
+                        token.Phase = 3;
+                        goto case 3;
+                    }
+
+                    break;
+                case 3:
+                    searchResult = await SearchRevinclude(resourceId, since, type, encodedInternalContinuationToken, cancellationToken);
+                    break;
+                default:
+                    return new SearchResult(Enumerable.Empty<SearchResultEntry>(), null, null, Array.Empty<Tuple<string, string>>());
+            }
+
+            string newContinuationToken = null;
+            if (searchResult.ContinuationToken != null)
+            {
+                newContinuationToken = EverythingOperationContinuationToken.ToString(token.Phase, searchResult.ContinuationToken);
+            }
+            else if (token.Phase < 3)
+            {
+                newContinuationToken = EverythingOperationContinuationToken.ToString(token.Phase + 1, null);
+            }
+
+            return new SearchResult(searchResult.Results, newContinuationToken, searchResult.SortOrder, searchResult.UnsupportedSearchParameters);
         }
 
-        private async Task<SearchResult> SearchReferencesForEverythingOperation(
+        private async Task<SearchResult> SearchIncludes(
             string resourceType,
             string resourceId,
             PartialDateTime since,
             string type,
-            IReadOnlyList<string> includes,
-            IReadOnlyList<Tuple<string, string>> revincludes,
             CancellationToken cancellationToken)
         {
             using IScoped<ISearchService> search = _searchServiceFactory();
@@ -101,31 +151,15 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Everything
                 Tuple.Create(SearchParameterNames.Id, resourceId),
             };
 
-            searchParameters.AddRange(includes.Select(include => Tuple.Create(SearchParameterNames.Include, $"{resourceType}:{include}")));
+            searchParameters.AddRange(_includes.Select(include => Tuple.Create(SearchParameterNames.Include, $"{resourceType}:{include}")));
 
-            // Search with includes
+            // Search
             SearchOptions searchOptions = _searchOptionsFactory.Create(resourceType, searchParameters);
             SearchResult searchResult = await search.Value.SearchAsync(searchOptions, cancellationToken);
             searchResultEntries.AddRange(searchResult.Results.Select(x => new SearchResultEntry(x.Resource)));
 
-            // Search with revincludes
-            // Currently we only have one revinclude resource. If we are going to pull more revinclude resources, we will need to refine this to get better performance.
-            // We do not use _revinclude here since _revinclude depends on the existence of the parent resource.
-            foreach (Tuple<string, string> revinclude in revincludes)
-            {
-                searchParameters = new List<Tuple<string, string>>
-                {
-                    Tuple.Create(revinclude.Item2, resourceId),
-                    Tuple.Create(KnownQueryParameterNames.Count, _everythingMaxSubqueryItemLimit.ToString()),
-                };
-
-                searchOptions = _searchOptionsFactory.Create(revinclude.Item1, searchParameters);
-                searchResult = await search.Value.SearchAsync(searchOptions, cancellationToken);
-                searchResultEntries.AddRange(searchResult.Results);
-            }
-
             // Filter results by IsDeleted
-            searchResultEntries = searchResultEntries.Where(e => !e.Resource.IsDeleted).ToList();
+            searchResultEntries = searchResultEntries.Where(s => !s.Resource.IsDeleted).ToList();
 
             // Filter results by _type
             if (!string.IsNullOrEmpty(type))
@@ -151,116 +185,185 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.Everything
             return new SearchResult(searchResultEntries, searchResult.ContinuationToken, searchResult.SortOrder, searchResult.UnsupportedSearchParameters);
         }
 
-        private SearchOptions CreateSearchOptions(string compartmentType, string compartmentId, PartialDateTime start, PartialDateTime end, PartialDateTime since, string type, int? count, string continuationToken)
+        private async Task<SearchResult> SearchRevinclude(
+            string resourceId,
+            PartialDateTime since,
+            string type,
+            string continuationToken,
+            CancellationToken cancellationToken)
         {
-            var queryParameters = new List<Tuple<string, string>>();
+            if (!string.IsNullOrEmpty(type) && !type.SplitByOrSeparator().Contains(_revinclude.Item1))
+            {
+                return new SearchResult(Enumerable.Empty<SearchResultEntry>(), null, null, Array.Empty<Tuple<string, string>>());
+            }
+
+            var searchParameters = new List<Tuple<string, string>>
+            {
+                Tuple.Create(_revinclude.Item2, resourceId),
+            };
 
             if (since != null)
             {
-                queryParameters.Add(Tuple.Create(SearchParameterNames.LastUpdated, $"ge{since}"));
-            }
-
-            if (!string.IsNullOrEmpty(type))
-            {
-                queryParameters.Add(Tuple.Create(SearchParameterNames.ResourceType, type));
-            }
-
-            if (count > 0)
-            {
-                queryParameters.Add(Tuple.Create(KnownQueryParameterNames.Count, count.ToString()));
+                searchParameters.Add(Tuple.Create(SearchParameterNames.LastUpdated, $"ge{since}"));
             }
 
             if (!string.IsNullOrEmpty(continuationToken))
             {
-                queryParameters.Add(Tuple.Create(KnownQueryParameterNames.ContinuationToken, continuationToken));
+                searchParameters.Add(Tuple.Create(KnownQueryParameterNames.ContinuationToken, continuationToken));
             }
 
-            SearchOptions searchOptions = _searchOptionsFactory.Create(compartmentType, compartmentId, null, queryParameters);
+            // We do not use Patient?_revinclude here since it depends on the existence of the parent resource
+            using IScoped<ISearchService> search = _searchServiceFactory();
+            SearchOptions searchOptions = _searchOptionsFactory.Create(_revinclude.Item1, searchParameters);
+            return await search.Value.SearchAsync(searchOptions, cancellationToken);
+        }
 
-            // Return if start and end not specified
-            if (start == null && end == null)
-            {
-                return searchOptions;
-            }
-
-            // Otherwise rewrite expression with start and end
+        private async Task<SearchResult> SearchCompartmentWithDate(
+            string resourceType,
+            string resourceId,
+            PartialDateTime start,
+            PartialDateTime end,
+            PartialDateTime since,
+            string type,
+            string continuationToken,
+            CancellationToken cancellationToken)
+        {
             SearchParameterInfo clinicalDateInfo = _searchParameterDefinitionManager.GetSearchParameter(SearchParameterNames.ClinicalDateUri);
-            var resourceTypeString = new[] { clinicalDateInfo.BaseResourceTypes.ToList().First() };
-
-            // Add expression for compartment search
-            var expressions = new List<Expression>
-            {
-                Expression.CompartmentSearch(compartmentType, compartmentId),
-            };
-
-            // Add expression for _since
-            if (since != null)
-            {
-                expressions.Add(_expressionParser.Parse(resourceTypeString, SearchParameterNames.LastUpdated, $"ge{since}"));
-            }
-
-            // Add expression for date and _type
-            // The expression looks like:
-            // Expression.Or(
-            //     Expression.And(SearchParameterExpression(_type: the intersection of _type and 17 resource types that have clinical date), SearchParameterExpression(date: "ge{start}/le{end}")),
-            //     SearchParameterExpression(_type: the intersection of _type and other resource types that do not have clinical date)
-            // )
-            Expression dateExpression = null;
-            List<string> dateResourceTypes = type == null
+            List<string> dateResourceTypes = string.IsNullOrEmpty(type)
                 ? clinicalDateInfo.BaseResourceTypes.ToList()
                 : clinicalDateInfo.BaseResourceTypes.Intersect(type.SplitByOrSeparator()).ToList();
 
-            if (dateResourceTypes.Any())
+            if (!dateResourceTypes.Any())
             {
-                var dateExpressions = new List<Expression>
-                {
-                    _expressionParser.Parse(resourceTypeString, SearchParameterNames.ResourceType, string.Join(',', dateResourceTypes)),
-                };
+                return new SearchResult(Enumerable.Empty<SearchResultEntry>(), null, null, Array.Empty<Tuple<string, string>>());
+            }
 
-                if (start != null)
+            var searchParameters = new List<Tuple<string, string>>
+            {
+                Tuple.Create(SearchParameterNames.ResourceType, string.Join(',', dateResourceTypes)),
+            };
+
+            if (since != null)
+            {
+                searchParameters.Add(Tuple.Create(SearchParameterNames.LastUpdated, $"ge{since}"));
+            }
+
+            if (start != null)
+            {
+                searchParameters.Add(Tuple.Create(SearchParameterNames.Date, $"ge{start}"));
+            }
+
+            if (end != null)
+            {
+                searchParameters.Add(Tuple.Create(SearchParameterNames.Date, $"le{end}"));
+            }
+
+            if (!string.IsNullOrEmpty(continuationToken))
+            {
+                searchParameters.Add(Tuple.Create(KnownQueryParameterNames.ContinuationToken, continuationToken));
+            }
+
+            using IScoped<ISearchService> search = _searchServiceFactory();
+            SearchOptions searchOptions = _searchOptionsFactory.Create(resourceType, resourceId, null, searchParameters);
+            return await search.Value.SearchAsync(searchOptions, cancellationToken);
+        }
+
+        private async Task<SearchResult> SearchCompartmentWithoutDate(
+            string resourceType,
+            string resourceId,
+            PartialDateTime since,
+            string type,
+            string continuationToken,
+            CancellationToken cancellationToken)
+        {
+            var nonDateResourceTypes = new List<string>();
+            SearchParameterInfo clinicalDateInfo = _searchParameterDefinitionManager.GetSearchParameter(SearchParameterNames.ClinicalDateUri);
+
+            if (_compartmentDefinitionManager.TryGetResourceTypes(CompartmentType.Patient, out HashSet<string> compartmentResourceTypes))
+            {
+                nonDateResourceTypes = string.IsNullOrEmpty(type)
+                    ? compartmentResourceTypes.Except(clinicalDateInfo.BaseResourceTypes).ToList()
+                    : compartmentResourceTypes.Except(clinicalDateInfo.BaseResourceTypes).Intersect(type.SplitByOrSeparator()).ToList();
+            }
+
+            if (!nonDateResourceTypes.Any())
+            {
+                return new SearchResult(Enumerable.Empty<SearchResultEntry>(), null, null, Array.Empty<Tuple<string, string>>());
+            }
+
+            var searchParameters = new List<Tuple<string, string>>
+            {
+                Tuple.Create(SearchParameterNames.ResourceType, string.Join(',', nonDateResourceTypes)),
+            };
+
+            if (since != null)
+            {
+                searchParameters.Add(Tuple.Create(SearchParameterNames.LastUpdated, $"ge{since}"));
+            }
+
+            if (!string.IsNullOrEmpty(continuationToken))
+            {
+                searchParameters.Add(Tuple.Create(KnownQueryParameterNames.ContinuationToken, continuationToken));
+            }
+
+            using IScoped<ISearchService> search = _searchServiceFactory();
+            SearchOptions searchOptions = _searchOptionsFactory.Create(resourceType, resourceId, null, searchParameters);
+            return await search.Value.SearchAsync(searchOptions, cancellationToken);
+        }
+
+        private async Task<SearchResult> SearchCompartment(
+            string resourceType,
+            string resourceId,
+            PartialDateTime since,
+            string type,
+            string continuationToken,
+            CancellationToken cancellationToken)
+        {
+            var searchParameters = new List<Tuple<string, string>>();
+
+            if (since != null)
+            {
+                searchParameters.Add(Tuple.Create(SearchParameterNames.LastUpdated, $"ge{since}"));
+            }
+
+            if (!string.IsNullOrEmpty(type) && _compartmentDefinitionManager.TryGetResourceTypes(CompartmentType.Patient, out HashSet<string> compartmentResourceTypes))
+            {
+                var types = compartmentResourceTypes.Intersect(type.SplitByOrSeparator()).ToList();
+                if (!types.Any())
                 {
-                    dateExpressions.Add(_expressionParser.Parse(resourceTypeString, SearchParameterNames.Date, $"ge{start}"));
+                    return new SearchResult(Enumerable.Empty<SearchResultEntry>(), null, null, Array.Empty<Tuple<string, string>>());
                 }
 
-                if (end != null)
-                {
-                    dateExpressions.Add(_expressionParser.Parse(resourceTypeString, SearchParameterNames.Date, $"le{end}"));
-                }
-
-                dateExpression = Expression.And(dateExpressions);
+                searchParameters.Add(Tuple.Create(SearchParameterNames.ResourceType, string.Join(',', types)));
             }
 
-            Expression nonDateExpression = null;
-            List<string> nonDateResourceTypes = type == null
-                ? Enum.GetNames(typeof(Hl7.Fhir.Model.ResourceType)).Except(clinicalDateInfo.BaseResourceTypes).ToList()
-                : Enum.GetNames(typeof(Hl7.Fhir.Model.ResourceType)).Except(clinicalDateInfo.BaseResourceTypes).Intersect(type.SplitByOrSeparator()).ToList();
-
-            if (nonDateResourceTypes.Any())
+            if (!string.IsNullOrEmpty(continuationToken))
             {
-                nonDateExpression = _expressionParser.Parse(resourceTypeString, SearchParameterNames.ResourceType, string.Join(',', nonDateResourceTypes));
+                searchParameters.Add(Tuple.Create(KnownQueryParameterNames.ContinuationToken, continuationToken));
             }
 
-            if (dateExpression != null && nonDateExpression != null)
-            {
-                expressions.Add(Expression.Or(dateExpression, nonDateExpression));
-            }
-            else if (dateExpression != null)
-            {
-                expressions.Add(dateExpression);
-            }
-            else if (nonDateExpression != null)
-            {
-                expressions.Add(nonDateExpression);
-            }
-            else
-            {
-                // If both of them are null, it means _type is invalid. Just put it here to return nothing.
-                expressions.Add(_expressionParser.Parse(resourceTypeString, SearchParameterNames.ResourceType, type));
-            }
+            using IScoped<ISearchService> search = _searchServiceFactory();
+            SearchOptions searchOptions = _searchOptionsFactory.Create(resourceType, resourceId, null, searchParameters);
+            return await search.Value.SearchAsync(searchOptions, cancellationToken);
+        }
 
-            searchOptions.Expression = expressions.Count > 1 ? Expression.And(expressions) : expressions[0];
+        private static string DecodeContinuationTokenFromBase64String(string encodedString)
+        {
+            try
+            {
+                return System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(encodedString));
+            }
+            catch (FormatException)
+            {
+                throw new BadRequestException(Core.Resources.InvalidContinuationToken);
+            }
+        }
 
-            return searchOptions;
+        private static string EncodeContinuationToken(string continuationToken)
+        {
+            return string.IsNullOrEmpty(continuationToken)
+                ? null
+                : Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(continuationToken));
         }
     }
 }
