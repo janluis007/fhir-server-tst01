@@ -35,7 +35,13 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Migrate
             var sqlQueryText = "SELECT * FROM c WHERE c.isSystem = false";
             QueryDefinition queryDefinition = new QueryDefinition(sqlQueryText);
 
-            FeedIterator<FhirCosmosResourceWrapper> queryResultSetIterator = _containerScope.Value.GetItemQueryIterator<FhirCosmosResourceWrapper>(queryDefinition);
+            var queryOptions = new QueryRequestOptions
+            {
+                MaxConcurrency = 20,
+                MaxItemCount = 20000,
+                MaxBufferedItemCount = 100000,
+            };
+            FeedIterator<FhirCosmosResourceWrapper> queryResultSetIterator = _containerScope.Value.GetItemQueryIterator<FhirCosmosResourceWrapper>(queryDefinition, null, queryOptions);
 
             while (queryResultSetIterator.HasMoreResults)
             {

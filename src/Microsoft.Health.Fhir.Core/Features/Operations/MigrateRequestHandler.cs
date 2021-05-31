@@ -4,10 +4,13 @@
 // -------------------------------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
+using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Messages.Migrate;
 using Newtonsoft.Json;
 
@@ -42,6 +45,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations
             int count = 0;
             await foreach (var data in _dataExporter.Export())
             {
+                Console.WriteLine($"Resources: {data.Count()}");
                 count += data.Count;
                 if (count >= resourceLimit)
                 {
@@ -68,21 +72,12 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations
         {
             var stopWatch = Stopwatch.StartNew();
             int count = 0;
+
+            var tasks = new List<Task<string>>();
             await foreach (var data in _dataExporter.Export())
             {
-                try
-                {
-                    await _migrateHandler.Process(data);
-                }
-                catch (Exception ex)
-                {
-                    return new MigrateResponse
-                    {
-                        Succeed = false,
-                        Message = ex.ToString(),
-                    };
-                }
-
+                Console.WriteLine($"Resources: {data.Count()}");
+                tasks.Add(Task.Run(() => Migrate(data)));
                 count += data.Count;
                 if (count >= resourceLimit)
                 {
@@ -90,7 +85,18 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations
                 }
             }
 
+            var results = await Task.WhenAll(tasks);
             stopWatch.Stop();
+
+            if (results.FirstOrDefault(x => !string.IsNullOrEmpty(x)) != null)
+            {
+                return new MigrateResponse
+                {
+                    Succeed = true,
+                    Message = results.FirstOrDefault(x => !string.IsNullOrEmpty(x)),
+                };
+            }
+
             var exportResult = new ExportRateResult
             {
                 Count = $"{count}",
@@ -102,6 +108,20 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations
                 Succeed = true,
                 Message = JsonConvert.SerializeObject(exportResult),
             };
+        }
+
+        private async Task<string> Migrate(List<ResourceWrapper> data)
+        {
+            try
+            {
+                Console.WriteLine($"{DateTime.Now}: Working...");
+                await _migrateHandler.Process(data);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                return ex.ToString();
+            }
         }
 
         internal class ExportRateResult

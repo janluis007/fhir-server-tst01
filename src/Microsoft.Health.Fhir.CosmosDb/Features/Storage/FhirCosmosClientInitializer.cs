@@ -64,7 +64,8 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
                 .WithConnectionModeDirect(enableTcpConnectionEndpointRediscovery: true)
                 .WithCustomSerializer(new FhirCosmosSerializer())
                 .WithThrottlingRetryOptions(TimeSpan.FromSeconds(configuration.RetryOptions.MaxWaitTimeInSeconds), configuration.RetryOptions.MaxNumberOfRetries)
-                .AddCustomHandlers(requestHandlers.ToArray());
+                .AddCustomHandlers(requestHandlers.ToArray())
+                .WithBulkExecution(true);
 
             if (configuration.PreferredLocations?.Any() == true)
             {

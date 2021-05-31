@@ -68,11 +68,8 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Migrate
                 ExtractSearchParameterValues(searchParamValueList, resource, resourceSurrogateId);
             }
 
-            SaveToSqlServer(resourceValueList, "Resource");
-            foreach (var kvp in searchParamValueList)
-            {
-                SaveToSqlServer(kvp.Value, kvp.Key);
-            }
+            searchParamValueList.Add("Resource", resourceValueList);
+            SaveToSqlServer(searchParamValueList);
 
             return Task.CompletedTask;
         }
@@ -129,9 +126,8 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Migrate
             }
         }
 
-        private void SaveToSqlServer(List<Dictionary<string, object>> valueList, string tableName)
+        private void SaveToSqlServer(Dictionary<string, List<Dictionary<string, object>>> valueMap)
         {
-            var reader = new ResourceDataReader(valueList, tableName);
             using (SqlConnection destinationConnection = new SqlConnection(_sqlServerConfig.ConnectionString))
             {
                 destinationConnection.Open();
@@ -142,24 +138,31 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Migrate
                 // the destination table so there is no need to
                 // map columns.
                 using (SqlBulkCopy bulkCopy =
-                            new SqlBulkCopy(destinationConnection))
+                    new SqlBulkCopy(destinationConnection))
                 {
-                    bulkCopy.DestinationTableName =
-                        $"dbo.{tableName}";
+                    foreach (var entry in valueMap)
+                    {
+                        var valueList = entry.Value;
+                        var tableName = entry.Key;
+                        var reader = new ResourceDataReader(valueList, tableName);
 
-                    try
-                    {
-                        // Write from the source to the destination.
-                        bulkCopy.WriteToServer(reader);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                        throw;
-                    }
-                    finally
-                    {
-                        reader.Close();
+                        bulkCopy.DestinationTableName =
+                            $"dbo.{tableName}";
+
+                        try
+                        {
+                            // Write from the source to the destination.
+                            bulkCopy.WriteToServer(reader);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(ex.Message);
+                            throw;
+                        }
+                        finally
+                        {
+                            reader.Close();
+                        }
                     }
                 }
             }
