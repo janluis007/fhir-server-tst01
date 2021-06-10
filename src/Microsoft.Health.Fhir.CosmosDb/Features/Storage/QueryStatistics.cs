@@ -8,7 +8,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
     /// <summary>
     /// Used to keep track of the average number of partitions that the SDK reads from when executing a query.
     /// </summary>
-    internal class QueryPartitionStatistics
+    internal class QueryStatistics
     {
         private long _partitionSum;
 

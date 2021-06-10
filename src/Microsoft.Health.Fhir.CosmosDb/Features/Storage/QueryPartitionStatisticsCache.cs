@@ -11,20 +11,20 @@ using Microsoft.Health.Fhir.Core.Features.Search.Expressions;
 namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
 {
     /// <summary>
-    /// Maintains an LRU cache of <see cref="QueryPartitionStatistics"/>, keyed by search expression ignoring values in the expression.
+    /// Maintains an LRU cache of <see cref="QueryStatistics"/>, keyed by search expression ignoring values in the expression.
     /// </summary>
     public class QueryPartitionStatisticsCache
     {
         private readonly MemoryCache _cache = new(new MemoryCacheOptions { SizeLimit = 512 });
 
-        internal QueryPartitionStatistics GetQueryPartitionStatistics(Expression expression)
+        internal QueryStatistics GetQueryPartitionStatistics(Expression expression)
         {
             return _cache.GetOrCreate(
                 new ExpressionWrapper(expression),
                 e =>
                 {
                     e.Size = 1;
-                    return new QueryPartitionStatistics();
+                    return new QueryStatistics();
                 });
         }
 

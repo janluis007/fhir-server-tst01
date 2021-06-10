@@ -33,6 +33,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
     internal class FhirCosmosSearchService : SearchService
     {
         private static readonly SearchParameterInfo _wildcardReferenceSearchParameter = new(SearchValueConstants.WildcardReferenceSearchParameterName, SearchValueConstants.WildcardReferenceSearchParameterName);
+        private static readonly IsSelectiveVisitor _isSelectiveVisitor = new IsSelectiveVisitor();
 
         private readonly CosmosFhirDataStore _fhirDataStore;
         private readonly IQueryBuilder _queryBuilder;
@@ -391,7 +392,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
             // Additionally, when we query sequentially, we would like to gradually fan out the parallelism, but the Cosmos DB SDK
             // does not currently properly support that. See https://github.com/Azure/azure-cosmos-dotnet-v3/issues/2290
 
-            QueryPartitionStatistics queryPartitionStatistics = null;
+            QueryStatistics queryStatistics = null;
             IFhirRequestContext fhirRequestContext = null;
             ConcurrentBag<ResponseMessage> messagesList = null;
             if (_physicalPartitionInfo.PhysicalPartitionCount > 1 && queryRequestOptionsOverride == null)
@@ -408,8 +409,8 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
                         // Telemetry currently shows that when there is a continuation token, the the query only hits one partition.
                         // This may not be true forever, in which case we would want to encode the max concurrency in the continuation token.
 
-                        queryPartitionStatistics = _queryPartitionStatisticsCache.GetQueryPartitionStatistics(searchOptions.Expression);
-                        if (IsQuerySelective(queryPartitionStatistics))
+                        queryStatistics = _queryPartitionStatisticsCache.GetQueryPartitionStatistics(searchOptions.Expression);
+                        if (IsQuerySelective(queryStatistics, searchOptions))
                         {
                             feedOptions.MaxConcurrency = CosmosFhirDataStore.MaxQueryConcurrency;
                         }
@@ -429,16 +430,23 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
 
             try
             {
-                (IReadOnlyList<T> results, string nextContinuationToken) = await _fhirDataStore.ExecuteDocumentQueryAsync<T>(sqlQuerySpec, feedOptions, continuationToken, searchOptions.MaxItemCountSpecifiedByClient, feedOptions.MaxConcurrency == null ? searchEnumerationTimeoutOverrideIfSequential : null, cancellationToken);
+                (IReadOnlyList<T> results, string nextContinuationToken) =
+                    await _fhirDataStore.ExecuteDocumentQueryAsync<T>(
+                        sqlQuerySpec,
+                        feedOptions,
+                        continuationToken,
+                        searchOptions.MaxItemCountSpecifiedByClient,
+                        feedOptions.MaxConcurrency == null ? searchEnumerationTimeoutOverrideIfSequential : null,
+                        cancellationToken);
 
-                if (queryPartitionStatistics != null && messagesList != null)
+                if (queryStatistics != null && messagesList != null)
                 {
                     var desiredItemCount = feedOptions.MaxItemCount * CosmosFhirDataStore.ExecuteDocumentQueryAsyncMinimumFillFactor;
 
                     if (results.Count < desiredItemCount && !string.IsNullOrEmpty(nextContinuationToken))
                     {
                         // ExecuteDocumentQueryAsync gave up on filling the pages. This suggests that we would have been better off querying in parallel.
-                        queryPartitionStatistics.Update(_physicalPartitionInfo.PhysicalPartitionCount);
+                        queryStatistics.Update(_physicalPartitionInfo.PhysicalPartitionCount);
 
                         _logger.LogInformation(
                             "Failed to fill items, found {ItemCount}, needed {DesiredItemCount}. Updating statistics to {PhysicalPartitionCount}",
@@ -450,7 +458,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
                     {
                         // determine the number of unique physical partitions queried as part of this search.
                         int physicalPartitionCount = messagesList.Select(r => r.Headers["x-ms-documentdb-partitionkeyrangeid"]).Distinct().Count();
-                        queryPartitionStatistics.Update(physicalPartitionCount);
+                        queryStatistics.Update(physicalPartitionCount);
                     }
                 }
 
@@ -458,7 +466,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
             }
             finally
             {
-                if (queryPartitionStatistics != null && fhirRequestContext != null)
+                if (queryStatistics != null && fhirRequestContext != null)
                 {
                     fhirRequestContext.Properties.Remove(Constants.CosmosDbResponseMessagesProperty);
                 }
@@ -470,9 +478,25 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
         /// If it is not, we should query sequentially, since we would expect to get a full page of results from the first partition.
         /// This is really simple right now
         /// </summary>
-        private bool IsQuerySelective(QueryPartitionStatistics queryPartitionStatistics)
+        private bool IsQuerySelective(QueryStatistics queryStatistics, SearchOptions searchOptions)
         {
-            int? averagePartitionCount = queryPartitionStatistics.GetAveragePartitionCount();
+            EnsureArg.IsNotNull(queryStatistics, nameof(queryStatistics));
+            EnsureArg.IsNotNull(searchOptions, nameof(searchOptions));
+
+            if (searchOptions.MaxItemCountSpecifiedByClient)
+            {
+                return false;
+            }
+
+            int? averagePartitionCount = queryStatistics.GetAveragePartitionCount();
+
+            var isSelectiveVisitorContext = new IsSelectiveVisitor.IsSelectiveVisitorContext();
+            searchOptions.Expression.AcceptVisitor(_isSelectiveVisitor, isSelectiveVisitorContext);
+
+            if (isSelectiveVisitorContext.SelectiveParametersUsed && _cosmosConfig.UseQueryStatistics)
+            {
+                return true;
+            }
 
             if (averagePartitionCount.HasValue && _cosmosConfig.UseQueryStatistics)
             {

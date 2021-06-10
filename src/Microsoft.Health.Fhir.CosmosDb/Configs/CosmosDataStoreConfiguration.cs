@@ -45,7 +45,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Configs
         /// The maximum number of seconds to spend fetching search result pages when the first page comes up with fewer results than requested.
         /// This time includes the time to fetch the first page.
         /// </summary>
-        public int SearchEnumerationTimeoutInSeconds { get; set; } = 30;
+        public int SearchEnumerationTimeoutInSeconds { get; set; } = 10;
 
         /// <summary>
         /// Uses query statistics to determine the optimal level of partition parallelism needed to return results
