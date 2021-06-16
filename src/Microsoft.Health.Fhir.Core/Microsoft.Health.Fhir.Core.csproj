@@ -43,6 +43,7 @@
     <PackageReference Include="Microsoft.Extensions.Http" Version="$(RuntimePackageVersion)" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="$(RuntimePackageVersion)" />
     <PackageReference Include="Microsoft.Health.Abstractions" Version="$(HealthcareSharedPackageVersion)" />
+    <PackageReference Include="Microsoft.Health.EventGrid" Version="$(HealthcareSharedPackageVersion)" />
     <PackageReference Include="Microsoft.Health.Core" Version="$(HealthcareSharedPackageVersion)" />
     <PackageReference Include="Microsoft.Health.Extensions.DependencyInjection" Version="$(HealthcareSharedPackageVersion)" />
     <PackageReference Include="Hl7.Fhir.Support.Poco" Version="$(Hl7FhirVersion)" />

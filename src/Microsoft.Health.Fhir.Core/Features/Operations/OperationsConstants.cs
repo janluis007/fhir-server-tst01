@@ -21,6 +21,8 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations
 
         public const string Reindex = "reindex";
 
+        public const string PublishEvents = "publishevents";
+
         public const string ResourceReindex = "resource-reindex";
 
         public const string ReindexContentTypeHeaderValue = "application/json";

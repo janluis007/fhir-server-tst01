@@ -14,5 +14,7 @@ namespace Microsoft.Health.Fhir.Core.Configs
         public ConvertDataConfiguration ConvertData { get; set; } = new ConvertDataConfiguration();
 
         public ValidateOperationConfiguration Validate { get; set; } = new ValidateOperationConfiguration();
+
+        public PublishEventsConfiguration PublishEvents { get; set; } = new PublishEventsConfiguration();
     }
 }
