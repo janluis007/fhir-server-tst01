@@ -18,6 +18,9 @@ using Microsoft.Health.Fhir.Core.Models;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations.PublishEvents
 {
+    /// <summary>
+    /// Publish Event Worker that reads change feed records from data source and writes events.
+    /// </summary>
     public class PublishEventsWorker : IPublishEventsWorker
     {
         private readonly IChangeFeedSource<IResourceChangeData> _fhirResourcesChangeFeedStore;
