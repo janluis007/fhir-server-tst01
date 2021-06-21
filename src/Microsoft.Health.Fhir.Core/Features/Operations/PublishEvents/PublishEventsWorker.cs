@@ -62,7 +62,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.PublishEvents
             {
                 try
                 {
-                    // Query DB and get records to publish
+                    // Set startId as last successfully processed record Id plus 1.
                     long startId = lastProcessedId + 1;
 
                     IReadOnlyCollection<IResourceChangeData> records =
@@ -74,7 +74,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.PublishEvents
                         var events = records.Select(r => new EventGridEvent(
                             $"{_publishEventsConfiguration.FhirAccount}/{r.ResourceTypeName}/{r.ResourceId}",
                             eventType: resourceChangeTypeMap[r.ResourceChangeTypeId],
-                            dataVersion: r.ResourceVersion.ToString(),
+                            dataVersion: r.ResourceVersion.ToString(CultureInfo.InvariantCulture),
                             new BinaryData(new
                                 {
                                     ResourceType = r.ResourceTypeName,
@@ -106,7 +106,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.PublishEvents
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error occurred on PublishEventsWorker.ExecuteAsync");
+                    _logger.LogError(exception: ex, message: "Error occurred on PublishEventsWorker.ExecuteAsync");
                 }
             }
         }
