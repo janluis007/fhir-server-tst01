@@ -20,12 +20,12 @@ namespace Microsoft.Health.Fhir.Core.Configs
         public TimeSpan JobPollingFrequency { get; set; } = TimeSpan.FromSeconds(5);
 
         /// <summary>
-        /// EventEndPoint.
+        /// EventGridTopicEndPoint.
         /// </summary>
-        public string EventEndPoint { get; set; }
+        public string EventGridTopicEndPoint { get; set; }
 
         /// <summary>
-        /// Access key for event grid.
+        /// Access key for event grid if used.
         /// </summary>
         public string AccessKey { get; set; }
 
