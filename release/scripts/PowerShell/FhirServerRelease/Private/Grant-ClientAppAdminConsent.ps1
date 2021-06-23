@@ -55,7 +55,7 @@ function Grant-ClientAppAdminConsent {
             if ($retryCount -lt 6) {
                 $retryCount++
                 Write-Warning "Received failure when posting to $url. Will retry in 10 seconds."
-                Start-Sleep -Seconds 10
+                Start-Sleep -Seconds 30
             }
             else {
                 throw
