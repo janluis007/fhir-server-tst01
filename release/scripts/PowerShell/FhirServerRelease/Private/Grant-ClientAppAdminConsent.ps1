@@ -48,13 +48,15 @@ function Grant-ClientAppAdminConsent {
 
     while ($true) {
         try {
-            Invoke-RestMethod -Uri $url -Headers $header -Method POST | Out-Null
+            Invoke-RestMethod -Uri $url -Headers $header -Method POST -ErrorVariable error | Out-Null
             return
         }
         catch {
             if ($retryCount -lt 6) {
                 $retryCount++
                 Write-Warning "Received failure when posting to $url. Will retry in 10 seconds."
+                Write-Warning "Error message: $error"
+                Write-Warning "Exception status code: $_.Exception.Response.StatusCode"
                 Start-Sleep -Seconds 30
             }
             else {
