@@ -19,10 +19,12 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.Health.Extensions.DependencyInjection;
 using Microsoft.Health.Fhir.Core.Models;
 using Microsoft.Health.Fhir.CosmosDb.Features.Storage;
 using Microsoft.Health.Fhir.Shared.Tests.E2E.Rest;
 using Microsoft.Health.Fhir.Tests.Common.FixtureParameters;
+using Microsoft.Health.Fhir.Tests.E2E.ChaosMonkey;
 using Microsoft.Health.Fhir.Web;
 using Newtonsoft.Json.Linq;
 
@@ -128,6 +130,11 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest
                     serviceCollection.PostConfigure<JwtBearerOptions>(
                         JwtBearerDefaults.AuthenticationScheme,
                         options => options.BackchannelHttpHandler = Server.CreateHandler());
+                })
+                .ConfigureTestServices(serviceCollection =>
+                {
+                    // Initialize Chaos
+                    serviceCollection.Add<ChaosFhirCosmosClientInitializer>().Singleton().ReplaceService<ICosmosClientInitializer>();
                 });
 
             Server = new TestServer(builder);

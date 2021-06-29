@@ -83,7 +83,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Storage
             return builder.Build();
         }
 
-        public Container CreateFhirContainer(CosmosClient client, string databaseId, string collectionId)
+        public virtual Container CreateFhirContainer(CosmosClient client, string databaseId, string collectionId)
         {
             return client.GetContainer(databaseId, collectionId);
         }

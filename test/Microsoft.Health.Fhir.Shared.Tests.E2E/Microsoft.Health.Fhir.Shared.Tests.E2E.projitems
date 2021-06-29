@@ -10,6 +10,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)AssemblyInfo.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ChaosMonkey\ChaosContainer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ChaosMonkey\ChaosFhirCosmosClientInitializer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Rest\ConditionalDeleteTests.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Rest\CustomHeadersTests.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)HttpIntegrationFixtureArgumentSetsAttribute.cs" />
