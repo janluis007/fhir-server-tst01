@@ -166,7 +166,7 @@ stages:
       keyVaultName: $(DeploymentEnvironmentNameR5)
       appServiceName: $(DeploymentEnvironmentNameR5)
 
-- stage: DockerAddTag
+- stage: DockerAddTagCINuget
   displayName: 'Docker add master tag'
   dependsOn:
   - testStu3
@@ -177,6 +177,18 @@ stages:
     parameters:
       sourceTag: $(ImageTag)
       targetTag: 'master'
+  - job: PushNugetPackges
+    pool:
+      name: '$(DefaultLinuxPool)'
+      vmImage: '$(LinuxVmImage)'
+    steps:
+    - task: NuGetCommand@2
+      displayName: 'Push Nuget Packges to CI'
+      inputs:
+        command: push
+        packagesToPush: '$(System.ArtifactsDirectory)/**/*.nupkg'
+        publishVstsFeed: '7621b231-1a7d-4364-935b-2f72b911c43d/ac2d1253-e9bd-43c3-8a9a-0ef9388b315f'
+        allowPackageConflicts: true
 
 - stage: cleanStorageAccounts
   displayName: 'Clean Storage Accounts'
