@@ -25,6 +25,8 @@ parameters:
 - name: reindexEnabled
   type: boolean
   default: false
+- name: exportStorageAccountName
+  type: string
 
 jobs:
 - job: provisionEnvironment
@@ -73,6 +75,7 @@ jobs:
             enableConvertData = $true
             enableReindex = if ("${{ parameters.reindexEnabled }}" -eq "true") { $true } else { $false }
             imageTag = '${{ parameters.imageTag }}'
+            storageAccount = "${{ parameters.exportStorageAccountName }}"
         }
      
         if("${{ parameters.sql }}" -eq "true"){
