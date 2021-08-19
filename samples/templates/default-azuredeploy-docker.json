@@ -185,6 +185,13 @@
                 "description": "Determines whether export will be enabled for this fhir instance. If true, a storage account will be created as part of the deployment. You will need owner or user-administrator permissions for this."
             }
         },
+        "storageAccount": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Existing storage account that can be used to export data from the fhir-server."
+            }
+        },
         "enableConvertData": {
             "type": "bool",
             "defaultValue": false,
@@ -236,7 +243,7 @@
         },
         "combinedFhirServerConfigProperties": "[union(variables('staticFhirServerConfigProperties'), parameters('additionalFhirServerConfigProperties'))]",
         "computedSqlServerReference": "[concat('Microsoft.Sql/servers/', variables('serviceName'))]",
-        "storageAccountName": "[concat(substring(replace(variables('serviceName'), '-', ''), 0, min(11, length(replace(variables('serviceName'), '-', '')))), uniquestring(resourceGroup().id, variables('serviceName')))]",
+        "storageAccountName": "[if(equals(parameters('storageAccount'), ''), concat(substring(replace(variables('serviceName'), '-', ''), 0, min(11, length(replace(variables('serviceName'), '-', '')))), uniquestring(resourceGroup().id, variables('serviceName'))), parameters('storageAccount'))]",
         "registryName": "healthplatformregistry.azurecr.io",
         "azureContainerRegistryUri":"[if(variables('isMAG'), '.azurecr.us', '.azurecr.io')]",
         "azureContainerRegistryName": "[concat(substring(replace(variables('serviceName'), '-', ''), 0, min(11, length(replace(variables('serviceName'), '-', '')))), uniquestring(resourceGroup().id, variables('serviceName')))]"
