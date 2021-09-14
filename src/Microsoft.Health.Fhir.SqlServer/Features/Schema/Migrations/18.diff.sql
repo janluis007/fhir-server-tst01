@@ -160,6 +160,9 @@ AS
 									ON pf.function_id = prv.function_id
 							WHERE pf.name = N'PartitionFunction_ResourceChangeData_Timestamp'
 							ORDER BY prv.boundary_id ASC) AS datetime2(7));
+
+		-- Cleans up a staging table if there are existing rows.
+		TRUNCATE TABLE dbo.ResourceChangeDataStaging;
 		
 		-- Switches a partition to the staging table.
 		ALTER TABLE dbo.ResourceChangeData SWITCH PARTITION 2 TO dbo.ResourceChangeDataStaging;
