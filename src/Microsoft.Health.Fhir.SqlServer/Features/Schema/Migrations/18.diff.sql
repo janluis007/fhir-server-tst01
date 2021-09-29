@@ -8,7 +8,12 @@
 -- DESCRIPTION
 --     Creates a staging table and initial partitions for the resource change data table.
 --
+-- PARAMETERS
+--     @numberOfFuturePartitionsToAdd
+--         * The number of partitions to add for feature datetimes.
+--
 CREATE OR ALTER PROCEDURE dbo.ConfigurePartitionOnResourceChanges
+    @numberOfFuturePartitionsToAdd int
 AS
   BEGIN
 
@@ -16,31 +21,6 @@ AS
 	SET XACT_ABORT ON;
 	
 	BEGIN TRANSACTION
-			
-		/* Creates a staging table, adds the default check, and adds index for switching out a partition. */
-		
-		-- Creates a staging table 
-		IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ResourceChangeDataStaging')
-		BEGIN
-			SELECT TOP(0) * INTO dbo.ResourceChangeDataStaging FROM dbo.ResourceChangeData;
-		END;
-
-		-- Cleans up a staging table if there are existing rows.
-		TRUNCATE TABLE dbo.ResourceChangeDataStaging;
-
-		-- Creates check for a partition check.
-		IF NOT EXISTS(SELECT 1 FROM sys.check_constraints WHERE name = 'chk_ResourceChangeDataStaging_partition') 
-		BEGIN	
-			ALTER TABLE dbo.ResourceChangeDataStaging WITH CHECK 
-				ADD CONSTRAINT chk_ResourceChangeDataStaging_partition CHECK(Timestamp < CONVERT(DATETIME2(7), '9999-12-31 23:59:59.9999999'));
-		END;
-
-		-- Adds primary key clustered index.		
-		IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'PK_ResourceChangeDataStaging_TimestampId')
-		BEGIN
-			ALTER TABLE dbo.ResourceChangeDataStaging ADD CONSTRAINT PK_ResourceChangeDataStaging_TimestampId 
-				PRIMARY KEY CLUSTERED(Timestamp ASC, Id ASC) ON [PRIMARY];
-		END
 				
 		/* Creates the initial partitions for the resource change data table. */	
 		
@@ -48,7 +28,6 @@ AS
 		DECLARE @currentDate datetime2(7) = sysutcdatetime();	
 		DECLARE @startDate datetime2(7);
 		DECLARE @numberOfPartitionsToAdd int = 0;
-		DECLARE @numberOfFuturePartitionsToAdd int = 4;		
 		DECLARE @numberOfPartitionsLaterThanCurrentDate int;
 		
 		-- Finds the number of partitions later than current datetime.
@@ -101,41 +80,7 @@ AS
 
 	COMMIT TRANSACTION
 END;
-GO 
-
---
--- STORED PROCEDURE
---     CheckPartitioningForResourceChanges
---
--- DESCRIPTION
---     Checking if the initial partitions are created for the resource change data table.
---
-CREATE OR ALTER PROCEDURE dbo.CheckPartitioningForResourceChanges
-AS
-BEGIN	
-	DECLARE @returnValue AS INT;
-	DECLARE @numberOfPartitionsLaterThanCurrentDate AS INT;
-	DECLARE @currentDate datetime2(7) = sysutcdatetime();	
-	
-	SET @numberOfPartitionsLaterThanCurrentDate =  (SELECT count(1)
-					FROM sys.partition_range_values AS prv
-						JOIN sys.partition_functions AS pf
-							ON pf.function_id = prv.function_id
-					WHERE pf.name = N'PartitionFunction_ResourceChangeData_Timestamp'
-						and CONVERT(datetime2(7), prv.value, 126) > @currentDate);
-
-	IF ((@numberOfPartitionsLaterThanCurrentDate > 0) 
-		AND EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ResourceChangeDataStaging')) 
-	BEGIN
-		SET @returnValue = 0
-	END 
-	ELSE BEGIN
-		SET @returnValue = -1
-	END
-		
-	RETURN @returnValue
-END;
-GO 
+GO  
 
 -- STORED PROCEDURE
 --     RemovePartitionFromResourceChanges
@@ -144,7 +89,11 @@ GO
 --     Switches out and merges the extreme left partition with the imediate left partition.
 --     After that, truncates the staging table to purge the old resource change data.
 --
+--     @partitionBoundary
+--         * The output parameter to stores the removed partition boundary.
+--
 CREATE OR ALTER PROCEDURE dbo.RemovePartitionFromResourceChanges
+    @partitionBoundary datetime2(7) OUTPUT
 AS
   BEGIN
 	
@@ -172,6 +121,8 @@ AS
 		
 		-- Cleans up the staging table to purge resource changes.
 		TRUNCATE TABLE dbo.ResourceChangeDataStaging;
+		
+		SET @partitionBoundary = @leftPartitionBoundary
 
 	COMMIT TRANSACTION
 END;
@@ -185,7 +136,12 @@ GO
 --     Creates a new partition at the right for the future date which will be
 --     the next hour of the rightmost partition boundry.
 --
+-- PARAMETERS
+--     @partitionBoundary
+--         * The output parameter to stores the added partition boundary.
+--
 CREATE OR ALTER PROCEDURE dbo.AddPartitionOnResourceChanges
+    @partitionBoundary datetime2(7) OUTPUT
 AS
   BEGIN
 	
@@ -207,11 +163,87 @@ AS
 		
 		-- Creates new empty partition by creating new boundary value and specifying NEXT USED file group.
 		ALTER PARTITION SCHEME PartitionScheme_ResourceChangeData_Timestamp NEXT USED [Primary];
-		ALTER PARTITION FUNCTION PartitionFunction_ResourceChangeData_Timestamp() SPLIT RANGE(@rightPartitionBoundary);			
+		ALTER PARTITION FUNCTION PartitionFunction_ResourceChangeData_Timestamp() SPLIT RANGE(@rightPartitionBoundary);		
+		
+		SET @partitionBoundary = @rightPartitionBoundary
 
 	COMMIT TRANSACTION
 END;
 GO 
+
+--
+-- STORED PROCEDURE
+--     FetchResourceChanges
+--
+-- DESCRIPTION
+--     Returns the number of resource change records from startId. The start id is inclusive.
+--
+-- PARAMETERS
+--     @startId
+--         * The start id of resource change records to fetch.
+--     @pageSize
+--         * The page size for fetching resource change records.
+--     @@lastProcessedDateTime
+--         * The last checkpoint datetime.
+--
+-- RETURN VALUE
+--     Resource change data rows.
+--
+CREATE OR ALTER PROCEDURE dbo.FetchResourceChanges_2
+    @startId bigint,
+    @lastProcessedDateTime datetime2(7),
+    @pageSize smallint
+AS
+BEGIN
+
+    SET NOCOUNT ON;
+	
+    -- Given the fact that Read Committed Snapshot isolation level is enabled on the FHIR database, 
+    -- using the Repeatable Read isolation level table hint to avoid skipping resource changes 
+    -- due to interleaved transactions on the resource change data table.    
+    -- In Repeatable Read, the select query execution will be blocked until other open transactions are completed
+    -- for rows that match the search condition of the select statement. 
+    -- A write transaction (update/delete) on the rows that match 
+    -- the search condition of the select statement will wait until the read transaction is completed. 
+    -- But, other transactions can insert new rows.
+    SELECT TOP(@pageSize) Id,
+      Timestamp,
+      ResourceId,
+      ResourceTypeId,
+      ResourceVersion,
+      ResourceChangeTypeId
+      FROM dbo.ResourceChangeData WITH (REPEATABLEREAD)
+    WHERE Timestamp >= @lastProcessedDateTime and Id >= @startId 
+    ORDER BY Timestamp ASC, Id ASC;
+END
+GO
+
+-- Creates a staging table 
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ResourceChangeDataStaging')
+BEGIN
+    -- Staging table that will be used for partition switch out. 
+    CREATE TABLE dbo.ResourceChangeDataStaging 
+    (
+	    Id bigint IDENTITY(1,1) NOT NULL,
+	    Timestamp datetime2(7) NOT NULL CONSTRAINT DF_ResourceChangeDataStaging_Timestamp DEFAULT sysutcdatetime(),
+	    ResourceId varchar(64) NOT NULL,
+	    ResourceTypeId smallint NOT NULL,
+	    ResourceVersion int NOT NULL,
+	    ResourceChangeTypeId tinyint NOT NULL,
+	    CONSTRAINT PK_ResourceChangeDataStaging_TimestampId PRIMARY KEY (Timestamp, Id)
+    ) ON [PRIMARY]
+END;
+GO
+
+-- Creates check for a partition check.
+IF NOT EXISTS(SELECT 1 FROM sys.check_constraints WHERE name = 'chk_ResourceChangeDataStaging_partition') 
+BEGIN	
+    ALTER TABLE dbo.ResourceChangeDataStaging WITH CHECK 
+	    ADD CONSTRAINT chk_ResourceChangeDataStaging_partition CHECK(Timestamp < CONVERT(DATETIME2(7), '9999-12-31 23:59:59.9999999'));
+
+    ALTER TABLE dbo.ResourceChangeDataStaging CHECK CONSTRAINT chk_ResourceChangeDataStaging_partition;
+END;
+GO
 
 /*************************************************************
     Create partition function and scheme, and create the clustered index for migrating data.
@@ -280,6 +312,48 @@ BEGIN TRANSACTION
 	END;
 
 COMMIT TRANSACTION
+GO
+--
+-- STORED PROCEDURE
+--     FetchResourceChanges
+--
+-- DESCRIPTION
+--     Returns the number of resource change records from startId. The start id is inclusive.
+--
+-- PARAMETERS
+--     @startId
+--         * The start id of resource change records to fetch.
+--     @pageSize
+--         * The page size for fetching resource change records.
+--
+-- RETURN VALUE
+--     Resource change data rows.
+--
+CREATE PROCEDURE dbo.FetchResourceChangesOld
+    @startId bigint,
+    @pageSize smallint
+AS
+BEGIN
+
+    SET NOCOUNT ON;
+
+    -- Given the fact that Read Committed Snapshot isolation level is enabled on the FHIR database,
+    -- using the Repeatable Read isolation level table hint to avoid skipping resource changes
+    -- due to interleaved transactions on the resource change data table.
+    -- In Repeatable Read, the select query execution will be blocked until other open transactions are completed
+    -- for rows that match the search condition of the select statement.
+    -- A write transaction (update/delete) on the rows that match
+    -- the search condition of the select statement will wait until the read transaction is completed.
+    -- But, other transactions can insert new rows.
+    SELECT TOP(@pageSize) Id,
+      Timestamp,
+      ResourceId,
+      ResourceTypeId,
+      ResourceVersion,
+      ResourceChangeTypeId
+      FROM dbo.ResourceChangeData WITH (REPEATABLEREAD)
+    WHERE Id >= @startId ORDER BY Id ASC
+END
 GO
 
 

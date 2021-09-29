@@ -14,6 +14,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using Microsoft.Health.Abstractions.Data;
 using Microsoft.Health.Fhir.Core.Models;
+using Microsoft.Health.Fhir.SqlServer.Features.Schema.Model;
 using Microsoft.Health.SqlServer;
 using Microsoft.Health.SqlServer.Features.Storage;
 
@@ -79,7 +80,7 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.ChangeFeed
                         }
                     }
 
-                    using (SqlCommand sqlCommand = new SqlCommand("dbo.FetchResourceChanges", sqlConnection))
+                    using (SqlCommand sqlCommand = new SqlCommand("dbo.FetchResourceChangesOld", sqlConnection))
                     {
                         sqlCommand.CommandType = CommandType.StoredProcedure;
                         sqlCommand.Parameters.AddWithValue("@startId", SqlDbType.BigInt).Value = startId;
@@ -133,6 +134,82 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.ChangeFeed
                         ResourceTypeIdToTypeNameMap.TryAdd((short)sqlDataReader["ResourceTypeId"], (string)sqlDataReader["Name"]);
                     }
                 }
+            }
+        }
+
+        public async Task<IReadOnlyCollection<ResourceChangeData>> GetRecordsAsync(long startId, DateTime lastProcessedDateTime, short pageSize, CancellationToken cancellationToken)
+        {
+            EnsureArg.IsGte(startId, 1, nameof(startId));
+            EnsureArg.IsGte(pageSize, 1, nameof(pageSize));
+
+            var listResourceChangeData = new List<ResourceChangeData>();
+            try
+            {
+                // The GetRecordsAsync function would be called every second by one agent.
+                // So, it would be a good option that opens and closes a connection for each call,
+                // and there is no database connection pooling in the Application at this time.
+                using (SqlConnection sqlConnection = await _sqlConnectionFactory.GetSqlConnectionAsync(cancellationToken: cancellationToken))
+                {
+                    await sqlConnection.OpenAsync(cancellationToken);
+                    if (ResourceTypeIdToTypeNameMap.IsEmpty)
+                    {
+                        lock (ResourceTypeIdToTypeNameMap)
+                        {
+                            if (ResourceTypeIdToTypeNameMap.IsEmpty)
+                            {
+                                UpdateResourceTypeMapAsync(sqlConnection);
+                            }
+                        }
+                    }
+
+                    using (SqlCommand sqlCommand = new SqlCommand("dbo.FetchResourceChanges_2", sqlConnection))
+                    {
+                        sqlCommand.CommandType = CommandType.StoredProcedure;
+                        sqlCommand.Parameters.AddWithValue("@startId", SqlDbType.BigInt).Value = startId;
+                        sqlCommand.Parameters.AddWithValue("@lastProcessedDateTime", SqlDbType.DateTime2).Value = lastProcessedDateTime;
+                        sqlCommand.Parameters.AddWithValue("@pageSize", SqlDbType.SmallInt).Value = pageSize;
+                        using (SqlDataReader sqlDataReader = await sqlCommand.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken))
+                        {
+                            while (await sqlDataReader.ReadAsync(cancellationToken))
+                            {
+                                (long id, DateTime timestamp, string resourceId, short resourceTypeId, int resourceVersion, byte resourceChangeTypeId) = sqlDataReader.ReadRow(
+                                        VLatest.ResourceChangeData.Id,
+                                        VLatest.ResourceChangeData.Timestamp,
+                                        VLatest.ResourceChangeData.ResourceId,
+                                        VLatest.ResourceChangeData.ResourceTypeId,
+                                        VLatest.ResourceChangeData.ResourceVersion,
+                                        VLatest.ResourceChangeData.ResourceChangeTypeId);
+
+                                listResourceChangeData.Add(new ResourceChangeData(
+                                    id: id,
+                                    timestamp: DateTime.SpecifyKind(timestamp, DateTimeKind.Utc),
+                                    resourceId: resourceId,
+                                    resourceTypeId: resourceTypeId,
+                                    resourceVersion: resourceVersion,
+                                    resourceChangeTypeId: resourceChangeTypeId,
+                                    resourceTypeName: ResourceTypeIdToTypeNameMap[resourceTypeId]));
+                            }
+                        }
+
+                        return listResourceChangeData;
+                    }
+                }
+            }
+            catch (SqlException ex)
+            {
+                switch (ex.Number)
+                {
+                    case SqlErrorCodes.TimeoutExpired:
+                        throw new TimeoutException(ex.Message, ex);
+                    default:
+                        _logger.LogError(ex, string.Format(Resources.SqlExceptionOccurredWhenFetchingResourceChanges, ex.Number));
+                        throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, Resources.ExceptionOccurredWhenFetchingResourceChanges);
+                throw;
             }
         }
     }
