@@ -22,65 +22,40 @@ AS
 	
 	BEGIN TRANSACTION
 				
-		/* Creates the initial partitions for the resource change data table. */	
+		/* Creates the partitions for future datetimes on the resource change data table. */	
 		
-		DECLARE @rightPartitionBoundary datetime2(7); 
-		DECLARE @currentDate datetime2(7) = sysutcdatetime();	
-		DECLARE @startDate datetime2(7);
-		DECLARE @numberOfPartitionsToAdd int = 0;
-		DECLARE @numberOfPartitionsLaterThanCurrentDate int;
+		-- Rounds the current datetime to the hour.
+		DECLARE @partitionBoundary datetime2(7) = DATEADD(hour, DATEDIFF(hour, 0, sysutcdatetime()), 0);
 		
-		-- Finds the number of partitions later than current datetime.
-		SET @numberOfPartitionsLaterThanCurrentDate =  (SELECT count(1)
-						FROM sys.partition_range_values AS prv
-							JOIN sys.partition_functions AS pf 
-								ON pf.function_id = prv.function_id
-						WHERE pf.name = N'PartitionFunction_ResourceChangeData_Timestamp'
-							and CONVERT(datetime2(7), prv.value, 126) > @currentDate);
-				
 		-- Finds the highest boundary value.		
-		SET @rightPartitionBoundary = CAST((SELECT TOP (1) value
+		DECLARE @startingRightPartitionBoundary datetime2(7) = CAST((SELECT TOP (1) value
 							FROM sys.partition_range_values AS prv
 								JOIN sys.partition_functions AS pf
 									ON pf.function_id = prv.function_id
 							WHERE  pf.name = N'PartitionFunction_ResourceChangeData_Timestamp'
 							ORDER  BY prv.boundary_id DESC) AS datetime2(7));
-
-		SET @numberOfPartitionsToAdd = @numberOfFuturePartitionsToAdd - @numberOfPartitionsLaterThanCurrentDate;
-		
-		IF (@rightPartitionBoundary > @currentDate) BEGIN
-			SET @startDate = @rightPartitionBoundary;
-		END
-		ELSE BEGIN		
-			SET @startDate = @currentDate;
-			SET @numberOfPartitionsToAdd += 1;
-		END;
-
-		-- Rounds the start datetime to the hour.
-		SET @rightPartitionBoundary = DATEADD(hour, DATEDIFF(hour, 0, @startDate), 0)		
+							
+		-- Adds one due to starting from the current hour.
+		DECLARE @numberOfPartitionsToAdd int = @numberOfFuturePartitionsToAdd + 1;	
 		
 		WHILE @numberOfPartitionsToAdd > 0 
 		BEGIN  
 			-- Checks if a partition exists.
-			IF NOT EXISTS (SELECT 1 value FROM sys.partition_range_values AS prv
-							JOIN sys.partition_functions AS pf
-								ON pf.function_id = prv.function_id
-						WHERE pf.name = N'PartitionFunction_ResourceChangeData_Timestamp'
-							and CONVERT(datetime2(7), prv.value, 126) = @rightPartitionBoundary) 
+			IF (@startingRightPartitionBoundary < @partitionBoundary) 
 			BEGIN
 				-- Creates new empty partition by creating new boundary value and specifying NEXT USED file group.
 				ALTER PARTITION SCHEME PartitionScheme_ResourceChangeData_Timestamp NEXT USED [PRIMARY];
-				ALTER PARTITION FUNCTION PartitionFunction_ResourceChangeData_Timestamp() SPLIT RANGE(@rightPartitionBoundary); 
+				ALTER PARTITION FUNCTION PartitionFunction_ResourceChangeData_Timestamp() SPLIT RANGE(@partitionBoundary); 
 			END;
 				
 			-- Adds one hour for the next partition.
-			SET @rightPartitionBoundary = DATEADD(hour, 1, @rightPartitionBoundary);
+			SET @partitionBoundary = DATEADD(hour, 1, @partitionBoundary);
 			SET @numberOfPartitionsToAdd -= 1; 				
 		END;
 
 	COMMIT TRANSACTION
 END;
-GO  
+GO
 
 -- STORED PROCEDURE
 --     RemovePartitionFromResourceChanges
@@ -157,6 +132,14 @@ AS
 									ON pf.function_id = prv.function_id
 							WHERE pf.name = N'PartitionFunction_ResourceChangeData_Timestamp'
 							ORDER BY prv.boundary_id DESC) AS datetime2(7));
+
+		-- Rounds the current datetime to the hour.
+        DECLARE @timestamp datetime2(7) =  DATEADD(hour, DATEDIFF(hour, 0, sysutcdatetime()), 0);
+        
+        -- Ensures the next boundary value is greater than the current datetime.
+        IF (@rightPartitionBoundary < @timestamp) BEGIN
+	        SET @rightPartitionBoundary = @timestamp;
+        END;
 							
 		-- Adds one hour for the next partition.
 		SET @rightPartitionBoundary = DATEADD(hour, 1, @rightPartitionBoundary);
@@ -181,10 +164,10 @@ GO
 -- PARAMETERS
 --     @startId
 --         * The start id of resource change records to fetch.
---     @pageSize
---         * The page size for fetching resource change records.
 --     @@lastProcessedDateTime
 --         * The last checkpoint datetime.
+--     @pageSize
+--         * The page size for fetching resource change records.
 --
 -- RETURN VALUE
 --     Resource change data rows.
@@ -254,15 +237,20 @@ BEGIN TRANSACTION
 
 
 	IF NOT EXISTS(SELECT * FROM sys.partition_functions WHERE  name = 'PartitionFunction_ResourceChangeData_Timestamp')
-	BEGIN
-	
+	BEGIN    
+		-- Creates default three partitions to avoid any data movement for the SPLIT RANGE 
+        -- in case of data exists in the resource change data table. Rounds the datetime to the hour.
+		DECLARE @timestamp datetime2(7) =  DATEADD(hour, DATEDIFF(hour, 0, sysutcdatetime()), 0);
+		DECLARE @timestamp_minus_1 datetime2(7) =  DATEADD(hour, -1, @timestamp);
+		DECLARE @timestamp_plus_1 datetime2(7) =  DATEADD(hour, 1, @timestamp);
+        	
 		-- Partition function for the ResourceChangeData table.
 		-- It is not a fixed-sized partition. It is a sliding window partition.
 		-- Adding a range right partition function on a timestamp column. 
 		-- Range right means that the actual boundary value belongs to its right partition, 
 		-- it is the first value in the right partition.
 		CREATE PARTITION FUNCTION PartitionFunction_ResourceChangeData_Timestamp (datetime2(7))
-			AS RANGE RIGHT FOR VALUES('1970-01-01T00:00:00.0000000');
+			AS RANGE RIGHT FOR VALUES('1970-01-01T00:00:00.0000000', @timestamp_minus_1, @timestamp, @timestamp_plus_1);
 	END;
 
 	IF NOT EXISTS(SELECT * FROM sys.partition_schemes WHERE name = 'PartitionScheme_ResourceChangeData_Timestamp')
@@ -271,32 +259,7 @@ BEGIN TRANSACTION
 		-- and places partitions on the PRIMARY filegroup.
 		CREATE PARTITION SCHEME PartitionScheme_ResourceChangeData_Timestamp 
 			AS PARTITION PartitionFunction_ResourceChangeData_Timestamp ALL TO([PRIMARY]);
-	END;
-	
-	
-	IF((SELECT count(1) FROM sys.partition_range_values AS prv
-				JOIN sys.partition_functions AS pf 
-					ON pf.function_id = prv.function_id
-			WHERE  pf.name = N'PartitionFunction_ResourceChangeData_Timestamp') = 1) BEGIN
-						
-		-- Creates default partitions
-		DECLARE @numberOfPartitions int = 47;
-		DECLARE @rightPartitionBoundary datetime2(7);
-
-		-- There will be 51 partitions, default 48 partitions, one for the next hour, and 2 partitions for start and end.  
-		WHILE @numberOfPartitions >= -1 
-		BEGIN		
-			-- Rounds the start datetime to the hour.
-			SET @rightPartitionBoundary	=  DATEADD(hour, DATEDIFF(hour, 0, sysutcdatetime()) - @numberOfPartitions, 0);
-			
-			-- Creates new empty partition by creating new boundary value and specifying NEXT USED file group.
-			ALTER PARTITION SCHEME PartitionScheme_ResourceChangeData_Timestamp NEXT USED [Primary];
-			ALTER PARTITION FUNCTION PartitionFunction_ResourceChangeData_Timestamp() SPLIT RANGE(@rightPartitionBoundary); 
-			
-			SET @numberOfPartitions -= 1;
-		END;
-	END;
-	
+	END;	
 	
 	IF EXISTS (SELECT * FROM sys.indexes WHERE name = 'PK_ResourceChangeData')
 	BEGIN
@@ -312,48 +275,6 @@ BEGIN TRANSACTION
 	END;
 
 COMMIT TRANSACTION
-GO
---
--- STORED PROCEDURE
---     FetchResourceChanges
---
--- DESCRIPTION
---     Returns the number of resource change records from startId. The start id is inclusive.
---
--- PARAMETERS
---     @startId
---         * The start id of resource change records to fetch.
---     @pageSize
---         * The page size for fetching resource change records.
---
--- RETURN VALUE
---     Resource change data rows.
---
-CREATE PROCEDURE dbo.FetchResourceChangesOld
-    @startId bigint,
-    @pageSize smallint
-AS
-BEGIN
-
-    SET NOCOUNT ON;
-
-    -- Given the fact that Read Committed Snapshot isolation level is enabled on the FHIR database,
-    -- using the Repeatable Read isolation level table hint to avoid skipping resource changes
-    -- due to interleaved transactions on the resource change data table.
-    -- In Repeatable Read, the select query execution will be blocked until other open transactions are completed
-    -- for rows that match the search condition of the select statement.
-    -- A write transaction (update/delete) on the rows that match
-    -- the search condition of the select statement will wait until the read transaction is completed.
-    -- But, other transactions can insert new rows.
-    SELECT TOP(@pageSize) Id,
-      Timestamp,
-      ResourceId,
-      ResourceTypeId,
-      ResourceVersion,
-      ResourceChangeTypeId
-      FROM dbo.ResourceChangeData WITH (REPEATABLEREAD)
-    WHERE Id >= @startId ORDER BY Id ASC
-END
 GO
 
 
