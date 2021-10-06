@@ -235,22 +235,15 @@ SET XACT_ABORT ON;
 
 BEGIN TRANSACTION
 
-
 	IF NOT EXISTS(SELECT * FROM sys.partition_functions WHERE  name = 'PartitionFunction_ResourceChangeData_Timestamp')
-	BEGIN    
-		-- Creates default three partitions to avoid any data movement for the SPLIT RANGE 
-        -- in case of data exists in the resource change data table. Rounds the datetime to the hour.
-		DECLARE @timestamp datetime2(7) =  DATEADD(hour, DATEDIFF(hour, 0, sysutcdatetime()), 0);
-		DECLARE @timestamp_minus_1 datetime2(7) =  DATEADD(hour, -1, @timestamp);
-		DECLARE @timestamp_plus_1 datetime2(7) =  DATEADD(hour, 1, @timestamp);
-        	
+	BEGIN        	
 		-- Partition function for the ResourceChangeData table.
 		-- It is not a fixed-sized partition. It is a sliding window partition.
 		-- Adding a range right partition function on a timestamp column. 
 		-- Range right means that the actual boundary value belongs to its right partition, 
 		-- it is the first value in the right partition.
 		CREATE PARTITION FUNCTION PartitionFunction_ResourceChangeData_Timestamp (datetime2(7))
-			AS RANGE RIGHT FOR VALUES('1970-01-01T00:00:00.0000000', @timestamp_minus_1, @timestamp, @timestamp_plus_1);
+			AS RANGE RIGHT FOR VALUES('1970-01-01T00:00:00.0000000');
 	END;
 
 	IF NOT EXISTS(SELECT * FROM sys.partition_schemes WHERE name = 'PartitionScheme_ResourceChangeData_Timestamp')
@@ -260,6 +253,30 @@ BEGIN TRANSACTION
 		CREATE PARTITION SCHEME PartitionScheme_ResourceChangeData_Timestamp 
 			AS PARTITION PartitionFunction_ResourceChangeData_Timestamp ALL TO([PRIMARY]);
 	END;	
+    
+	IF((SELECT count(1) FROM sys.partition_range_values AS prv
+				JOIN sys.partition_functions AS pf 
+					ON pf.function_id = prv.function_id
+			WHERE  pf.name = N'PartitionFunction_ResourceChangeData_Timestamp') = 1) BEGIN
+						
+		-- Creates default partitions
+		DECLARE @numberOfPartitions int = 48;
+		DECLARE @rightPartitionBoundary datetime2(7);
+
+		-- There will be 51 partition boundaries and 52 partitions, 48 partitions for history, 
+        -- one for the current hour, one for the next hour, and 2 partitions for start and end.  
+		WHILE @numberOfPartitions >= -1 
+		BEGIN		
+			-- Rounds the start datetime to the hour.
+			SET @rightPartitionBoundary	=  DATEADD(hour, DATEDIFF(hour, 0, sysutcdatetime()) - @numberOfPartitions, 0);
+			
+			-- Creates new empty partition by creating new boundary value and specifying NEXT USED file group.
+			ALTER PARTITION SCHEME PartitionScheme_ResourceChangeData_Timestamp NEXT USED [Primary];
+			ALTER PARTITION FUNCTION PartitionFunction_ResourceChangeData_Timestamp() SPLIT RANGE(@rightPartitionBoundary); 
+			
+			SET @numberOfPartitions -= 1;
+		END;
+	END;
 	
 	IF EXISTS (SELECT * FROM sys.indexes WHERE name = 'PK_ResourceChangeData')
 	BEGIN
