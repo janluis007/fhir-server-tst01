@@ -55,10 +55,26 @@ stages:
     parameters: 
       tag: $(ImageTag)
 
+- stage: setupEnvironment
+  displayName: Setup Test Environment
+  dependsOn:
+  - UpdateVersion
+  jobs:
+  - template: ./jobs/cleanup-aad.yml
+  - job: setup
+    displayName: 'Setup AAD'
+    dependsOn:
+    - cleanupAad
+    pool:
+      vmImage: '$(WindowsVmImage)'
+    steps:
+    - template: ./jobs/add-aad-test-environment.yml
+
 - stage: redeployStu3
   displayName: 'Redeploy STU3 Site'
   dependsOn:
   - DockerBuild
+  - setupEnvironment
   jobs:
   - template: ./jobs/redeploy-webapp.yml
     parameters: 
@@ -71,6 +87,7 @@ stages:
   displayName: 'Redeploy STU3 SQL Site'
   dependsOn:
   - DockerBuild
+  - setupEnvironment
   jobs:
   - template: ./jobs/redeploy-webapp.yml
     parameters: 
@@ -83,6 +100,7 @@ stages:
   displayName: 'Redeploy R4 Site'
   dependsOn:
   - DockerBuild
+  - setupEnvironment
   jobs:
   - template: ./jobs/redeploy-webapp.yml
     parameters: 
@@ -95,6 +113,7 @@ stages:
   displayName: 'Redeploy R4 SQL Site'
   dependsOn:
   - DockerBuild
+  - setupEnvironment
   jobs:
   - template: ./jobs/redeploy-webapp.yml
     parameters: 
@@ -119,6 +138,7 @@ stages:
   displayName: 'Redeploy R5 SQL Site'
   dependsOn:
   - DockerBuild
+  - setupEnvironment
   jobs:
   - template: ./jobs/redeploy-webapp.yml
     parameters: 
