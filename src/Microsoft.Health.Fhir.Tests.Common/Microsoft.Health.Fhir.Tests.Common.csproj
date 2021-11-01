@@ -40,6 +40,10 @@
     <None Remove="TestFiles\Normative\CarePlan.json" />
     <None Remove="TestFiles\Normative\CodeSystem-careplan-category.json" />
     <None Remove="TestFiles\Normative\Coverage.json" />
+    <None Remove="TestFiles\Normative\Import-DupPatientTemplate.ndjson" />
+    <None Remove="TestFiles\Normative\Import-InvalidPatient.ndjson" />
+    <None Remove="TestFiles\Normative\Import-Patient.ndjson" />
+    <None Remove="TestFiles\Normative\Import-SinglePatientTemplate.ndjson" />
     <None Remove="TestFiles\Normative\MoneyWithWrongDecimal.json" />
     <None Remove="TestFiles\Normative\Profile-CarePlan-uscore.json" />
     <None Remove="TestFiles\Normative\Profile-Organization-uscore-endpoint.json" />
@@ -98,6 +102,7 @@
     <None Remove="TestFiles\R4\DocumentReference-example-relatesTo-code-transforms.json" />
     <None Remove="TestFiles\R4\Immunization.json" />
     <None Remove="TestFiles\R4\Parameter-Convert-Data.json" />
+    <None Remove="TestFiles\R5\Appointment.json" />
     <None Remove="TestFiles\R5\BasicExampleNarrative.json" />
     <None Remove="TestFiles\R5\BasicExampleNarrative.xml" />
     <None Remove="TestFiles\Normative\BloodGlucose.json" />
@@ -246,8 +251,13 @@
     <EmbeddedResource Include="TestFiles\Normative\Appointment.json" />
     <EmbeddedResource Include="TestFiles\Normative\BloodGlucose.json" />
     <EmbeddedResource Include="TestFiles\Normative\BloodPressure.json" />
+    <EmbeddedResource Include="TestFiles\Normative\Bundle-BinaryPatch.json" />
     <EmbeddedResource Include="TestFiles\Normative\Bundle-TypeMissing.json" />
     <EmbeddedResource Include="TestFiles\Normative\Coverage.json" />
+    <EmbeddedResource Include="TestFiles\Normative\Import-InvalidPatient.ndjson" />
+    <EmbeddedResource Include="TestFiles\Normative\Import-DupPatientTemplate.ndjson" />
+    <EmbeddedResource Include="TestFiles\Normative\Import-Patient.ndjson" />
+    <EmbeddedResource Include="TestFiles\Normative\Import-SinglePatientTemplate.ndjson" />
     <EmbeddedResource Include="TestFiles\Normative\SearchParameter-AppointmentStatus.json" />
     <EmbeddedResource Include="TestFiles\Normative\SearchParameter-Patient-foo.json" />
     <EmbeddedResource Include="TestFiles\Normative\SearchParameterInvalidBase.json" />
@@ -276,6 +286,7 @@
     <EmbeddedResource Include="TestFiles\Normative\Bundle-TransactionWithPOSTFullUrlMatchesWithPUTRequestUrl.json" />
     <EmbeddedResource Include="TestFiles\Normative\Bundle-TransactionWithValidBundleEntry.json" />
     <EmbeddedResource Include="TestFiles\Normative\Bundle-Transaction.json" />
+    <EmbeddedResource Include="TestFiles\Normative\InvalidObservation.json" />
     <EmbeddedResource Include="TestFiles\Normative\Observation-For-Patient-f001.json" />
     <EmbeddedResource Include="TestFiles\Normative\ObservationWith1MinuteApgarScore.json" />
     <EmbeddedResource Include="TestFiles\Normative\ObservationWith20MinuteApgarScore.json" />
@@ -326,6 +337,7 @@
     <EmbeddedResource Include="TestFiles\Normative\Sequence.json" />
     <EmbeddedResource Include="TestFiles\Normative\Parameter-Convert-Data.json" />
     <EmbeddedResource Include="TestFiles\R4\Immunization.json" />
+    <EmbeddedResource Include="TestFiles\R5\Appointment.json" />
     <EmbeddedResource Include="TestFiles\R5\BasicExampleNarrative.json" />
     <EmbeddedResource Include="TestFiles\R5\BasicExampleNarrative.xml" />
     <EmbeddedResource Include="TestFiles\R5\Bundle-TransactionWithReferenceInResourceBody.json" />
@@ -390,6 +402,7 @@
     <EmbeddedResource Include="TestFiles\Stu3\DocumentReference-example-relatesTo-code-transforms.json" />
     <EmbeddedResource Include="TestFiles\Stu3\Encounter-For-Patient-f001.json" />
     <EmbeddedResource Include="TestFiles\Stu3\Immunization.json" />
+    <EmbeddedResource Include="TestFiles\Stu3\InvalidObservation.json" />
     <EmbeddedResource Include="TestFiles\Stu3\Location-example-hq.json" />
     <EmbeddedResource Include="TestFiles\Stu3\Observation-For-Patient-f001.json" />
     <EmbeddedResource Include="TestFiles\Stu3\ObservationWith1MinuteApgarScore.json" />
@@ -437,6 +450,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.3" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Microsoft.Health.Fhir.Api\Microsoft.Health.Fhir.Api.csproj" />
     <ProjectReference Include="..\Microsoft.Health.Fhir.Core\Microsoft.Health.Fhir.Core.csproj" />
   </ItemGroup>
 </Project>

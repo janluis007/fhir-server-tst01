@@ -894,6 +894,22 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest.Search
         }
 
         [Fact]
+        public async Task GivenAPostSearchRequestWithInvalidParameters_WhenHandled_ReturnsSearchResults()
+        {
+            string[] expectedDiagnostics =
+            {
+                string.Format(Core.Resources.SearchParameterNotSupported, "entry:[{", "Patient"),
+                string.Format(Core.Resources.SearchParameterNotSupported, "Ramen", "Patient"),
+            };
+            OperationOutcome.IssueType[] expectedCodeTypes = { OperationOutcome.IssueType.NotSupported, OperationOutcome.IssueType.NotSupported };
+            OperationOutcome.IssueSeverity[] expectedIssueSeverities = { OperationOutcome.IssueSeverity.Warning, OperationOutcome.IssueSeverity.Warning };
+
+            Bundle bundle = await Client.SearchPostAsync("Patient", default, ("entry:[{", string.Empty), ("Ramen", "Spicy"));
+            OperationOutcome outcome = GetAndValidateOperationOutcome(bundle);
+            ValidateOperationOutcome(expectedDiagnostics, expectedIssueSeverities, expectedCodeTypes, outcome);
+        }
+
+        [Fact]
         public async Task GivenASearchRequestWithInvalidParametersAndLenientHandling_WhenHandled_ReturnsSearchResults()
         {
             string[] expectedDiagnostics =
@@ -921,6 +937,14 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest.Search
         public async Task GivenASearchRequestWithValidParametersAndStrictHandling_WhenHandled_ReturnsSearchResults()
         {
             var response = await Client.SearchAsync("Patient?name=ronda", Tuple.Create(KnownHeaders.Prefer, "handling=strict"));
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task GivenACompositeTokenNumberNumberSearchParameter_WhenSearching_ReturnsSearchResults()
+        {
+            var sequenceType = ModelInfoProvider.Version == FhirSpecification.Stu3 ? "Sequence" : "MolecularSequence";
+            var response = await Client.SearchAsync($"{sequenceType}?referenceseqid-window-coordinate=NT_007592.15$18130918$18143955");
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 

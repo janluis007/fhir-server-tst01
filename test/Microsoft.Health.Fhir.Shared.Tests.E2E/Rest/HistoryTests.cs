@@ -84,6 +84,34 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest
         }
 
         [Fact]
+        public async Task GivenAType_WhenGettingResourceHistory_TheServerShouldReturnTheAppropriateBundleSuccessfullyWithResponseStatus()
+        {
+            Observation newCreatedResource = await _client.CreateAsync(Samples.GetDefaultObservation().ToPoco<Observation>());
+            await _client.UpdateAsync(newCreatedResource, int.Parse(newCreatedResource.Meta.VersionId).ToString());
+            await _client.DeleteAsync(newCreatedResource);
+            await _client.DeleteAsync(newCreatedResource);
+
+            using FhirResponse<Bundle> readResponse = await _client.SearchAsync($"Observation/{newCreatedResource.Id}/_history");
+
+            AssertCount(3, readResponse.Resource.Entry);
+            foreach (var ent in readResponse.Resource.Entry)
+            {
+                if (ent.Request.Method == Bundle.HTTPVerb.POST)
+                {
+                    Assert.True(ent.Response.Status == "201 Created");
+                }
+                else if (ent.Request.Method == Bundle.HTTPVerb.DELETE)
+                {
+                    Assert.True(ent.Response.Status == "204 NoContent");
+                }
+                else
+                {
+                    Assert.True(ent.Response.Status == "200 OK");
+                }
+            }
+        }
+
+        [Fact]
         public async Task GivenAValueForSince_WhenGettingSystemHistory_TheServerShouldReturnOnlyRecordsModifiedAfterSinceValue()
         {
             var tag = Guid.NewGuid().ToString();
@@ -344,7 +372,7 @@ namespace Microsoft.Health.Fhir.Tests.E2E.Rest
         /// Find a time to use _since where there have been no results in history
         /// so we can start from clean start point
         /// </summary>
-        /// <returns>DateIimeOffset set to a good value for _since</returns>
+        /// <returns>DateTimeOffset set to a good value for _since</returns>
         private async Task<DateTimeOffset> GetStartTimeForHistoryTest(string tag)
         {
             Resource resource = Samples.GetDefaultPatient().ToPoco();

@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using DotLiquid;
 using EnsureThat;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -16,10 +15,9 @@ using Microsoft.Health.Fhir.Core.Exceptions;
 using Microsoft.Health.Fhir.Core.Features.Operations.ConvertData.Models;
 using Microsoft.Health.Fhir.Core.Messages.ConvertData;
 using Microsoft.Health.Fhir.Liquid.Converter;
-using Microsoft.Health.Fhir.Liquid.Converter.Ccda;
 using Microsoft.Health.Fhir.Liquid.Converter.Exceptions;
-using Microsoft.Health.Fhir.Liquid.Converter.Hl7v2;
 using Microsoft.Health.Fhir.Liquid.Converter.Models;
+using Microsoft.Health.Fhir.Liquid.Converter.Processors;
 
 namespace Microsoft.Health.Fhir.Core.Features.Operations.ConvertData
 {
@@ -51,11 +49,11 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.ConvertData
         {
             var templateCollection = await _convertDataTemplateProvider.GetTemplateCollectionAsync(convertRequest, cancellationToken);
 
-            ITemplateProvider templateProvider = GetTemplateProvider(convertRequest.InputDataType, templateCollection);
+            ITemplateProvider templateProvider = new TemplateProvider(templateCollection);
             if (templateProvider == null)
             {
                 // This case should never happen.
-                _logger.LogError("Invalid input data type for conversion.");
+                _logger.LogInformation("Invalid input data type for conversion.");
                 throw new RequestNotValidException("Invalid input data type for conversion.");
             }
 
@@ -64,20 +62,13 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.ConvertData
             return new ConvertDataResponse(result);
         }
 
-        private static ITemplateProvider GetTemplateProvider(DataType dataType, List<Dictionary<string, Template>> templateCollection) => dataType switch
-        {
-            DataType.Hl7v2 => new Hl7v2TemplateProvider(templateCollection),
-            DataType.Ccda => new CcdaTemplateProvider(templateCollection),
-            _ => null,
-        };
-
         private string GetConvertDataResult(ConvertDataRequest convertRequest, ITemplateProvider templateProvider, CancellationToken cancellationToken)
         {
             var converter = _converterMap.GetValueOrDefault(convertRequest.InputDataType);
             if (converter == null)
             {
                 // This case should never happen.
-                _logger.LogError("Invalid input data type for conversion.");
+                _logger.LogInformation("Invalid input data type for conversion.");
                 throw new RequestNotValidException("Invalid input data type for conversion.");
             }
 
@@ -93,7 +84,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.ConvertData
                     throw new ConvertDataTimeoutException(Resources.ConvertDataOperationTimeout, convertException.InnerException);
                 }
 
-                _logger.LogError(convertException, "Convert data failed.");
+                _logger.LogInformation(convertException, "Convert data failed.");
                 throw new ConvertDataFailedException(string.Format(Resources.ConvertDataFailed, convertException.Message), convertException);
             }
             catch (Exception ex)
@@ -117,6 +108,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Operations.ConvertData
 
             _converterMap.Add(DataType.Hl7v2, new Hl7v2Processor(processorSetting));
             _converterMap.Add(DataType.Ccda, new CcdaProcessor(processorSetting));
+            _converterMap.Add(DataType.Json, new JsonProcessor(processorSetting));
         }
     }
 }

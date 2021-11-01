@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using MediatR;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Health.Core.Features.Context;
@@ -32,7 +33,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Operations.Reindex
     [CollectionDefinition("ReindexTaskTests", DisableParallelization = true)]
     public class ReindexJobTaskTests : IClassFixture<SearchParameterFixtureData>, IAsyncLifetime
     {
-        private const string Base64EncodedToken = "dG9rZW4=";
+        private readonly string _base64EncodedToken = ContinuationTokenConverter.Encode("token");
         private const int _mockedSearchCount = 5;
 
         private static readonly WeakETag _weakETag = WeakETag.FromVersionId("0");
@@ -46,6 +47,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Operations.Reindex
         private readonly IReindexJobThrottleController _throttleController = Substitute.For<IReindexJobThrottleController>();
         private readonly RequestContextAccessor<IFhirRequestContext> _contextAccessor = Substitute.For<RequestContextAccessor<IFhirRequestContext>>();
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private readonly IMediator _mediator = Substitute.For<IMediator>();
         private Func<IReindexJobTask> _reindexJobTaskFactory;
 
         private SearchParameterDefinitionManager _searchDefinitionManager;
@@ -57,18 +59,11 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Operations.Reindex
         {
             _cancellationToken = _cancellationTokenSource.Token;
 
-            _searchDefinitionManager = await _fixture.GetSearchDefinitionManagerAsync();
+            _searchDefinitionManager = await SearchParameterFixtureData.CreateSearchParameterDefinitionManagerAsync(new VersionSpecificModelInfoProvider(), _mediator);
             var supportedSearchDefinitionManager = new SupportedSearchParameterDefinitionManager(_searchDefinitionManager);
             var job = CreateReindexJobRecord();
 
             _fhirOperationDataStore.UpdateReindexJobAsync(job, _weakETag, _cancellationToken).ReturnsForAnyArgs(new ReindexJobWrapper(job, _weakETag));
-
-            _searchService.SearchForReindexAsync(
-                    Arg.Any<IReadOnlyList<Tuple<string, string>>>(),
-                    Arg.Any<string>(),
-                    true,
-                    Arg.Any<CancellationToken>()).
-                Returns(new SearchResult(_mockedSearchCount, new List<Tuple<string, string>>()));
 
             _throttleController.GetThrottleBasedDelay().Returns(0);
             _reindexJobTaskFactory = () =>
@@ -101,6 +96,15 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Operations.Reindex
             _fhirOperationDataStore.GetReindexJobByIdAsync(job.Id, _cancellationToken).ReturnsForAnyArgs(new ReindexJobWrapper(job, _weakETag));
 
             // setup search result
+            _searchService.SearchForReindexAsync(
+                    Arg.Any<IReadOnlyList<Tuple<string, string>>>(),
+                    Arg.Any<string>(),
+                    true,
+                    Arg.Any<CancellationToken>()).
+                Returns(
+                    new SearchResult(_mockedSearchCount, new List<Tuple<string, string>>()), // First call checks how many resources need to be reindexed
+                    new SearchResult(0, new List<Tuple<string, string>>())); // Second call checks that there are no resources left to be reindexed
+
             _searchService.SearchForReindexAsync(
                 Arg.Any<IReadOnlyList<Tuple<string, string>>>(),
                 Arg.Any<string>(),
@@ -144,6 +148,15 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Operations.Reindex
 
             // setup search result
             _searchService.SearchForReindexAsync(
+                    Arg.Any<IReadOnlyList<Tuple<string, string>>>(),
+                    Arg.Any<string>(),
+                    true,
+                    Arg.Any<CancellationToken>()).
+                Returns(
+                    new SearchResult(_mockedSearchCount, new List<Tuple<string, string>>()), // First call checks how many resources need to be reindexed
+                    new SearchResult(0, new List<Tuple<string, string>>())); // Second call checks that there are no resources left to be reindexed
+
+            _searchService.SearchForReindexAsync(
                 Arg.Any<IReadOnlyList<Tuple<string, string>>>(),
                 Arg.Any<string>(),
                 false,
@@ -171,7 +184,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Operations.Reindex
             Assert.Collection<ReindexJobQueryStatus>(
                 job.QueryList.Keys.OrderBy(q => q.LastModified),
                 item => Assert.True(item.ContinuationToken == null && item.Status == OperationStatus.Completed),
-                item2 => Assert.True(item2.ContinuationToken == Base64EncodedToken && item2.Status == OperationStatus.Completed));
+                item2 => Assert.True(item2.ContinuationToken == _base64EncodedToken && item2.Status == OperationStatus.Completed));
 
             param.IsSearchable = true;
         }
@@ -198,20 +211,30 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Operations.Reindex
 
             // setup search result
             _searchService.SearchForReindexAsync(
+                    Arg.Any<IReadOnlyList<Tuple<string, string>>>(),
+                    Arg.Any<string>(),
+                    true,
+                    Arg.Any<CancellationToken>()).
+                Returns(
+                    new SearchResult(_mockedSearchCount, new List<Tuple<string, string>>()), // First two calls check how many resources need to be reindexed
+                    new SearchResult(_mockedSearchCount, new List<Tuple<string, string>>()),
+                    new SearchResult(0, new List<Tuple<string, string>>()), // Last two calls check that there are no resources left to be reindexed
+                    new SearchResult(0, new List<Tuple<string, string>>()));
+
+            _searchService.SearchForReindexAsync(
                 Arg.Any<IReadOnlyList<Tuple<string, string>>>(),
                 Arg.Any<string>(),
                 false,
-                Arg.Any<CancellationToken>()).
-                Returns(
-                    x => CreateSearchResult("token"),
-                    x => CreateSearchResult("token"),
-                    x => CreateSearchResult(),
-                    x => CreateSearchResult());
+                Arg.Any<CancellationToken>()).Returns(
+                x => CreateSearchResult("token"),
+                x => CreateSearchResult("token"),
+                x => CreateSearchResult(),
+                x => CreateSearchResult());
 
             await _reindexJobTaskFactory().ExecuteAsync(job, _weakETag, _cancellationToken);
 
             // verify search for count
-            await _searchService.Received(2).SearchForReindexAsync(Arg.Any<IReadOnlyList<Tuple<string, string>>>(), Arg.Any<string>(), true, Arg.Any<CancellationToken>());
+            await _searchService.Received(4).SearchForReindexAsync(Arg.Any<IReadOnlyList<Tuple<string, string>>>(), Arg.Any<string>(), true, Arg.Any<CancellationToken>());
 
             // verify search for results
             await _searchService.Received().SearchForReindexAsync(
@@ -230,7 +253,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Operations.Reindex
             await _searchService.Received().SearchForReindexAsync(
                 Arg.Is<IReadOnlyList<Tuple<string, string>>>(
                     l => l.Any(t => t.Item1 == "_type" && t.Item2 == "Appointment") &&
-                         l.Any(t => t.Item1 == KnownQueryParameterNames.ContinuationToken && t.Item2 == Base64EncodedToken)),
+                         l.Any(t => t.Item1 == KnownQueryParameterNames.ContinuationToken && t.Item2 == _base64EncodedToken)),
                 Arg.Is<string>("appointmentHash"),
                 false,
                 Arg.Any<CancellationToken>());
@@ -238,7 +261,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Operations.Reindex
             await _searchService.Received().SearchForReindexAsync(
                 Arg.Is<IReadOnlyList<Tuple<string, string>>>(
                     l => l.Any(t => t.Item1 == "_type" && t.Item2 == "AppointmentResponse") &&
-                         l.Any(t => t.Item1 == KnownQueryParameterNames.ContinuationToken && t.Item2 == Base64EncodedToken)),
+                         l.Any(t => t.Item1 == KnownQueryParameterNames.ContinuationToken && t.Item2 == _base64EncodedToken)),
                 Arg.Is<string>("appointmentResponseHash"),
                 false,
                 Arg.Any<CancellationToken>());
@@ -256,8 +279,8 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Operations.Reindex
             Assert.Equal(4, job.QueryList.Count);
             Assert.Contains(job.QueryList.Keys, item => item.ContinuationToken == null && item.Status == OperationStatus.Completed && item.ResourceType == "AppointmentResponse");
             Assert.Contains(job.QueryList.Keys, item => item.ContinuationToken == null && item.Status == OperationStatus.Completed && item.ResourceType == "Appointment");
-            Assert.Contains(job.QueryList.Keys, item => item.ContinuationToken == Base64EncodedToken && item.Status == OperationStatus.Completed && item.ResourceType == "AppointmentResponse");
-            Assert.Contains(job.QueryList.Keys, item => item.ContinuationToken == Base64EncodedToken && item.Status == OperationStatus.Completed && item.ResourceType == "Appointment");
+            Assert.Contains(job.QueryList.Keys, item => item.ContinuationToken == _base64EncodedToken && item.Status == OperationStatus.Completed && item.ResourceType == "AppointmentResponse");
+            Assert.Contains(job.QueryList.Keys, item => item.ContinuationToken == _base64EncodedToken && item.Status == OperationStatus.Completed && item.ResourceType == "Appointment");
 
             await _reindexUtilities.Received().UpdateSearchParameterStatus(
                 Arg.Is<IReadOnlyCollection<string>>(r => r.Any(s => s.Contains("Appointment")) && r.Any(s => s.Contains("AppointmentResponse"))),

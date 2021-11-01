@@ -1,17 +1,17 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
-  <!-- 
-    Microsoft ResX Schema 
-    
+  <!--
+    Microsoft ResX Schema
+
     Version 2.0
-    
-    The primary goals of this format is to allow a simple XML format 
-    that is mostly human readable. The generation and parsing of the 
-    various data types are done through the TypeConverter classes 
+
+    The primary goals of this format is to allow a simple XML format
+    that is mostly human readable. The generation and parsing of the
+    various data types are done through the TypeConverter classes
     associated with the data types.
-    
+
     Example:
-    
+
     ... ado.net/XML headers & schema ...
     <resheader name="resmimetype">text/microsoft-resx</resheader>
     <resheader name="version">2.0</resheader>
@@ -26,36 +26,36 @@
         <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
         <comment>This is a comment</comment>
     </data>
-                
-    There are any number of "resheader" rows that contain simple 
+
+    There are any number of "resheader" rows that contain simple
     name/value pairs.
-    
-    Each data row contains a name, and value. The row also contains a 
-    type or mimetype. Type corresponds to a .NET class that support 
-    text/value conversion through the TypeConverter architecture. 
-    Classes that don't support this are serialized and stored with the 
+
+    Each data row contains a name, and value. The row also contains a
+    type or mimetype. Type corresponds to a .NET class that support
+    text/value conversion through the TypeConverter architecture.
+    Classes that don't support this are serialized and stored with the
     mimetype set.
-    
-    The mimetype is used for serialized objects, and tells the 
-    ResXResourceReader how to depersist the object. This is currently not 
+
+    The mimetype is used for serialized objects, and tells the
+    ResXResourceReader how to depersist the object. This is currently not
     extensible. For a given mimetype the value must be set accordingly:
-    
-    Note - application/x-microsoft.net.object.binary.base64 is the format 
-    that the ResXResourceWriter will generate, however the reader can 
+
+    Note - application/x-microsoft.net.object.binary.base64 is the format
+    that the ResXResourceWriter will generate, however the reader can
     read any of the formats listed below.
-    
+
     mimetype: application/x-microsoft.net.object.binary.base64
-    value   : The object must be serialized with 
+    value   : The object must be serialized with
             : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
             : and then encoded with base64 encoding.
-    
+
     mimetype: application/x-microsoft.net.object.soap.base64
-    value   : The object must be serialized with 
+    value   : The object must be serialized with
             : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
             : and then encoded with base64 encoding.
 
     mimetype: application/x-microsoft.net.object.bytearray.base64
-    value   : The object must be serialized into a byte array 
+    value   : The object must be serialized into a byte array
             : using a System.ComponentModel.TypeConverter
             : and then encoded with base64 encoding.
     -->
@@ -313,6 +313,13 @@
   <data name="ConvertDataParametersNotValid" xml:space="preserve">
     <value>Convert data operation parameters must be specified as a FHIR Parameters resource.  The body provided in this request is not valid.</value>
   </data>
+  <data name="ImportRequestValueNotValid" xml:space="preserve">
+    <value>Value of the following parameter {0} is invalid.</value>
+    <comment>{0} = the configuration name which was invalid</comment>
+  </data>
+  <data name="ImportRequestNotValid" xml:space="preserve">
+    <value>Import request must be specified as a Paramters.  The body provided in this request is not valid. </value>
+  </data>
   <data name="InvalidTemplateCollectionReference" xml:space="preserve">
     <value>The template collection reference '{0}' is invalid.</value>
     <comment>{0}: template collection reference</comment>
@@ -324,9 +331,9 @@
     <value>The _type parameter must be included when using the _typeFilter parameter. </value>
     <comment>Export job parameter exception messsage</comment>
   </data>
-  <data name="ContainerRegistryNotConfigured" xml:space="preserve">
-    <value>The container registry '{0}' is not configured.</value>
-    <comment>{0}: the container registry login server</comment>
+  <data name="ConvertDataTemplateNotConfigured" xml:space="preserve">
+    <value>The template collection reference '{0}' is not configured.</value>
+    <comment>{0}: the template collection reference</comment>
   </data>
   <data name="ConfigLocationRequiredForAnonymizedExport" xml:space="preserve">
     <value>Missing '_anonymizationConfig' for anonymized export</value>
@@ -356,5 +363,17 @@
   </data>
   <data name="MemberMatchInvalidParameter" xml:space="preserve">
     <value>$member-match operation parameters must be specified as a FHIR Parameters resource.  Provided body in this request is not valid.</value>
+  </data>
+  <data name="OnlyInitialImportOperationSupported" xml:space="preserve">
+    <value>Only initial load import is supported. Please add "InitialLoad" mode to parameters.</value>
+  </data>
+  <data name="InitialImportModeNotEnabled" xml:space="preserve">
+    <value>Initial import mode is not enabled. Please update service configuration to enable initial import mode.</value>
+  </data>
+  <data name="LockedForInitialImportMode" xml:space="preserve">
+    <value>Service is locked for initial import mode.</value>
+  </data>
+  <data name="InvalidBundleEntryRequestUrl" xml:space="preserve">
+    <value>Bundle.entry.request.url is required.</value>
   </data>
 </root>
