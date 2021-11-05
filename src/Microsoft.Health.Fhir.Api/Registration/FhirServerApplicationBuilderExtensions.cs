@@ -6,6 +6,7 @@
 using System;
 using System.Threading.Tasks;
 using EnsureThat;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -27,6 +28,11 @@ namespace Microsoft.AspNetCore.Builder
             EnsureArg.IsNotNull(app, nameof(app));
 
             app.UseHealthChecksExtension(new PathString(KnownRoutes.HealthCheck));
+
+            app.UseHealthChecks(new PathString("/health/import"), new HealthCheckOptions
+            {
+                Predicate = (check) => check.Tags.Contains("import"),
+            });
 
             var config = app.ApplicationServices.GetRequiredService<IOptions<FhirServerConfiguration>>();
 
