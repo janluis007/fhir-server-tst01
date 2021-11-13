@@ -19,7 +19,9 @@ namespace Microsoft.Health.Fhir.Tests.Common
         private static readonly FhirJsonParser JsonParser = new FhirJsonParser(new ParserSettings() { PermissiveParsing = true, TruncateDateTimeToDate = true });
 #pragma warning restore CS0618 // Type or member is obsolete
 
-        public static ResourceDeserializer ResourceDeserializer => new ResourceDeserializer((FhirResourceFormat.Json, ConvertJson));
+        public static ResourceDeserializer ResourceDeserializer => new ResourceDeserializer(
+            (FhirResourceFormat.Json, ConvertJson),
+            (FhirResourceFormat.CompressedJson, (data, version, lastModified) => ConvertJson(data.DecompressGZipBase64(), version, lastModified)));
 
         private static ResourceElement ConvertJson(string str, string version, DateTimeOffset lastModified)
         {

@@ -12,6 +12,7 @@ using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Health.Core.Features.Security.Authorization;
 using Microsoft.Health.Core.Internal;
 using Microsoft.Health.Extensions.DependencyInjection;
@@ -51,7 +52,6 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Resources
         private readonly ISearchService _searchService;
         private readonly ResourceIdProvider _resourceIdProvider;
         private readonly ResourceDeserializer _deserializer;
-        private readonly FhirJsonParser _fhirJsonParser = new FhirJsonParser();
         private IAuthorizationService<DataActions> _authorizationService;
 
         public ResourceHandlerTests()
@@ -62,7 +62,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Resources
 
             // TODO: FhirRepository instantiate ResourceDeserializer class directly
             // which will try to deserialize the raw resource. We should mock it as well.
-            _rawResourceFactory = Substitute.For<RawResourceFactory>(new FhirJsonSerializer());
+            _rawResourceFactory = Substitute.For<RawResourceFactory>(new FhirJsonSerializer(), NullLogger<RawResourceFactory>.Instance);
             _resourceWrapperFactory = Substitute.For<IResourceWrapperFactory>();
             _resourceWrapperFactory
                 .Create(Arg.Any<ResourceElement>(), Arg.Any<bool>(), Arg.Any<bool>())
@@ -110,8 +110,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Resources
             ServiceProvider provider = collection.BuildServiceProvider();
             _mediator = new Mediator(type => provider.GetService(type));
 
-            _deserializer = new ResourceDeserializer(
-                (FhirResourceFormat.Json, new Func<string, string, DateTimeOffset, ResourceElement>((str, version, lastUpdated) => _fhirJsonParser.Parse(str).ToResourceElement())));
+            _deserializer = Deserializers.ResourceDeserializer;
         }
 
         [Fact]

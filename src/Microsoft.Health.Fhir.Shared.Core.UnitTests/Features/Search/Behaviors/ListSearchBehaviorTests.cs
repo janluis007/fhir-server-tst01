@@ -9,6 +9,7 @@ using System.Net.Http;
 using System.Threading;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Health.Extensions.DependencyInjection;
 using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features.Context;
@@ -60,7 +61,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Search
                 x =>
                 {
                     var longList = Samples.GetDefaultList();
-                    var rawResourceFactory = new RawResourceFactory(new FhirJsonSerializer());
+                    var rawResourceFactory = new RawResourceFactory(new FhirJsonSerializer(), NullLogger<RawResourceFactory>.Instance);
                     return new ResourceWrapper(
                         longList,
                         rawResourceFactory.Create(longList, keepMeta: true),

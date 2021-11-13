@@ -108,7 +108,15 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Storage
             using (SqlCommandWrapper sqlCommandWrapper = sqlConnectionWrapper.CreateSqlCommand())
             using (var stream = new RecyclableMemoryStream(_memoryStreamManager))
             {
-                _compressedRawResourceConverter.WriteCompressedRawResource(stream, resource.RawResource.Data);
+                if (resource.RawResource.CompressedData != null)
+                {
+                    var bytes = Convert.FromBase64String(resource.RawResource.CompressedData);
+                    await stream.WriteAsync(bytes, cancellationToken);
+                }
+                else
+                {
+                    _compressedRawResourceConverter.WriteCompressedRawResource(stream, resource.RawResource.Data);
+                }
 
                 stream.Seek(0, 0);
 

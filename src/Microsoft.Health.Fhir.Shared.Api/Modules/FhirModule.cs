@@ -5,6 +5,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
+using System.Text;
+using System.Text.RegularExpressions;
 using EnsureThat;
 using Hl7.Fhir.FhirPath;
 using Hl7.Fhir.Model;
@@ -28,6 +32,7 @@ using Microsoft.Health.Fhir.Core.Features.Context;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Features.Security;
 using Microsoft.Health.Fhir.Core.Models;
+using Microsoft.IO;
 
 namespace Microsoft.Health.Fhir.Api.Modules
 {
@@ -67,7 +72,7 @@ namespace Microsoft.Health.Fhir.Api.Modules
 
             services.AddSingleton<IReadOnlyDictionary<FhirResourceFormat, Func<string, string, DateTimeOffset, ResourceElement>>>(_ =>
             {
-                return new Dictionary<FhirResourceFormat, Func<string, string, DateTimeOffset, ResourceElement>>
+                var deserializers = new Dictionary<FhirResourceFormat, Func<string, string, DateTimeOffset, ResourceElement>>
                 {
                     {
                         FhirResourceFormat.Json, (str, version, lastModified) =>
@@ -85,6 +90,14 @@ namespace Microsoft.Health.Fhir.Api.Modules
                         }
                     },
                 };
+
+                deserializers.Add(FhirResourceFormat.CompressedJson, (str, version, lastModified) =>
+                {
+                    var json = str.DecompressGZipBase64();
+                    return deserializers[FhirResourceFormat.Json](json, version, lastModified);
+                });
+
+                return deserializers;
             });
 
             services.Add<ResourceDeserializer>()

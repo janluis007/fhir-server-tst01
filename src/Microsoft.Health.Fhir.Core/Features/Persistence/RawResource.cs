@@ -33,6 +33,9 @@ namespace Microsoft.Health.Fhir.Core.Features.Persistence
         [JsonConverter(typeof(StringEnumConverter))]
         public FhirResourceFormat Format { get; protected set; }
 
+        [JsonIgnore]
+        internal string CompressedData { get; set; }
+
         /// <summary>
         /// Specifies whether the meta section in the serialized resource in Data is set correctly.
         /// We expect that for a RawResource resulting from an update, the version needs to be updated, so isMetaSet would be false.

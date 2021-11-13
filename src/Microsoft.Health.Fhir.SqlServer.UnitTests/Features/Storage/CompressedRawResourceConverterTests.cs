@@ -6,7 +6,8 @@
 using System.IO;
 using System.IO.Compression;
 using System.Threading.Tasks;
-using Microsoft.Health.Fhir.SqlServer.Features.Storage;
+using Microsoft.Health.Fhir.Core.Features.Operations;
+using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Xunit;
 
 namespace Microsoft.Health.Fhir.SqlServer.UnitTests.Features.Storage
@@ -18,7 +19,7 @@ namespace Microsoft.Health.Fhir.SqlServer.UnitTests.Features.Storage
         {
             string data = "Hello 😊";
 
-            CompressedRawResourceConverter converter = new CompressedRawResourceConverter();
+            ICompressedRawResourceConverter converter = new CompressedResourceConverter();
             using var stream = new MemoryStream();
             converter.WriteCompressedRawResource(stream, data);
 
@@ -32,10 +33,10 @@ namespace Microsoft.Health.Fhir.SqlServer.UnitTests.Features.Storage
         {
             string data = "Hello 😊";
 
-            CompressedRawResourceConverter converter = new CompressedRawResourceConverter();
+            ICompressedRawResourceConverter converter = new CompressedResourceConverter();
             using var stream = new MemoryStream();
             using var gzipStream = new GZipStream(stream, CompressionMode.Compress);
-            using var writer = new StreamWriter(gzipStream, CompressedRawResourceConverter.LegacyResourceEncoding);
+            using var writer = new StreamWriter(gzipStream, CompressedResourceConverter.LegacyResourceEncoding);
 
             writer.Write(data);
             writer.Flush();

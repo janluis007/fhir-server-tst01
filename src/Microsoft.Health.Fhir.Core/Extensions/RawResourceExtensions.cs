@@ -17,7 +17,19 @@ namespace Microsoft.Health.Fhir.Core.Extensions
 {
     public static class RawResourceExtensions
     {
-        /// <summary>
+        public static string DecompressDataIfRequired(this RawResource rawResource)
+        {
+            EnsureArg.IsNotNull(rawResource, nameof(rawResource));
+
+            if (rawResource.Format == FhirResourceFormat.CompressedJson)
+            {
+                return rawResource.Data.DecompressGZipBase64();
+            }
+
+            return rawResource.Data;
+        }
+
+    /// <summary>
         /// Converts the RawResource to an ITypedElement
         /// </summary>
         /// <param name="rawResource">The RawResource to convert</param>
@@ -28,7 +40,7 @@ namespace Microsoft.Health.Fhir.Core.Extensions
             EnsureArg.IsNotNull(rawResource, nameof(rawResource));
             EnsureArg.IsNotNull(modelInfoProvider, nameof(modelInfoProvider));
 
-            using TextReader reader = new StringReader(rawResource.Data);
+            using TextReader reader = new StringReader(rawResource.DecompressDataIfRequired());
             using JsonReader jsonReader = new JsonTextReader(reader);
             try
             {

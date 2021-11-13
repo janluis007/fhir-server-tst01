@@ -8,6 +8,7 @@ using System.Threading;
 using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Features.Search.Parameters;
@@ -31,7 +32,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Search
 
         public SearchParameterBehaviorTests()
         {
-            _rawResourceFactory = Substitute.For<RawResourceFactory>(new FhirJsonSerializer());
+            _rawResourceFactory = Substitute.For<RawResourceFactory>(new FhirJsonSerializer(), NullLogger<RawResourceFactory>.Instance);
             _resourceWrapperFactory = Substitute.For<IResourceWrapperFactory>();
             _resourceWrapperFactory
                 .Create(Arg.Any<ResourceElement>(), Arg.Any<bool>(), Arg.Any<bool>())

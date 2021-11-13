@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Health.Core;
 using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features;
@@ -28,7 +29,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Persistence
 
         public ResourceDeserializerTests()
         {
-            _rawResourceFactory = new RawResourceFactory(new FhirJsonSerializer());
+            _rawResourceFactory = new RawResourceFactory(new FhirJsonSerializer(), NullLogger<RawResourceFactory>.Instance);
         }
 
         [Fact]

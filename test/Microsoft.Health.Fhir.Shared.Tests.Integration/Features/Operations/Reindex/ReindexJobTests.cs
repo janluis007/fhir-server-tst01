@@ -92,7 +92,7 @@ namespace Microsoft.Health.Fhir.Tests.Integration.Features.Operations.Reindex
             _supportedSearchParameterDefinitionManager = _fixture.SupportedSearchParameterDefinitionManager;
 
             ResourceWrapperFactory wrapperFactory = Mock.TypeWithArguments<ResourceWrapperFactory>(
-                new RawResourceFactory(new FhirJsonSerializer()),
+                new RawResourceFactory(new FhirJsonSerializer(), NullLogger<RawResourceFactory>.Instance),
                 new FhirRequestContextAccessor(),
                 _searchIndexer,
                 _searchParameterDefinitionManager,

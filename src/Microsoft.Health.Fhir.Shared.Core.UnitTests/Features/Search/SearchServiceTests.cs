@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Health.Fhir.Core.Exceptions;
 using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
@@ -41,7 +42,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Search
                 .Returns(x => new SearchOptions());
 
             _searchService = new TestSearchService(_searchOptionsFactory, _fhirDataStore);
-            _rawResourceFactory = new RawResourceFactory(new FhirJsonSerializer());
+            _rawResourceFactory = new RawResourceFactory(new FhirJsonSerializer(), NullLogger<RawResourceFactory>.Instance);
         }
 
         [Fact]

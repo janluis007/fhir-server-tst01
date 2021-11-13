@@ -206,7 +206,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.UnitTests.Features.Storage
             observation.Id = "id1";
             observation.VersionId = "version1";
             observation.Meta.Profile = new List<string> { "test" };
-            var rawResourceFactory = new RawResourceFactory(new FhirJsonSerializer());
+            var rawResourceFactory = new RawResourceFactory(new FhirJsonSerializer(), NullLogger<RawResourceFactory>.Instance);
             ResourceElement typedElement = observation.ToResourceElement();
 
             var wrapper = new ResourceWrapper(typedElement, rawResourceFactory.Create(typedElement, keepMeta: true), new ResourceRequest(HttpMethod.Post, "http://fhir"), false, null, null, null);

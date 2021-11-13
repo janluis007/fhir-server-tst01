@@ -6,8 +6,8 @@
 using System;
 using System.Linq;
 using EnsureThat;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Health.Extensions.DependencyInjection;
+using Microsoft.Health.Fhir.Core.Features.Persistence;
 using Microsoft.Health.Fhir.Core.Features.Search.Registry;
 using Microsoft.Health.Fhir.Core.Registration;
 using Microsoft.Health.Fhir.SqlServer.Features.Operations;
@@ -145,7 +145,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 .AsSelf()
                 .AsImplementedInterfaces();
 
-            services.Add<CompressedRawResourceConverter>()
+            services.Add<CompressedResourceConverter>()
                 .Transient()
                 .AsSelf()
                 .AsImplementedInterfaces();

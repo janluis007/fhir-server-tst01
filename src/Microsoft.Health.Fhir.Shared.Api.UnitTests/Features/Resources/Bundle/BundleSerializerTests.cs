@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Serialization;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Health.Core;
 using Microsoft.Health.Core.Features.Context;
@@ -42,7 +43,7 @@ namespace Microsoft.Health.Fhir.Shared.Api.UnitTests.Features.Resources.Bundle
             requestContextAccessor.RequestContext.Returns(x => new FhirRequestContext("get", "https://localhost/Patient", "https://localhost", "correlation", new Dictionary<string, StringValues>(), new Dictionary<string, StringValues>()));
 
             _wrapperFactory = new ResourceWrapperFactory(
-                                     new RawResourceFactory(new FhirJsonSerializer()),
+                                     new RawResourceFactory(new FhirJsonSerializer(), NullLogger<RawResourceFactory>.Instance),
                                      requestContextAccessor,
                                      Substitute.For<ISearchIndexer>(),
                                      Substitute.For<IClaimsExtractor>(),

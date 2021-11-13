@@ -10,5 +10,6 @@ namespace Microsoft.Health.Fhir.Core.Models
         Unknown = 0,
         Xml = 1,
         Json = 2,
+        CompressedJson = 3,
     }
 }

@@ -3,10 +3,11 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
+using System;
 using EnsureThat;
-using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Models;
 
@@ -18,16 +19,20 @@ namespace Microsoft.Health.Fhir.Core.Features.Persistence
     public class RawResourceFactory : IRawResourceFactory
     {
         private readonly FhirJsonSerializer _fhirJsonSerializer;
+        private readonly ILogger<RawResourceFactory> _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RawResourceFactory"/> class.
         /// </summary>
         /// <param name="fhirJsonSerializer">The FhirJsonSerializer to use for serializing the resource.</param>
-        public RawResourceFactory(FhirJsonSerializer fhirJsonSerializer)
+        /// <param name="logger">Logger.</param>
+        public RawResourceFactory(FhirJsonSerializer fhirJsonSerializer, ILogger<RawResourceFactory> logger)
         {
             EnsureArg.IsNotNull(fhirJsonSerializer, nameof(fhirJsonSerializer));
+            EnsureArg.IsNotNull(logger, nameof(logger));
 
             _fhirJsonSerializer = fhirJsonSerializer;
+            _logger = logger;
         }
 
         /// <inheritdoc />
@@ -37,7 +42,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Persistence
 
             var poco = resource.ToPoco<Resource>();
 
-            poco.Meta = poco.Meta ?? new Meta();
+            poco.Meta ??= new Meta();
             var versionId = poco.Meta.VersionId;
 
             try
@@ -53,7 +58,27 @@ namespace Microsoft.Health.Fhir.Core.Features.Persistence
                     poco.Meta.VersionId = "1";
                 }
 
-                return new RawResource(_fhirJsonSerializer.SerializeToString(poco), FhirResourceFormat.Json, keepMeta);
+                string serializeToString = _fhirJsonSerializer.SerializeToString(poco);
+                var base64 = serializeToString.CompressToGZipBase64();
+
+                if (base64.Length < serializeToString.Length)
+                {
+                    _logger.LogInformation(
+                        "Resource size: {uncompressedSize}, Compressed: {compressedSize}, Saved: {savedSize}%",
+                        serializeToString.Length,
+                        base64.Length,
+                        Math.Round((1 - (base64.Length / (double)serializeToString.Length)) * 100, 2));
+
+                    return new RawResource(base64, FhirResourceFormat.CompressedJson, keepMeta)
+                    {
+                        CompressedData = base64,
+                    };
+                }
+
+                return new RawResource(serializeToString, FhirResourceFormat.Json, keepMeta)
+                {
+                    CompressedData = base64,
+                };
             }
             finally
             {

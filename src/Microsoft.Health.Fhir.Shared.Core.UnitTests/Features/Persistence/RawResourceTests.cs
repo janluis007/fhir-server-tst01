@@ -6,6 +6,7 @@
 using System;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Health.Fhir.Core.Extensions;
 using Microsoft.Health.Fhir.Core.Features;
 using Microsoft.Health.Fhir.Core.Features.Persistence;
@@ -20,7 +21,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Persistence
         public void GivenAResource_WhenCreateARawResourceWithKeepMetaFalse_ThenTheObjectPassedInIsModified()
         {
             var serializer = new FhirJsonSerializer();
-            var rawResourceFactory = new RawResourceFactory(serializer);
+            var rawResourceFactory = new RawResourceFactory(serializer, NullLogger<RawResourceFactory>.Instance);
 
             string versionId = Guid.NewGuid().ToString();
             var observation = Samples.GetDefaultObservation()
@@ -34,7 +35,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Persistence
 
             var parser = new FhirJsonParser(DefaultParserSettings.Settings);
 
-            var deserialized = parser.Parse<Observation>(raw.Data);
+            var deserialized = parser.Parse<Observation>(raw.DecompressDataIfRequired());
 
             Assert.NotNull(deserialized);
             Assert.Null(deserialized.VersionId);

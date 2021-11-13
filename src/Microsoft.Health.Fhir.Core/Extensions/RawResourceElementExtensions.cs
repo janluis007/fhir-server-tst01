@@ -26,14 +26,16 @@ namespace Microsoft.Health.Fhir.Core.Extensions
         {
             EnsureArg.IsNotNull(rawResource, nameof(rawResource));
 
+            string rawResourceData = rawResource.RawResource.DecompressDataIfRequired();
+
             if (rawResource.RawResource.IsMetaSet)
             {
                 await using var sw = new StreamWriter(outputStream, leaveOpen: true);
-                await sw.WriteAsync(rawResource.RawResource.Data);
+                await sw.WriteAsync(rawResourceData);
                 return;
             }
 
-            var jsonDocument = JsonDocument.Parse(rawResource.RawResource.Data);
+            var jsonDocument = JsonDocument.Parse(rawResourceData);
 
             await using Utf8JsonWriter writer = new Utf8JsonWriter(outputStream, WriterOptions);
 

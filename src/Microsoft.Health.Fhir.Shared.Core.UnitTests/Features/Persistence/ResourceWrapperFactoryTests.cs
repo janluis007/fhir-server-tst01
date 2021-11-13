@@ -6,6 +6,7 @@
 using System;
 using System.Collections.Generic;
 using Hl7.Fhir.Serialization;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Health.Core.Features.Context;
 using Microsoft.Health.Core.Features.Security;
@@ -39,7 +40,7 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Persistence
         public ResourceWrapperFactoryTests()
         {
             var serializer = new FhirJsonSerializer();
-            _rawResourceFactory = new RawResourceFactory(serializer);
+            _rawResourceFactory = new RawResourceFactory(serializer, NullLogger<RawResourceFactory>.Instance);
 
             var dummyRequestContext = new FhirRequestContext(
                 "POST",
