@@ -252,75 +252,82 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Storage
 
         public async Task<ResourceWrapper> GetAsync(ResourceKey key, CancellationToken cancellationToken)
         {
-            using (SqlConnectionWrapper sqlConnectionWrapper = await _sqlConnectionWrapperFactory.ObtainSqlConnectionWrapperAsync(cancellationToken, true))
+            try
             {
-                int? requestedVersion = null;
-                if (!string.IsNullOrEmpty(key.VersionId))
+                using (SqlConnectionWrapper sqlConnectionWrapper = await _sqlConnectionWrapperFactory.ObtainSqlConnectionWrapperAsync(cancellationToken, true))
                 {
-                    if (!int.TryParse(key.VersionId, out var parsedVersion))
+                    int? requestedVersion = null;
+                    if (!string.IsNullOrEmpty(key.VersionId))
                     {
-                        return null;
-                    }
-
-                    requestedVersion = parsedVersion;
-                }
-
-                using (SqlCommandWrapper commandWrapper = sqlConnectionWrapper.CreateSqlCommand())
-                {
-                    VLatest.ReadResource.PopulateCommand(
-                        commandWrapper,
-                        resourceTypeId: _model.GetResourceTypeId(key.ResourceType),
-                        resourceId: key.Id,
-                        version: requestedVersion);
-
-                    using (SqlDataReader sqlDataReader = await commandWrapper.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken))
-                    {
-                        if (!sqlDataReader.Read())
+                        if (!int.TryParse(key.VersionId, out var parsedVersion))
                         {
                             return null;
                         }
 
-                        var resourceTable = VLatest.Resource;
+                        requestedVersion = parsedVersion;
+                    }
 
-                        (long resourceSurrogateId, int version, bool isDeleted, bool isHistory, Stream rawResourceStream) = sqlDataReader.ReadRow(
-                            resourceTable.ResourceSurrogateId,
-                            resourceTable.Version,
-                            resourceTable.IsDeleted,
-                            resourceTable.IsHistory,
-                            resourceTable.RawResource);
+                    using (SqlCommandWrapper commandWrapper = sqlConnectionWrapper.CreateSqlCommand())
+                    {
+                        VLatest.ReadResource.PopulateCommand(
+                            commandWrapper,
+                            resourceTypeId: _model.GetResourceTypeId(key.ResourceType),
+                            resourceId: key.Id,
+                            version: requestedVersion);
 
-                        string rawResource;
-                        using (rawResourceStream)
+                        using (SqlDataReader sqlDataReader = await commandWrapper.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken))
                         {
-                            rawResource = await _compressedRawResourceConverter.ReadCompressedRawResource(rawResourceStream);
+                            if (!sqlDataReader.Read())
+                            {
+                                return null;
+                            }
+
+                            var resourceTable = VLatest.Resource;
+
+                            (long resourceSurrogateId, int version, bool isDeleted, bool isHistory, Stream rawResourceStream) = sqlDataReader.ReadRow(
+                                resourceTable.ResourceSurrogateId,
+                                resourceTable.Version,
+                                resourceTable.IsDeleted,
+                                resourceTable.IsHistory,
+                                resourceTable.RawResource);
+
+                            string rawResource;
+                            using (rawResourceStream)
+                            {
+                                rawResource = await _compressedRawResourceConverter.ReadCompressedRawResource(rawResourceStream);
+                            }
+
+                            var isRawResourceMetaSet = sqlDataReader.Read(resourceTable.IsRawResourceMetaSet, 5);
+
+                            string searchParamHash = null;
+
+                            if (_schemaInformation.Current >= SchemaVersionConstants.SearchParameterHashSchemaVersion)
+                            {
+                                searchParamHash = sqlDataReader.Read(resourceTable.SearchParamHash, 6);
+                            }
+
+                            return new ResourceWrapper(
+                                key.Id,
+                                version.ToString(CultureInfo.InvariantCulture),
+                                key.ResourceType,
+                                new RawResource(rawResource, FhirResourceFormat.Json, isMetaSet: isRawResourceMetaSet),
+                                null,
+                                new DateTimeOffset(ResourceSurrogateIdHelper.ResourceSurrogateIdToLastUpdated(resourceSurrogateId), TimeSpan.Zero),
+                                isDeleted,
+                                searchIndices: null,
+                                compartmentIndices: null,
+                                lastModifiedClaims: null,
+                                searchParamHash)
+                            {
+                                IsHistory = isHistory,
+                            };
                         }
-
-                        var isRawResourceMetaSet = sqlDataReader.Read(resourceTable.IsRawResourceMetaSet, 5);
-
-                        string searchParamHash = null;
-
-                        if (_schemaInformation.Current >= SchemaVersionConstants.SearchParameterHashSchemaVersion)
-                        {
-                            searchParamHash = sqlDataReader.Read(resourceTable.SearchParamHash, 6);
-                        }
-
-                        return new ResourceWrapper(
-                            key.Id,
-                            version.ToString(CultureInfo.InvariantCulture),
-                            key.ResourceType,
-                            new RawResource(rawResource, FhirResourceFormat.Json, isMetaSet: isRawResourceMetaSet),
-                            null,
-                            new DateTimeOffset(ResourceSurrogateIdHelper.ResourceSurrogateIdToLastUpdated(resourceSurrogateId), TimeSpan.Zero),
-                            isDeleted,
-                            searchIndices: null,
-                            compartmentIndices: null,
-                            lastModifiedClaims: null,
-                            searchParamHash)
-                        {
-                            IsHistory = isHistory,
-                        };
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                throw new RequestTimeoutException(ex.Message);
             }
         }
 
