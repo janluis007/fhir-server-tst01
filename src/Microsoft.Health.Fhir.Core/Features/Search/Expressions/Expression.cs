@@ -269,11 +269,10 @@ namespace Microsoft.Health.Fhir.Core.Features.Search.Expressions
         /// </summary>
         /// <param name="compartmentType">The compartment type.</param>
         /// <param name="compartmentId">The compartment id.</param>
-        /// <param name="filteredResourceTypes">Resource types to filter on</param>
         /// <returns>A <see cref="CompartmentSearchExpression"/> that represents a compartment search operation.</returns>
-        public static CompartmentSearchExpression CompartmentSearch(string compartmentType, string compartmentId, params string[] filteredResourceTypes)
+        public static CompartmentSearchExpression CompartmentSearch(string compartmentType, string compartmentId)
         {
-            return new CompartmentSearchExpression(compartmentType, compartmentId, filteredResourceTypes);
+            return new CompartmentSearchExpression(compartmentType, compartmentId);
         }
 
         public abstract TOutput AcceptVisitor<TContext, TOutput>(IExpressionVisitor<TContext, TOutput> visitor, TContext context);
