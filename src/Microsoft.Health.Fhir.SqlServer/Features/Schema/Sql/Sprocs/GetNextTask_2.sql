@@ -1,4 +1,5 @@
-﻿/*************************************************************
+﻿-- TODO: Consider removing header
+/*************************************************************
     Stored procedures for get next available task
 **************************************************************/
 --
@@ -11,73 +12,71 @@
 -- PARAMETERS
 --     @queueId
 --         * The ID of the task record
---     @count
+--     @count -- removed
 --         * Batch count for tasks list
 --     @taskHeartbeatTimeoutThresholdInSeconds
 --         * Timeout threshold in seconds for heart keep alive
-CREATE PROCEDURE [dbo].[GetNextTask_2]
-    @queueId varchar(64),
-    @count smallint,
-    @taskHeartbeatTimeoutThresholdInSeconds int = 600
-AS
-SET NOCOUNT ON;
-SET XACT_ABORT ON;
-SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
-BEGIN TRANSACTION;
-DECLARE @expirationDateTime AS DATETIME2 (7);
-SELECT @expirationDateTime = DATEADD(second, -@taskHeartbeatTimeoutThresholdInSeconds, SYSUTCDATETIME());
-DECLARE @availableJobs TABLE (
-    TaskId            VARCHAR (64) ,
-    QueueId           VARCHAR (64) ,
-    Status            SMALLINT     ,
-    TaskTypeId        SMALLINT     ,
-    IsCanceled        BIT          ,
-    RetryCount        SMALLINT     ,
-    HeartbeatDateTime DATETIME2    ,
-    InputData         VARCHAR (MAX),
-    TaskContext       VARCHAR (MAX),
-    Result            VARCHAR (MAX));
-INSERT INTO @availableJobs
-SELECT   TOP (@count) TaskId,
-                      QueueId,
-                      Status,
-                      TaskTypeId,
-                      IsCanceled,
-                      RetryCount,
-                      HeartbeatDateTime,
-                      InputData,
-                      TaskContext,
-                      Result
-FROM     dbo.TaskInfo
-WHERE    (QueueId = @queueId
-          AND (Status = 1
-               OR (Status = 2
-                   AND HeartbeatDateTime <= @expirationDateTime)))
-ORDER BY HeartbeatDateTime;
-DECLARE @heartbeatDateTime AS DATETIME2 (7) = SYSUTCDATETIME();
-UPDATE dbo.TaskInfo
-SET    Status            = 2,
-       HeartbeatDateTime = @heartbeatDateTime,
-       RunId             = CAST (NEWID() AS NVARCHAR (50))
-FROM   dbo.TaskInfo AS task
-       INNER JOIN
-       @availableJobs AS availableJob
-       ON task.TaskId = availableJob.TaskId;
-SELECT task.TaskId,
-       task.QueueId,
-       task.Status,
-       task.TaskTypeId,
-       task.RunId,
-       task.IsCanceled,
-       task.RetryCount,
-       task.MaxRetryCount,
-       task.HeartbeatDateTime,
-       task.InputData,
-       task.TaskContext,
-       task.Result
-FROM   dbo.TaskInfo AS task
-       INNER JOIN
-       @availableJobs AS availableJob
-       ON task.TaskId = availableJob.TaskId;
-COMMIT TRANSACTION;
 GO
+--DROP PROCEDURE dbo.GetNextTask
+GO
+CREATE PROCEDURE dbo.GetNextTask
+    @queueId varchar(64),
+    @TaskHeartbeatTimeoutThresholdInSeconds int = 600
+AS
+set nocount on
+DECLARE @Lock varchar(200) = 'GetNextTask_Q='+@queueId
+       ,@TaskId int = NULL
+
+BEGIN TRY
+  BEGIN TRANSACTION  
+
+  EXECUTE sp_getapplock @Lock, 'Exclusive'
+
+  -- try old tasks first
+  UPDATE T
+    SET StartDate = getUTCdate()
+       ,HeartBeatDate = getUTCdate()
+       ,Worker = host_name() 
+       ,@TaskId = T.TaskId
+       ,RestartInfo = isnull(RestartInfo,'')+' Prev: Worker='+Worker+' Start='+convert(varchar,getUTCdate(),121) 
+    FROM dbo.TaskInfo T WITH (PAGLOCK)
+         JOIN (SELECT TOP 1 
+                      TaskId
+                 FROM dbo.TaskInfo WITH (INDEX = IX_Status)
+                 WHERE QueueId = @QueueId
+                   AND Status = 2 -- running
+                   AND datediff(second, HeartbeatDate, getUTCdate()) >= @TaskHeartbeatTimeoutThresholdInSeconds
+                 ORDER BY 
+                      TaskId
+              ) S
+           ON T.QueueId = @QueueId AND T.TaskId = S.TaskId 
+  
+  IF @TaskId IS NULL
+    -- new ones now
+    UPDATE T
+      SET Status = 2 -- running
+         ,StartDate = getUTCdate()
+         ,HeartBeatDate = getUTCdate()
+         ,Worker = host_name() 
+         ,@TaskId = T.TaskId
+      FROM dbo.TaskInfo T WITH (PAGLOCK)
+           JOIN (SELECT TOP 1 
+                        TaskId
+                   FROM dbo.TaskInfo WITH (INDEX = IX_Status)
+                   WHERE QueueId = @QueueId
+                     AND Status = 1 -- Created
+                   ORDER BY 
+                        TaskId
+                ) S
+             ON T.QueueId = @QueueId AND T.TaskId = S.TaskId 
+
+  COMMIT TRANSACTION
+
+  EXECUTE dbo.GetTaskDetails @QueueId = @QueueId, @TaskId = @TaskId
+END TRY
+BEGIN CATCH
+  IF @@trancount > 0 ROLLBACK TRANSACTION
+  THROW
+END CATCH
+GO
+--GetNextTask '1'

@@ -1,4 +1,5 @@
-﻿/*************************************************************
+﻿-- TODO: Consider removing header
+/*************************************************************
     Stored procedures for get task payload
 **************************************************************/
 --
@@ -12,12 +13,22 @@
 --     @taskId
 --         * The ID of the task record
 --
-CREATE PROCEDURE [dbo].[GetTaskDetails]
-    @taskId varchar(64)
+GO
+CREATE PROCEDURE dbo.GetTaskDetails @QueueId varchar(64), @TaskId int
 AS
-    SET NOCOUNT ON
-
-    SELECT TaskId, QueueId, Status, TaskTypeId, RunId, IsCanceled, RetryCount, MaxRetryCount, HeartbeatDateTime, InputData, TaskContext, Result
-	FROM [dbo].[TaskInfo]
-	where TaskId = @taskId
+set nocount on
+SELECT TaskId
+      ,QueueId
+      ,Status
+      ,TaskTypeId
+      ,IsCanceled
+      ,RetryCount
+      ,MaxRetryCount
+      ,HeartbeatDate
+      ,InputData
+      ,TaskContext
+      ,Result
+  FROM dbo.TaskInfo
+  WHERE QueueId = @QueueId
+    AND TaskId = @TaskId
 GO
