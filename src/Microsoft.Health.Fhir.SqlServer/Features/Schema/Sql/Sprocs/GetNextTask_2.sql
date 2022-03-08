@@ -33,6 +33,8 @@ BEGIN TRY
   EXECUTE sp_getapplock @Lock, 'Exclusive'
 
   -- try old tasks first
+  -- "Old tasks" logic most likely will return nothing, and, therefore does not belong here.
+  -- It should be moved out to a separate stored procedure
   UPDATE T
     SET StartDate = getUTCdate()
        ,HeartBeatDate = getUTCdate()
