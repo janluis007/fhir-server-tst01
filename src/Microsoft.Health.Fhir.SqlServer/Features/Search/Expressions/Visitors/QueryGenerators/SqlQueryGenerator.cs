@@ -378,7 +378,11 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Search.Expressions.Visitors.Q
                 if (searchParamTableExpression.ChainLevel == 0 && !IsInSortMode(context))
                 {
                     // if chainLevel > 0 or if in sort mode, the intersection is already handled in the JOIN
-                    AppendIntersectionWithPredecessor(delimited, searchParamTableExpression);
+                    // TODO: Be more clear about how this differs from IsInSortMode()
+                    if (context.Sort != null && context.Sort.Count > 0)
+                    {
+                        AppendIntersectionWithPredecessor(delimited, searchParamTableExpression);
+                    }
                 }
 
                 if (searchParamTableExpression.Predicate != null)
@@ -433,6 +437,40 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Search.Expressions.Visitors.Q
 
         private void HandleTableKindTop(SearchOptions context)
         {
+            // TODO: Find better place for this - see if we can make it its own table kind
+            // TODO: Look at other similar methods to see if there is anything that can be cleaned up here
+            if (context.Sort == null || context.Sort.Count == 0) // TODO: Be more clear about how this differs from IsInSortMode()
+            {
+                // Intersect CTEs if we have a top level AND
+                // Union CTEs if we have a top level OR
+                string operatorString = " INTERSECT ";
+                if (context.Expression is MultiaryExpression { MultiaryOperation: MultiaryOperator.Or })
+                {
+                    operatorString = " UNION ";
+                }
+
+                string intersectExpression = null;
+
+                const string columns = "T1, Sid1 ";
+
+                // Iterate through all previous CTEs
+                for (int i = 0; i < _tableExpressionCounter; i++)
+                {
+                    intersectExpression += "SELECT ";
+                    intersectExpression += columns;
+                    intersectExpression += "FROM " + TableExpressionName(i);
+
+                    // If we aren't on the last loop
+                    if (i != _tableExpressionCounter - 1)
+                    {
+                        intersectExpression += operatorString;
+                    }
+                }
+
+                StringBuilder.Append(intersectExpression).Append("\n),\n");
+                StringBuilder.Append(TableExpressionName(++_tableExpressionCounter)).Append(" AS\n(\n");
+            }
+
             var tableExpressionName = TableExpressionName(_tableExpressionCounter - 1);
             var sortExpression = IsSortValueNeeded(context) ? $"{tableExpressionName}.SortValue" : null;
 
