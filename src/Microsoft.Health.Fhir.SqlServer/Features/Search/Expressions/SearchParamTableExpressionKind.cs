@@ -69,5 +69,8 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Search.Expressions
         /// the sort parameter is also present as a query parameter in the base search query.
         /// </summary>
         SortWithFilter,
+
+        // TODO: Should this name indicate it will be used for compartment search?
+        MultiaryOr,
     }
 }

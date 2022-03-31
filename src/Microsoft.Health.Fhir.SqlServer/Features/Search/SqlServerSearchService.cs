@@ -279,6 +279,7 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Search
                                                        : LegacyStringOverflowRewriter.Instance))
                                                .AcceptVisitor(NumericRangeRewriter.Instance)
                                                .AcceptVisitor(IncludeMatchSeedRewriter.Instance)
+                                               .AcceptVisitor(MultiaryOrRewriter.Instance, clonedSearchOptions)
                                                .AcceptVisitor(TopRewriter.Instance, clonedSearchOptions)
                                                .AcceptVisitor(IncludeRewriter.Instance)
                                            ?? SqlRootExpression.WithResourceTableExpressions();

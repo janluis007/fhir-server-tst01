@@ -32,8 +32,9 @@ namespace Microsoft.Health.Fhir.Core.Features.Search.Expressions
 
         /// <summary>
         /// Gets the multiary operator type.
+        /// TODO: Remove setter, only for debugging.
         /// </summary>
-        public MultiaryOperator MultiaryOperation { get; }
+        public MultiaryOperator MultiaryOperation { get; set; }
 
         /// <summary>
         /// Gets the expressions.

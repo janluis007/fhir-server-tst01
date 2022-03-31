@@ -37,6 +37,7 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Search.Expressions.Visitors.Q
         private readonly SchemaInformation _schemaInfo;
         private bool _sortVisited = false;
         private HashSet<int> _cteToLimit = new HashSet<int>();
+        private bool _isMultiaryOr = false;
 
         public SqlQueryGenerator(
             IndentedStringBuilder sb,
@@ -70,6 +71,11 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Search.Expressions.Visitors.Q
             if (!(context is SearchOptions searchOptions))
             {
                 throw new ArgumentException($"Argument should be of type {nameof(SearchOptions)}", nameof(context));
+            }
+
+            if (context.Expression is MultiaryExpression multiaryExpression && multiaryExpression.MultiaryOperation == MultiaryOperator.Or)
+            {
+                _isMultiaryOr = true;
             }
 
             _rootExpression = expression;
@@ -317,11 +323,41 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Search.Expressions.Visitors.Q
                     HandleTableKindSortWithFilter(searchParamTableExpression, context);
                     break;
 
+                case SearchParamTableExpressionKind.MultiaryOr:
+                    HandleTableKindMultiaryOr();
+                    break;
+
                 default:
                     throw new ArgumentOutOfRangeException(searchParamTableExpression.Kind.ToString());
             }
 
             return null;
+        }
+
+        private void HandleTableKindMultiaryOr()
+        {
+            // TODO: Look at other similar methods to see if there is anything that can be cleaned up her
+
+            string operatorString = " UNION ";
+            string intersectExpression = null;
+
+            string columns = "T1, Sid1 ";
+
+            // Iterate through all previous CTEs
+            for (int i = 0; i < _tableExpressionCounter; i++)
+            {
+                intersectExpression += "SELECT ";
+                intersectExpression += columns;
+                intersectExpression += "FROM " + TableExpressionName(i);
+
+                // If we aren't on the last loop
+                if (i != _tableExpressionCounter - 1)
+                {
+                    intersectExpression += operatorString;
+                }
+            }
+
+            StringBuilder.Append(intersectExpression).Append("\n");
         }
 
         private void HandleTableKindNormal(SearchParamTableExpression searchParamTableExpression, SearchOptions context)
@@ -980,6 +1016,11 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Search.Expressions.Visitors.Q
 
         private void AppendIntersectionWithPredecessor(IndentedStringBuilder.DelimitedScope delimited, SearchParamTableExpression searchParamTableExpression, string tableAlias = null)
         {
+            if (_isMultiaryOr)
+            {
+                return;
+            }
+
             int predecessorIndex = FindRestrictingPredecessorTableExpressionIndex();
 
             if (predecessorIndex >= 0)
