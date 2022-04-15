@@ -14,7 +14,7 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Storage
     /// <summary>
     /// Handles converting raw resource strings to compressed streams for storage in the database and vice-versa.
     /// </summary>
-    internal class CompressedRawResourceConverter : ICompressedRawResourceConverter
+    public class CompressedRawResourceConverter : ICompressedRawResourceConverter
     {
         internal static readonly Encoding LegacyResourceEncoding = new UnicodeEncoding(bigEndian: false, byteOrderMark: false);
         internal static readonly Encoding ResourceEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
