@@ -31,16 +31,20 @@ namespace Microsoft.Health.Fhir.Store.Export
         private static readonly int UnitSize = int.Parse(ConfigurationManager.AppSettings["UnitSize"]);
         private static readonly int MaxRetries = int.Parse(ConfigurationManager.AppSettings["MaxRetries"]);
         private static readonly bool WritesEnabled = bool.Parse(ConfigurationManager.AppSettings["WritesEnabled"]);
+        private static readonly int ReportingPeriodSec = int.Parse(ConfigurationManager.AppSettings["ReportingPeriodSec"]);
         private static readonly SqlService Source = new SqlService(SourceConnectionString);
         private static readonly SqlService Queue = new SqlService(QueueConnectionString);
         private static bool stop = false;
         private static CompressedRawResourceConverter _compressedRawResourceConverter = new CompressedRawResourceConverter();
+        private static long _resourcesTotal = 0L;
+        private static Stopwatch _swReport = Stopwatch.StartNew();
+        private static Stopwatch _sw = Stopwatch.StartNew();
 
         public static void Main(string[] args)
         {
             Console.WriteLine($"Source=[{Source.ShowConnectionString()}]");
             Console.WriteLine($"Queue=[{Queue.ShowConnectionString()}]");
-            var method = args.Length > 0 ? args[0] : "merge";
+            var method = args.Length > 0 ? args[0] : "na";
             if (method == "setupdb")
             {
                 SetupDb.Publish(QueueConnectionString, "Microsoft.Health.Fhir.SqlServer.Database.dacpac");
@@ -66,12 +70,12 @@ namespace Microsoft.Health.Fhir.Store.Export
             }
 
             Task.WaitAll(tasks.ToArray());
+            Console.WriteLine($"Export.{ResourceType}.threads={Threads}: {(stop ? "FAILED" : "completed")} at {DateTime.Now:s}, resources={_resourcesTotal} speed={_resourcesTotal / _sw.Elapsed.TotalSeconds:N0} resources/sec elapsed={_sw.Elapsed.TotalSeconds:N0} sec.");
         }
 
         private static void Export(int thread)
         {
             Console.WriteLine($"Export.{thread}: started at {DateTime.UtcNow:s}");
-            var sw = Stopwatch.StartNew();
             var resourceTypeId = (short?)0;
             while (resourceTypeId.HasValue && !stop)
             {
@@ -88,7 +92,20 @@ namespace Microsoft.Health.Fhir.Store.Export
                     if (resourceTypeId.HasValue)
                     {
                         var container = GetContainer(BlobConnectionString, BlobContainerName);
-                        Export(resourceTypeId.Value, container, long.Parse(minId), long.Parse(maxId));
+                        var resources = Export(resourceTypeId.Value, container, long.Parse(minId), long.Parse(maxId));
+                        Interlocked.Add(ref _resourcesTotal, resources);
+                    }
+
+                    if (_swReport.Elapsed.TotalSeconds > ReportingPeriodSec)
+                    {
+                        lock (_swReport)
+                        {
+                            if (_swReport.Elapsed.TotalSeconds > ReportingPeriodSec)
+                            {
+                                Console.WriteLine($"Export.{ResourceType}.threads={Threads}: Resources={_resourcesTotal} secs={(int)_sw.Elapsed.TotalSeconds} speed={(int)(_resourcesTotal / _sw.Elapsed.TotalSeconds)} resources/sec");
+                                _swReport.Restart();
+                            }
+                        }
                     }
                 }
                 catch (Exception e)
@@ -120,12 +137,13 @@ namespace Microsoft.Health.Fhir.Store.Export
                 Queue.CompleteStoreCopyWorkUnit(partitionId, unitId, false, null);
             }
 
-            Console.WriteLine($"Export.{thread}: {(stop ? "FAILED" : "completed")} at {DateTime.Now:s}, elapsed={sw.Elapsed.TotalSeconds:N0} sec.");
+            ////Console.WriteLine($"Export.{ResourceType}.{thread}: {(stop ? "FAILED" : "completed")} at {DateTime.Now:s}, elapsed={_sw.Elapsed.TotalSeconds:N0} sec.");
         }
 
-        private static void Export(short resourceTypeId, BlobContainerClient container, long minId, long maxId)
+        private static int Export(short resourceTypeId, BlobContainerClient container, long minId, long maxId)
         {
             var resources = Source.GetData(resourceTypeId, minId, maxId).ToList(); // ToList will fource reading from SQL even when writes are disabled
+            ////Console.WriteLine($"Export.{ResourceType}.{thread}.{minId}.{maxId}: read resources={resources.Count}");
             if (WritesEnabled)
             {
                 var strings = new List<string>();
@@ -136,7 +154,10 @@ namespace Microsoft.Health.Fhir.Store.Export
                 }
 
                 WriteBatchOfLines(container, strings, $"{ResourceType}-{minId}-{maxId}.ndjson");
+                ////Console.WriteLine($"Export.{ResourceType}.{thread}.{minId}.{maxId}: written resources={resources.Count}");
             }
+
+            return resources.Count;
         }
 
         private static void WriteBatchOfLines(BlobContainerClient container, IEnumerable<string> batch, string blobName)
@@ -174,8 +195,15 @@ namespace Microsoft.Health.Fhir.Store.Export
 
                 if (!blobContainerClient.Exists())
                 {
-                    var container = blobServiceClient.CreateBlobContainer(containerName);
-                    Console.WriteLine($"Created container {container.Value.Name}");
+                    lock (_sw) // lock on anything global
+                    {
+                        blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName);
+                        if (!blobContainerClient.Exists())
+                        {
+                            var container = blobServiceClient.CreateBlobContainer(containerName);
+                            Console.WriteLine($"Created container {container.Value.Name}");
+                        }
+                    }
                 }
 
                 return blobContainerClient;
@@ -189,24 +217,19 @@ namespace Microsoft.Health.Fhir.Store.Export
 
         private static void PopulateStoreCopyWorkQueue(string resourceType, int unitSize)
         {
-            if (Queue.StoreCopyWorkQueueIsNotEmpty())
-            {
-                return;
-            }
-
             using var sourceConn = new SqlConnection(Source.ConnectionString);
             sourceConn.Open();
             using var select = new SqlCommand(
                 @"
 SELECT convert(varchar,UnitId)
-       +';'+convert(varchar,(SELECT Id FROM dbo.ResourceType B WHERE B.Name = @ResourceType))
+       +';'+convert(varchar,(SELECT ResourceTypeId FROM dbo.ResourceType B WHERE B.Name = @ResourceType))
        +';'+convert(varchar,min(ResourceSurrogateId))
-      ,+';'+convert(varchar,max(ResourceSurrogateId))
-      ,+';'+convert(varchar,count(*))
+       +';'+convert(varchar,max(ResourceSurrogateId))
+       +';'+convert(varchar,count(*))
   FROM (SELECT UnitId = isnull(convert(int, (row_number() OVER (ORDER BY ResourceSurrogateId) - 1) / @UnitSize), 0)
               ,ResourceSurrogateId
           FROM dbo.Resource
-          WHERE ResourceTypeId = (SELECT Id FROM dbo.ResourceType B WHERE B.Name = @ResourceType)
+          WHERE ResourceTypeId = (SELECT ResourceTypeId FROM dbo.ResourceType B WHERE B.Name = @ResourceType)
             AND IsHistory = 0
        ) A
   GROUP BY
@@ -214,7 +237,7 @@ SELECT convert(varchar,UnitId)
   ORDER BY
        UnitId
                  ",
-                sourceConn) { CommandTimeout = 600 };
+                sourceConn) { CommandTimeout = 3600 };
             select.Parameters.AddWithValue("@UnitSize", unitSize);
             select.Parameters.AddWithValue("@ResourceType", resourceType);
             using var reader = select.ExecuteReader();
@@ -239,6 +262,8 @@ SELECT convert(varchar,UnitId)
 
             using var insert = new SqlCommand(
                 @"
+TRUNCATE TABLE dbo.StoreCopyWorkQueue
+
 INSERT INTO dbo.StoreCopyWorkQueue 
     (    PartitionId
         ,UnitId
