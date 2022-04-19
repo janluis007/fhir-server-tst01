@@ -31,6 +31,8 @@ namespace Microsoft.Health.Fhir.Store.Export
         private static readonly int UnitSize = int.Parse(ConfigurationManager.AppSettings["UnitSize"]);
         private static readonly int MaxRetries = int.Parse(ConfigurationManager.AppSettings["MaxRetries"]);
         private static readonly bool WritesEnabled = bool.Parse(ConfigurationManager.AppSettings["WritesEnabled"]);
+        private static readonly bool DecompressEnabled = bool.Parse(ConfigurationManager.AppSettings["DecompressEnabled"]);
+        private static readonly bool RebuildWorkQueue = bool.Parse(ConfigurationManager.AppSettings["RebuildWorkQueue"]);
         private static readonly int ReportingPeriodSec = int.Parse(ConfigurationManager.AppSettings["ReportingPeriodSec"]);
         private static readonly SqlService Source = new SqlService(SourceConnectionString);
         private static readonly SqlService Queue = new SqlService(QueueConnectionString);
@@ -52,7 +54,11 @@ namespace Microsoft.Health.Fhir.Store.Export
             }
             else
             {
-                PopulateStoreCopyWorkQueue(ResourceType, UnitSize);
+                if (RebuildWorkQueue)
+                {
+                    PopulateStoreCopyWorkQueue(ResourceType, UnitSize);
+                }
+
                 Export();
             }
         }
@@ -143,18 +149,19 @@ namespace Microsoft.Health.Fhir.Store.Export
         private static int Export(short resourceTypeId, BlobContainerClient container, long minId, long maxId)
         {
             var resources = Source.GetData(resourceTypeId, minId, maxId).ToList(); // ToList will fource reading from SQL even when writes are disabled
-            ////Console.WriteLine($"Export.{ResourceType}.{thread}.{minId}.{maxId}: read resources={resources.Count}");
-            if (WritesEnabled)
+            var strings = new List<string>();
+            if (DecompressEnabled)
             {
-                var strings = new List<string>();
                 foreach (var res in resources)
                 {
                     using var mem = new MemoryStream(res);
                     strings.Add(_compressedRawResourceConverter.ReadCompressedRawResource(mem).Result);
                 }
+            }
 
+            if (WritesEnabled)
+            {
                 WriteBatchOfLines(container, strings, $"{ResourceType}-{minId}-{maxId}.ndjson");
-                ////Console.WriteLine($"Export.{ResourceType}.{thread}.{minId}.{maxId}: written resources={resources.Count}");
             }
 
             return resources.Count;
@@ -236,6 +243,7 @@ SELECT convert(varchar,UnitId)
        UnitId
   ORDER BY
        UnitId
+  OPTION (MAXDOP 8) -- 0 7:17 -- 1 29:14 -- 8 6:43
                  ",
                 sourceConn) { CommandTimeout = 3600 };
             select.Parameters.AddWithValue("@UnitSize", unitSize);
