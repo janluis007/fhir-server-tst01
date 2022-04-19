@@ -3,6 +3,7 @@ GO
 CREATE PROCEDURE dbo.MergeResources
   @SingleTransaction bit = 1
  ,@SimpleInsert bit = 1
+ ,@DisableObservationIndexes bit = 0
  ,@Resources ResourceList READONLY
  ,@ReferenceSearchParams ReferenceSearchParamList READONLY
  ,@TokenSearchParams TokenSearchParamList READONLY
@@ -166,60 +167,79 @@ BEGIN TRY
             ( ResourceTypeId,          ResourceSurrogateId,SearchParamId,BaseUri,ReferenceResourceTypeId,ReferenceResourceId,ReferenceResourceVersion,IsHistory)
       SELECT @ResourceTypeId,@Offset + ResourceSurrogateId,SearchParamId,BaseUri,ReferenceResourceTypeId,ReferenceResourceId,ReferenceResourceVersion,        0
         FROM @ReferenceSearchParams
+        WHERE @DisableObservationIndexes = 0 OR @DisableObservationIndexes = 1 AND (ResourceTypeId <> 96 OR ResourceTypeId = 96 AND SearchParamId NOT BETWEEN 941 AND 973)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
 
     INSERT INTO dbo.TokenSearchParam
             ( ResourceTypeId,          ResourceSurrogateId,SearchParamId,SystemId,Code,IsHistory)
       SELECT @ResourceTypeId,@Offset + ResourceSurrogateId,SearchParamId,SystemId,Code,        0
         FROM @TokenSearchParams
+        WHERE @DisableObservationIndexes = 0 OR @DisableObservationIndexes = 1 AND (ResourceTypeId <> 96 OR ResourceTypeId = 96 AND SearchParamId NOT BETWEEN 941 AND 973)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
 
     INSERT INTO dbo.CompartmentAssignment
             ( ResourceTypeId,          ResourceSurrogateId,CompartmentTypeId,ReferenceResourceId,IsHistory)
       SELECT @ResourceTypeId,@Offset + ResourceSurrogateId,CompartmentTypeId,ReferenceResourceId,        0
         FROM @CompartmentAssignments
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
 
     INSERT INTO dbo.TokenText
             ( ResourceTypeId,          ResourceSurrogateId,SearchParamId,Text,IsHistory)
       SELECT @ResourceTypeId,@Offset + ResourceSurrogateId,SearchParamId,Text,        0
         FROM @TokenTexts
+        WHERE @DisableObservationIndexes = 0 OR @DisableObservationIndexes = 1 AND (ResourceTypeId <> 96 OR ResourceTypeId = 96 AND SearchParamId NOT BETWEEN 941 AND 973)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
 
     INSERT INTO dbo.DateTimeSearchParam
             ( ResourceTypeId,          ResourceSurrogateId,SearchParamId,StartDateTime,EndDateTime,IsLongerThanADay,IsHistory,IsMin,IsMax)
       SELECT @ResourceTypeId,@Offset + ResourceSurrogateId,SearchParamId,StartDateTime,EndDateTime,IsLongerThanADay,        0,IsMin,IsMax
         FROM @DateTimeSearchParams
+        WHERE @DisableObservationIndexes = 0 OR @DisableObservationIndexes = 1 AND (ResourceTypeId <> 96 OR ResourceTypeId = 96 AND SearchParamId NOT BETWEEN 941 AND 973)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
 
     INSERT INTO dbo.TokenQuantityCompositeSearchParam
             ( ResourceTypeId,          ResourceSurrogateId,SearchParamId,SystemId1,Code1,SystemId2,QuantityCodeId2,SingleValue2,LowValue2,HighValue2,IsHistory)
       SELECT @ResourceTypeId,@Offset + ResourceSurrogateId,SearchParamId,SystemId1,Code1,SystemId2,QuantityCodeId2,SingleValue2,LowValue2,HighValue2,        0
         FROM @TokenQuantityCompositeSearchParams
+        WHERE @DisableObservationIndexes = 0 OR @DisableObservationIndexes = 1 AND (ResourceTypeId <> 96 OR ResourceTypeId = 96 AND SearchParamId NOT BETWEEN 941 AND 973)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
 
     INSERT INTO dbo.QuantitySearchParam
             ( ResourceTypeId,          ResourceSurrogateId,SearchParamId,SystemId,QuantityCodeId,SingleValue,LowValue,HighValue,IsHistory)
       SELECT @ResourceTypeId,@Offset + ResourceSurrogateId,SearchParamId,SystemId,QuantityCodeId,SingleValue,LowValue,HighValue,        0
         FROM @QuantitySearchParams
+        WHERE @DisableObservationIndexes = 0 OR @DisableObservationIndexes = 1 AND (ResourceTypeId <> 96 OR ResourceTypeId = 96 AND SearchParamId NOT BETWEEN 941 AND 973)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
 
     INSERT INTO dbo.StringSearchParam
             ( ResourceTypeId,          ResourceSurrogateId,SearchParamId,Text,TextOverflow,IsHistory,IsMin,IsMax)
       SELECT @ResourceTypeId,@Offset + ResourceSurrogateId,SearchParamId,Text,TextOverflow,        0,IsMin,IsMax
         FROM @StringSearchParams
+        WHERE @DisableObservationIndexes = 0 OR @DisableObservationIndexes = 1 AND (ResourceTypeId <> 96 OR ResourceTypeId = 96 AND SearchParamId NOT BETWEEN 941 AND 973)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
 
     INSERT INTO dbo.TokenTokenCompositeSearchParam
             ( ResourceTypeId,          ResourceSurrogateId,SearchParamId,SystemId1,Code1,SystemId2,Code2,IsHistory)
       SELECT @ResourceTypeId,@Offset + ResourceSurrogateId,SearchParamId,SystemId1,Code1,SystemId2,Code2,        0
         FROM @TokenTokenCompositeSearchParams
+        WHERE @DisableObservationIndexes = 0 OR @DisableObservationIndexes = 1 AND (ResourceTypeId <> 96 OR ResourceTypeId = 96 AND SearchParamId NOT BETWEEN 941 AND 973)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
 
     INSERT INTO dbo.TokenStringCompositeSearchParam
             ( ResourceTypeId,          ResourceSurrogateId,SearchParamId,SystemId1,Code1,Text2,TextOverflow2,IsHistory)
       SELECT @ResourceTypeId,@Offset + ResourceSurrogateId,SearchParamId,SystemId1,Code1,Text2,TextOverflow2,        0
         FROM @TokenStringCompositeSearchParams
+        WHERE @DisableObservationIndexes = 0 OR @DisableObservationIndexes = 1 AND (ResourceTypeId <> 96 OR ResourceTypeId = 96 AND SearchParamId NOT BETWEEN 941 AND 973)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
   END
   ELSE
@@ -229,6 +249,7 @@ BEGIN TRY
       SELECT ResourceTypeId,@Offset + ResourceSurrogateId,SearchParamId,BaseUri,ReferenceResourceTypeId,ReferenceResourceId,ReferenceResourceVersion,        0
         FROM @ReferenceSearchParams
         WHERE EXISTS (SELECT * FROM @CurrentOffsets WHERE Offset = ResourceSurrogateId)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
 
     INSERT INTO dbo.TokenSearchParam
@@ -236,6 +257,7 @@ BEGIN TRY
       SELECT ResourceTypeId,@Offset + ResourceSurrogateId,SearchParamId,SystemId,Code,        0
         FROM @TokenSearchParams
         WHERE EXISTS (SELECT * FROM @CurrentOffsets WHERE Offset = ResourceSurrogateId)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
 
     INSERT INTO dbo.CompartmentAssignment
@@ -243,6 +265,7 @@ BEGIN TRY
       SELECT ResourceTypeId,@Offset + ResourceSurrogateId,CompartmentTypeId,ReferenceResourceId,        0
         FROM @CompartmentAssignments
         WHERE EXISTS (SELECT * FROM @CurrentOffsets WHERE Offset = ResourceSurrogateId)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
 
     INSERT INTO dbo.TokenText
@@ -250,6 +273,7 @@ BEGIN TRY
       SELECT ResourceTypeId,@Offset + ResourceSurrogateId,SearchParamId,Text,        0
         FROM @TokenTexts
         WHERE EXISTS (SELECT * FROM @CurrentOffsets WHERE Offset = ResourceSurrogateId)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
 
     INSERT INTO dbo.DateTimeSearchParam
@@ -257,6 +281,7 @@ BEGIN TRY
       SELECT ResourceTypeId,@Offset + ResourceSurrogateId,SearchParamId,StartDateTime,EndDateTime,IsLongerThanADay,        0,IsMin,IsMax
         FROM @DateTimeSearchParams
         WHERE EXISTS (SELECT * FROM @CurrentOffsets WHERE Offset = ResourceSurrogateId)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
 
     INSERT INTO dbo.TokenQuantityCompositeSearchParam
@@ -264,6 +289,7 @@ BEGIN TRY
       SELECT ResourceTypeId,@Offset + ResourceSurrogateId,SearchParamId,SystemId1,Code1,SystemId2,QuantityCodeId2,SingleValue2,LowValue2,HighValue2,        0
         FROM @TokenQuantityCompositeSearchParams
         WHERE EXISTS (SELECT * FROM @CurrentOffsets WHERE Offset = ResourceSurrogateId)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
 
     INSERT INTO dbo.QuantitySearchParam
@@ -271,6 +297,7 @@ BEGIN TRY
       SELECT ResourceTypeId,@Offset + ResourceSurrogateId,SearchParamId,SystemId,QuantityCodeId,SingleValue,LowValue,HighValue,        0
         FROM @QuantitySearchParams
         WHERE EXISTS (SELECT * FROM @CurrentOffsets WHERE Offset = ResourceSurrogateId)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
 
     INSERT INTO dbo.StringSearchParam
@@ -278,6 +305,7 @@ BEGIN TRY
       SELECT ResourceTypeId,@Offset + ResourceSurrogateId,SearchParamId,Text,TextOverflow,        0,IsMin,IsMax
         FROM @StringSearchParams
         WHERE EXISTS (SELECT * FROM @CurrentOffsets WHERE Offset = ResourceSurrogateId)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
 
     INSERT INTO dbo.TokenTokenCompositeSearchParam
@@ -285,6 +313,7 @@ BEGIN TRY
       SELECT ResourceTypeId,@Offset + ResourceSurrogateId,SearchParamId,SystemId1,Code1,SystemId2,Code2,        0
         FROM @TokenTokenCompositeSearchParams
         WHERE EXISTS (SELECT * FROM @CurrentOffsets WHERE Offset = ResourceSurrogateId)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
 
     INSERT INTO dbo.TokenStringCompositeSearchParam
@@ -292,6 +321,7 @@ BEGIN TRY
       SELECT ResourceTypeId,@Offset + ResourceSurrogateId,SearchParamId,SystemId1,Code1,Text2,TextOverflow2,        0
         FROM @TokenStringCompositeSearchParams
         WHERE EXISTS (SELECT * FROM @CurrentOffsets WHERE Offset = ResourceSurrogateId)
+        OPTION (MAXDOP 1)
     SET @AffectedRows = @AffectedRows + @@rowcount
   END
 
