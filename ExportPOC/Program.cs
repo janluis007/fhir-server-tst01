@@ -30,6 +30,7 @@ namespace Microsoft.Health.Fhir.Store.Export
         private static readonly string ResourceType = ConfigurationManager.AppSettings["ResourceType"];
         private static readonly int UnitSize = int.Parse(ConfigurationManager.AppSettings["UnitSize"]);
         private static readonly int MaxRetries = int.Parse(ConfigurationManager.AppSettings["MaxRetries"]);
+        private static readonly bool ReadsEnabled = bool.Parse(ConfigurationManager.AppSettings["ReadsEnabled"]);
         private static readonly bool WritesEnabled = bool.Parse(ConfigurationManager.AppSettings["WritesEnabled"]);
         private static readonly bool DecompressEnabled = bool.Parse(ConfigurationManager.AppSettings["DecompressEnabled"]);
         private static readonly bool RebuildWorkQueue = bool.Parse(ConfigurationManager.AppSettings["RebuildWorkQueue"]);
@@ -148,6 +149,11 @@ namespace Microsoft.Health.Fhir.Store.Export
 
         private static int Export(short resourceTypeId, BlobContainerClient container, long minId, long maxId)
         {
+            if (!ReadsEnabled)
+            {
+                return 0;
+            }
+
             var resources = Source.GetData(resourceTypeId, minId, maxId).ToList(); // ToList will fource reading from SQL even when writes are disabled
             var strings = new List<string>();
             if (DecompressEnabled)
