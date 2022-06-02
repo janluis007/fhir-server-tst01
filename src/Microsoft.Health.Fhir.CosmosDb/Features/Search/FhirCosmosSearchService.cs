@@ -798,5 +798,10 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
                     return false;
             }
         }
+
+        public override Task<SearchResult> SearchErrorReportInternalAsync(string tag, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

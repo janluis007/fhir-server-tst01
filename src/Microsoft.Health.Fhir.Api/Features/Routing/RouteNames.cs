@@ -49,6 +49,8 @@ namespace Microsoft.Health.Fhir.Api.Features.Routing
 
         internal const string ResourceReindexOperationDefinition = "ResourceReindexOperationDefinition";
 
+        internal const string ErrorReportOperationDefinition = "ErrorReportOperationDefinition";
+
         internal const string ExportOperationDefinition = "ExportOperationDefinition";
 
         internal const string PatientExportOperationDefinition = "PatientExportOperationDefinition";

@@ -39,6 +39,8 @@ namespace Microsoft.Health.Fhir.Api.Features.Routing
         public const string GroupExportOperationDefinition = OperationDefinition + "/" + OperationsConstants.GroupExport;
         public const string AnonymizedExportOperationDefinition = OperationDefinition + "/" + OperationsConstants.AnonymizedExport;
 
+        public const string ErrorReport = "$error-report";
+
         public const string Validate = "$validate";
         public const string ValidateResourceType = ResourceType + "/" + Validate;
         public const string ValidateResourceTypeById = ResourceTypeById + "/" + Validate;

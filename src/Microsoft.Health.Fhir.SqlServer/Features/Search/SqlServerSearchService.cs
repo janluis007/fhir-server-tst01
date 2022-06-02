@@ -96,6 +96,43 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Search
             _compressedRawResourceConverter = compressedRawResourceConverter;
         }
 
+        public override async Task<SearchResult> SearchErrorReportInternalAsync(string tag, CancellationToken cancellationToken)
+        {
+            // TODO: get the sqlSearchOptions.MaxItemCount and continuation token
+
+            var resources = new List<SearchResultEntry>();
+            ContinuationToken continuationToken = null;
+
+            using (SqlConnectionWrapper sqlConnectionWrapper = await _sqlConnectionWrapperFactory.ObtainSqlConnectionWrapperAsync(cancellationToken, true))
+            using (SqlCommandWrapper sqlCommandWrapper = sqlConnectionWrapper.CreateRetrySqlCommand())
+            {
+                sqlCommandWrapper.CommandText = @$"SELECT ResourceSurrogateId,OperationOutcome FROM ErrorReport WHERE Tag = '{tag}'";
+                using (var reader = await sqlCommandWrapper.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken))
+                {
+                    while (await reader.ReadAsync(cancellationToken))
+                    {
+                        long id = (long)reader["ResourceSurrogateId"];
+
+                        resources.Add(new SearchResultEntry(
+                                       new ResourceWrapper(
+                                           id.ToString(),
+                                           null,
+                                           "ErrorReport",
+                                           new RawResource((string)reader["OperationOutcome"], FhirResourceFormat.Json, isMetaSet: true),
+                                           new ResourceRequest("Get"),
+                                           new DateTimeOffset(ResourceSurrogateIdHelper.ResourceSurrogateIdToLastUpdated(id), TimeSpan.Zero),
+                                           false,
+                                           null,
+                                           null,
+                                           null,
+                                           null)));
+                    }
+                }
+            }
+
+            return new SearchResult(resources, continuationToken?.ToJson(), null, Array.Empty<Tuple<string, string>>());
+        }
+
         public override async Task<SearchResult> SearchAsync(SearchOptions searchOptions, CancellationToken cancellationToken)
         {
             SqlSearchOptions sqlSearchOptions = new SqlSearchOptions(searchOptions);
@@ -108,7 +145,7 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Search
                 sqlSearchOptions.Sort.Count > 0 &&
                 sqlSearchOptions.Sort[0].searchParameterInfo.Code != KnownQueryParameterNames.LastUpdated)
             {
-                // We seem to have run a sort which has returned less results than what max we can return.
+                // We seem to have run a sort which has returned less results than what max can return.
                 // Let's determine whether we need to execute another query or not.
                 if ((sqlSearchOptions.Sort[0].sortOrder == SortOrder.Ascending && sqlSearchOptions.DidWeSearchForSortValue.HasValue && !sqlSearchOptions.DidWeSearchForSortValue.Value) ||
                     (sqlSearchOptions.Sort[0].sortOrder == SortOrder.Descending && sqlSearchOptions.DidWeSearchForSortValue.HasValue && sqlSearchOptions.DidWeSearchForSortValue.Value))
@@ -117,7 +154,7 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Search
                     {
                         // Since we are already returning MaxItemCount number of resources we don't want
                         // to execute another search right now just to drop all the resources. We will return
-                        // a "special" ct so that we the subsequent request will be handled correctly.
+                        // a "special" ct so that the subsequent request will be handled correctly.
                         var ct = new ContinuationToken(new object[]
                             {
                                     SqlSearchConstants.SortSentinelValueForCt,

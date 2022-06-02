@@ -65,6 +65,8 @@ namespace Microsoft.Health.Fhir.ValueSets
         // of 2019/03/19. So we have to use our own sub-type.
         public const string Export = "export";
 
+        public const string ErrorReport = "error-report";
+
         public const string Reindex = "reindex";
 
         public const string ConvertData = "convert-data";

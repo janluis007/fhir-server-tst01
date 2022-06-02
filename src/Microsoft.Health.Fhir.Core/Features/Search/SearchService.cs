@@ -52,6 +52,11 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
             return await SearchAsync(searchOptions, cancellationToken);
         }
 
+        public async Task<SearchResult> SearchErrorReportAsync(string tag, CancellationToken cancellationToken)
+        {
+            return await SearchErrorReportInternalAsync(tag, cancellationToken);
+        }
+
         /// <inheritdoc />
         public async Task<SearchResult> SearchCompartmentAsync(
             string compartmentType,
@@ -209,6 +214,10 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
         protected abstract Task<SearchResult> SearchForReindexInternalAsync(
             SearchOptions searchOptions,
             string searchParameterHash,
+            CancellationToken cancellationToken);
+
+        public abstract Task<SearchResult> SearchErrorReportInternalAsync(
+            string tag,
             CancellationToken cancellationToken);
     }
 }

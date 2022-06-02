@@ -55,6 +55,14 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
             });
         }
 
+        public ResourceElement CreateErrorReportBundle(SearchResult result)
+        {
+            return CreateBundle(result, Bundle.BundleType.Searchset, r =>
+            {
+                return new RawBundleEntryComponent(r.Resource);
+            });
+        }
+
         public ResourceElement CreateHistoryBundle(SearchResult result)
         {
             return CreateBundle(result, Bundle.BundleType.History, r =>

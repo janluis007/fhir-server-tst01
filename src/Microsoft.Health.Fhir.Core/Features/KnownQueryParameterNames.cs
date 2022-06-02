@@ -30,6 +30,8 @@ namespace Microsoft.Health.Fhir.Core.Features
 
         public const string Mode = "mode";
 
+        public const string Tag = "tag";
+
         /// <summary>
         /// The pretty query parameter.
         /// </summary>

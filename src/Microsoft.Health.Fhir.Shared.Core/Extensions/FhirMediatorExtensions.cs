@@ -15,6 +15,7 @@ using Microsoft.Health.Fhir.Core.Features.Resources.Patch;
 using Microsoft.Health.Fhir.Core.Messages.Bundle;
 using Microsoft.Health.Fhir.Core.Messages.Create;
 using Microsoft.Health.Fhir.Core.Messages.Delete;
+using Microsoft.Health.Fhir.Core.Messages.ErrorReport;
 using Microsoft.Health.Fhir.Core.Messages.Get;
 using Microsoft.Health.Fhir.Core.Messages.Patch;
 using Microsoft.Health.Fhir.Core.Messages.Search;
@@ -158,6 +159,15 @@ namespace Microsoft.Health.Fhir.Core.Extensions
             BundleResponse result = await mediator.Send<BundleResponse>(new BundleRequest(bundle), cancellationToken);
 
             return result.Bundle;
+        }
+
+        public static async Task<ResourceElement> SearchErrorReportAsync(this IMediator mediator, string tag, string continuationToken, CancellationToken cancellationToken)
+        {
+            EnsureArg.IsNotNull(mediator, nameof(mediator));
+
+            ErrorReportResponse response = await mediator.Send(new ErrorReportRequest(tag, continuationToken), cancellationToken);
+
+            return response.Bundle;
         }
     }
 }

@@ -3,16 +3,20 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
+using EnsureThat;
 using Microsoft.Health.Fhir.Core.Models;
 
-namespace Microsoft.Health.Fhir.Core.Features.Search
+namespace Microsoft.Health.Fhir.Core.Messages.ErrorReport
 {
-    public interface IBundleFactory
+    public class ErrorReportResponse
     {
-        ResourceElement CreateSearchBundle(SearchResult result);
+        public ErrorReportResponse(ResourceElement bundle)
+        {
+            EnsureArg.IsNotNull(bundle, nameof(bundle));
 
-        ResourceElement CreateErrorReportBundle(SearchResult result);
+            Bundle = bundle;
+        }
 
-        ResourceElement CreateHistoryBundle(SearchResult result);
+        public ResourceElement Bundle { get; }
     }
 }
