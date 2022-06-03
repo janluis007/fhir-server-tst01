@@ -125,35 +125,34 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Search
                 using (var reader = await sqlCommandWrapper.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken))
                 {
                     short newContinuationType = 0; // since we don't have a real resource type
-                    long? newContinuationId = null;
+                    long newContinuationId = 0;
                     bool moreResults = false;
 
                     while (await reader.ReadAsync(cancellationToken))
                     {
-                        long id = (long)reader["ResourceSurrogateId"];
-
-                        resources.Add(new SearchResultEntry(
-                                       new ResourceWrapper(
-                                           id.ToString(),
-                                           null,
-                                           "ErrorReport",
-                                           new RawResource((string)reader["OperationOutcome"], FhirResourceFormat.Json, isMetaSet: true),
-                                           new ResourceRequest("Get"),
-                                           new DateTimeOffset(ResourceSurrogateIdHelper.ResourceSurrogateIdToLastUpdated(id), TimeSpan.Zero),
-                                           false,
-                                           null,
-                                           null,
-                                           null,
-                                           null)));
+                        newContinuationId = (long)reader["ResourceSurrogateId"];
 
                         // If we get to this point, we know there are more results so we need a continuation token
                         // Additionally, this resource shouldn't be included in the results
                         if (resources.Count >= sqlSearchOptions.MaxItemCount)
                         {
                             moreResults = true;
-                            newContinuationId = id;
                             continue;
                         }
+
+                        resources.Add(new SearchResultEntry(
+                                       new ResourceWrapper(
+                                           newContinuationId.ToString(),
+                                           null,
+                                           "ErrorReport",
+                                           new RawResource((string)reader["OperationOutcome"], FhirResourceFormat.Json, isMetaSet: true),
+                                           new ResourceRequest("Get"),
+                                           new DateTimeOffset(ResourceSurrogateIdHelper.ResourceSurrogateIdToLastUpdated(newContinuationId), TimeSpan.Zero),
+                                           false,
+                                           null,
+                                           null,
+                                           null,
+                                           null)));
                     }
 
                     continuationToken =
@@ -163,7 +162,14 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Search
                 }
             }
 
-            return new SearchResult(resources, continuationToken?.ToJson(), null, Array.Empty<Tuple<string, string>>());
+            var searchResult = new SearchResult(resources, continuationToken?.ToJson(), null, Array.Empty<Tuple<string, string>>());
+
+            if (sqlSearchOptions.IncludeTotal == TotalType.Accurate && !sqlSearchOptions.CountOnly)
+            {
+                searchResult.TotalCount = searchResult.Results.Count();
+            }
+
+            return searchResult;
         }
 
         public override async Task<SearchResult> SearchAsync(SearchOptions searchOptions, CancellationToken cancellationToken)
