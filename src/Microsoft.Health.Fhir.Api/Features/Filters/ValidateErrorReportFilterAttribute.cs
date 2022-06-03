@@ -5,11 +5,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using EnsureThat;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Health.Fhir.Core.Exceptions;
 using Microsoft.Health.Fhir.Core.Features;
+using Microsoft.Health.Fhir.Core.Features.Persistence;
 
 namespace Microsoft.Health.Fhir.Api.Features.Filters
 {
@@ -39,10 +41,15 @@ namespace Microsoft.Health.Fhir.Api.Features.Filters
             {
                 if (IsValidBasicExportRequestParam(paramName))
                 {
+                    if (paramName.Equals(KnownQueryParameterNames.Tag, StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(queryCollection[paramName]))
+                    {
+                        throw new BadRequestException(string.Format(CultureInfo.InvariantCulture, Core.Resources.ValueCannotBeNull, paramName));
+                    }
+
                     continue;
                 }
 
-                throw new RequestNotValidException(string.Format(Resources.UnsupportedParameter, paramName));
+                throw new RequestNotValidException(string.Format(CultureInfo.InvariantCulture, Resources.UnsupportedParameter, paramName));
             }
         }
 

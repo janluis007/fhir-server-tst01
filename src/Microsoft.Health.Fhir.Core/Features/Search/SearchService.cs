@@ -52,9 +52,19 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
             return await SearchAsync(searchOptions, cancellationToken);
         }
 
-        public async Task<SearchResult> SearchErrorReportAsync(string tag, CancellationToken cancellationToken)
+        public async Task<SearchResult> SearchErrorReportAsync(
+            string tag,
+            string continuationToken,
+            CancellationToken cancellationToken)
         {
-            return await SearchErrorReportInternalAsync(tag, cancellationToken);
+            SearchOptions searchOptions = _searchOptionsFactory.Create(string.Empty, Array.Empty<Tuple<string, string>>());
+
+            if (continuationToken != null)
+            {
+                searchOptions.ContinuationToken = ContinuationTokenConverter.Decode(continuationToken);
+            }
+
+            return await SearchErrorReportInternalAsync(tag, searchOptions, cancellationToken);
         }
 
         /// <inheritdoc />
@@ -218,6 +228,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
 
         public abstract Task<SearchResult> SearchErrorReportInternalAsync(
             string tag,
+            SearchOptions searchOptions,
             CancellationToken cancellationToken);
     }
 }

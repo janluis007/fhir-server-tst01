@@ -32,9 +32,13 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
         /// Searches for error reports
         /// </summary>
         /// <param name="tag">The tag to search for</param>
+        /// <param name="continuationToken">The continuationToken.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>A <see cref="SearchResult"/> representing the result.</returns>
-        Task<SearchResult> SearchErrorReportAsync(string tag, CancellationToken cancellationToken);
+        Task<SearchResult> SearchErrorReportAsync(
+            string tag,
+            string continuationToken,
+            CancellationToken cancellationToken);
 
         /// <summary>
         /// Searches the resources using the <paramref name="searchOptions"/>.

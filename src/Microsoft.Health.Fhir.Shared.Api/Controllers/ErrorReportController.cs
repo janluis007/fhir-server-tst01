@@ -52,9 +52,9 @@ namespace Microsoft.Health.Fhir.Api.Controllers
         [AuditEventType(AuditEventSubType.ErrorReport)]
         public async Task<IActionResult> ErrorReportAsync(
             [FromQuery(Name = KnownQueryParameterNames.Tag)] string tag,
-            string ct)
+            [FromQuery(Name = KnownQueryParameterNames.ContinuationToken)] string continuationToken)
         {
-            ResourceElement response = await _mediator.SearchErrorReportAsync(tag, ct, HttpContext.RequestAborted);
+            ResourceElement response = await _mediator.SearchErrorReportAsync(tag, continuationToken, HttpContext.RequestAborted);
             return FhirResult.Create(response);
         }
     }

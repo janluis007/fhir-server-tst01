@@ -161,7 +161,7 @@ namespace Microsoft.Health.Fhir.Core.Extensions
             return result.Bundle;
         }
 
-        public static async Task<ResourceElement> SearchErrorReportAsync(this IMediator mediator, string tag, string continuationToken, CancellationToken cancellationToken)
+        public static async Task<ResourceElement> SearchErrorReportAsync(this IMediator mediator, string tag, string continuationToken = null, CancellationToken cancellationToken = default)
         {
             EnsureArg.IsNotNull(mediator, nameof(mediator));
 

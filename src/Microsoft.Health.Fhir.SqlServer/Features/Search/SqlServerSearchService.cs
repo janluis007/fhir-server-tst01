@@ -96,19 +96,38 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Search
             _compressedRawResourceConverter = compressedRawResourceConverter;
         }
 
-        public override async Task<SearchResult> SearchErrorReportInternalAsync(string tag, CancellationToken cancellationToken)
+        public override async Task<SearchResult> SearchErrorReportInternalAsync(string tag, SearchOptions searchOptions, CancellationToken cancellationToken)
         {
-            // TODO: get the sqlSearchOptions.MaxItemCount and continuation token
+            SqlSearchOptions sqlSearchOptions = new SqlSearchOptions(searchOptions);
+            var resources = new List<SearchResultEntry>(sqlSearchOptions.MaxItemCount);
+            ContinuationToken continuationToken = ContinuationToken.FromString(sqlSearchOptions.ContinuationToken);
 
-            var resources = new List<SearchResultEntry>();
-            ContinuationToken continuationToken = null;
+            string whereClause = $"Tag = '{tag}' ";
+            if (continuationToken != null)
+            {
+                whereClause += $" AND ResourceSurrogateId > {continuationToken.ResourceSurrogateId}";
+            }
 
             using (SqlConnectionWrapper sqlConnectionWrapper = await _sqlConnectionWrapperFactory.ObtainSqlConnectionWrapperAsync(cancellationToken, true))
             using (SqlCommandWrapper sqlCommandWrapper = sqlConnectionWrapper.CreateRetrySqlCommand())
             {
-                sqlCommandWrapper.CommandText = @$"SELECT ResourceSurrogateId,OperationOutcome FROM ErrorReport WHERE Tag = '{tag}'";
+                sqlCommandWrapper.CommandText = @$"
+                IF EXISTS (SELECT * FROM sys.tables WHERE name = 'ErrorReport') BEGIN
+                    SELECT TOP ({sqlSearchOptions.MaxItemCount + 1}) ResourceSurrogateId, OperationOutcome 
+                    FROM ErrorReport 
+                    WHERE {whereClause}
+                    ORDER BY ResourceSurrogateId
+                END
+                ";
+
+                LogSqlCommand(sqlCommandWrapper);
+
                 using (var reader = await sqlCommandWrapper.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken))
                 {
+                    short newContinuationType = 0; // since we don't have a real resource type
+                    long? newContinuationId = null;
+                    bool moreResults = false;
+
                     while (await reader.ReadAsync(cancellationToken))
                     {
                         long id = (long)reader["ResourceSurrogateId"];
@@ -126,7 +145,21 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Search
                                            null,
                                            null,
                                            null)));
+
+                        // If we get to this point, we know there are more results so we need a continuation token
+                        // Additionally, this resource shouldn't be included in the results
+                        if (resources.Count >= sqlSearchOptions.MaxItemCount)
+                        {
+                            moreResults = true;
+                            newContinuationId = id;
+                            continue;
+                        }
                     }
+
+                    continuationToken =
+                        moreResults
+                            ? new ContinuationToken(new object[2] { newContinuationType, newContinuationId }.ToArray())
+                            : null;
                 }
             }
 
@@ -687,6 +720,8 @@ namespace Microsoft.Health.Fhir.SqlServer.Features.Search
             sb.AppendLine();
 
             sb.AppendLine(sqlCommandWrapper.CommandText);
+            sb.AppendLine();
+            sb.AppendFormat("Sql CommandTimeout: {0}", TimeSpan.FromSeconds(sqlCommandWrapper.CommandTimeout).Duration().ToString());
             _logger.LogInformation(sb.ToString());
         }
 

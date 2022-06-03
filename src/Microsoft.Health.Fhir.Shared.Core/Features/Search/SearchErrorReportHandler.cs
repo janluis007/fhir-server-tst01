@@ -51,7 +51,7 @@ namespace Microsoft.Health.Fhir.Core.Features.Search
                 throw new UnauthorizedFhirActionException();
             }
 
-            SearchResult searchResult = await _searchService.SearchErrorReportAsync(request.Tag, cancellationToken);
+            SearchResult searchResult = await _searchService.SearchErrorReportAsync(request.Tag, request.ContinuationToken, cancellationToken);
 
             ResourceElement bundle = _bundleFactory.CreateErrorReportBundle(searchResult);
 

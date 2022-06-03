@@ -799,7 +799,7 @@ namespace Microsoft.Health.Fhir.CosmosDb.Features.Search
             }
         }
 
-        public override Task<SearchResult> SearchErrorReportInternalAsync(string tag, CancellationToken cancellationToken)
+        public override Task<SearchResult> SearchErrorReportInternalAsync(string tag, SearchOptions searchOptions, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }

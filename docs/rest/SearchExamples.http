@@ -99,3 +99,12 @@ Content-Type: application/x-www-form-urlencoded
 Authorization: Bearer {{bearer.response.body.access_token}}
 
 name=Jon
+
+### error-report rawresourcecheck
+GET {{hostname}}/$error-report?tag=rawresourcecheck
+Authorization: Bearer {{bearer.response.body.access_token}}
+
+
+### error-report SqlColumnLength
+GET {{hostname}}/$error-report?tag=SqlColumnLength
+Authorization: Bearer {{bearer.response.body.access_token}}
