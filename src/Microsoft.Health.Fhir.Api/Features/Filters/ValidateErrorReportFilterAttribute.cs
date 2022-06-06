@@ -37,7 +37,13 @@ namespace Microsoft.Health.Fhir.Api.Features.Filters
             EnsureArg.IsNotNull(context, nameof(context));
 
             IQueryCollection queryCollection = context.HttpContext.Request.Query;
-            foreach (string paramName in queryCollection?.Keys)
+
+            if (queryCollection.Keys.Count == 0)
+            {
+                throw new BadRequestException(string.Format(CultureInfo.InvariantCulture, Core.Resources.ValueCannotBeNull, KnownQueryParameterNames.Tag));
+            }
+
+            foreach (string paramName in queryCollection.Keys)
             {
                 if (IsValidBasicExportRequestParam(paramName))
                 {

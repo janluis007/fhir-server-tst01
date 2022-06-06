@@ -101,10 +101,21 @@ Authorization: Bearer {{bearer.response.body.access_token}}
 name=Jon
 
 ### error-report rawresourcecheck
+# This should return rawresource OperationOutcomes if any exist
 GET {{hostname}}/$error-report?tag=rawresourcecheck
 Authorization: Bearer {{bearer.response.body.access_token}}
 
-
 ### error-report SqlColumnLength
+# This should return SqlColumnLength OperationOutcomes if any exist
 GET {{hostname}}/$error-report?tag=SqlColumnLength
+Authorization: Bearer {{bearer.response.body.access_token}}
+
+### error-report with invalid querystring key
+# This should return a bad request as the querystring is invalid
+GET {{hostname}}/$error-report?unknown=rawresourcecheck
+Authorization: Bearer {{bearer.response.body.access_token}}
+
+### error-report with invalid querystring key
+# This should return a bad request as the querystring is invalid
+GET {{hostname}}/$error-report
 Authorization: Bearer {{bearer.response.body.access_token}}
