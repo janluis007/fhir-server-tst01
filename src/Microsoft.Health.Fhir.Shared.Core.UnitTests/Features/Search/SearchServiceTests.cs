@@ -179,6 +179,11 @@ namespace Microsoft.Health.Fhir.Core.UnitTests.Features.Search
             {
                 return Task.FromResult(SearchImplementation(searchOptions));
             }
+
+            public override Task<SearchResult> SearchErrorReportInternalAsync(string tag, SearchOptions searchOptions, CancellationToken cancellationToken)
+            {
+                return Task.FromResult(SearchImplementation(searchOptions));
+            }
         }
     }
 }
